@@ -36,12 +36,14 @@ pytest tests/ -v
 - [x] import_outline_skeleton.py — JSON 标题骨架导入
 - [x] volume_plans / chapter_plans 基础写入
 - [x] chapter_goal / conflict_point / ending_hook_direction 校验
+- [x] pre 阶段从 volume_plans / chapter_plans 读取标题骨架
+- [x] TASK CARD 展示骨架指引（章节目标/冲突点/结尾钩子）
+- [x] volume_post — 卷级统计/伏笔/角色/下一卷承接点
 
 **待完成：**
-- [ ] pre 阶段从 volume_plans / chapter_plans 读取标题骨架
-- [ ] volume_post — 卷级总结、状态、下一卷承接点
-- [ ] chapter_brief 输出增强
+- [ ] ingest 后自动更新 chapter_plans 状态（planned → written）
 - [ ] 卷序强制检查（跨卷连续性验证）
+- [ ] 更多端到端测试
 
 ---
 

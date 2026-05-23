@@ -173,6 +173,38 @@ def pre_write_gate(chapter_no, chapter_type="normal"):
     print(f"STEP 1: PRE — 第{chapter_no}章 [{chapter_type}] — 《{app.novel_title}》")
     print("="*60)
 
+    # ── 标题骨架：从 volume_plans / chapter_plans 读取 ──
+    vol = cur.execute(
+        "SELECT planned_title, volume_goal, opening_state, ending_target, must_complete, suggested_chapters "
+        "FROM volume_plans WHERE novel_id=? AND volume_no=?", (nid, app.volume_no)).fetchone()
+    ch_plan = cur.execute(
+        "SELECT planned_title, chapter_goal, main_event, character_focus, conflict_point, "
+        "must_include, plot_threads_to_advance, reader_promises_to_advance, "
+        "ending_hook_direction, continuity_from_previous "
+        "FROM chapter_plans WHERE novel_id=? AND volume_no=? AND chapter_no=?", 
+        (nid, app.volume_no, chapter_no)).fetchone()
+
+    if vol:
+        print(f"\n  >>> 第{app.volume_no}卷《{vol['planned_title']}》")
+        print(f"      目标: {vol['volume_goal']}")
+        if vol['opening_state']: print(f"      开端: {vol['opening_state']}")
+        if vol['ending_target']: print(f"      卷末: {vol['ending_target']}")
+        log_entries.append(f"读取卷骨架:第{app.volume_no}卷")
+    if ch_plan:
+        print(f"\n  >>> 本章骨架《{ch_plan['planned_title']}》")
+        if ch_plan['chapter_goal']:       print(f"      章节目标: {ch_plan['chapter_goal']}")
+        if ch_plan['main_event']:         print(f"      核心事件: {ch_plan['main_event']}")
+        if ch_plan['character_focus']:    print(f"      人物重点: {ch_plan['character_focus']}")
+        if ch_plan['conflict_point']:     print(f"      冲突点:   {ch_plan['conflict_point']}")
+        if ch_plan['must_include']:       print(f"      必须包含: {ch_plan['must_include']}")
+        if ch_plan['plot_threads_to_advance']:    print(f"      推进伏笔: {ch_plan['plot_threads_to_advance']}")
+        if ch_plan['ending_hook_direction']:      print(f"      结尾钩子: {ch_plan['ending_hook_direction']}")
+        if ch_plan['continuity_from_previous']:   print(f"      上章承接: {ch_plan['continuity_from_previous']}")
+        log_entries.append(f"读取章骨架:第{chapter_no}章")
+    else:
+        print(f"\n  [INFO] 第{chapter_no}章无标题骨架数据，按自由模式写作")
+    # ── 标题骨架结束 ──
+
     if prev_ch >= 1:
         cur.execute("SELECT title, content FROM chapters WHERE novel_id=? AND chapter_no=?", (nid, prev_ch))
         prev = cur.fetchone()
@@ -213,23 +245,42 @@ def pre_write_gate(chapter_no, chapter_type="normal"):
         print(f"  [OK] {label}({len(rows)}): " + ", ".join(str(dict(r)) for r in rows[:5]))
         log_entries.append(f"{label}{len(rows)}条")
 
-    # context_pack
+    # context_pack (包含标题骨架)
     app.exports_root.mkdir(parents=True, exist_ok=True)
     pack_path = app.exports_root / f"context_ch{chapter_no}_{datetime.now().strftime('%H%M%S')}.txt"
+    skeleton_info = ""
+    if ch_plan:
+        skeleton_info = (
+            f"=== 标题骨架 ===\n"
+            f"卷: 第{app.volume_no}卷《{vol['planned_title'] if vol else '?'}》\n"
+            f"章: 第{chapter_no}章《{ch_plan['planned_title']}》\n"
+            f"目标: {ch_plan['chapter_goal']}\n"
+            f"冲突: {ch_plan['conflict_point']}\n"
+            f"钩子: {ch_plan['ending_hook_direction']}\n"
+        )
     pack_path.write_text(
         f"写作上下文包-第{chapter_no}章\n{'='*40}\n"
         f"目标字数: {app.wc_rules['ideal_min']}-{app.wc_rules['ideal_max']} | "
-        f"红线: {app.wc_rules['hard_min']}\n", encoding='utf-8')
-    print(f"\n  [OK] context_pack: {pack_path}")
+        f"红线: {app.wc_rules['hard_min']}\n"
+        f"{skeleton_info}\n", encoding='utf-8')
+    print(f"  [OK] context_pack: {pack_path}")
 
-    # task_card
+    # task_card (含标题骨架指引)
     print(f"\n{'='*60}")
     print(f"TASK CARD - 第{chapter_no}章 [{chapter_type}]")
     print(f"  字数范围: {app.wc_rules['hard_min']}-{app.wc_rules['normal_max']} | 最佳: {app.wc_rules['ideal_min']}-{app.wc_rules['ideal_max']}")
     print(f"  必须>={app.min_scenes}场景 | >=2生活细节 | >=1不完美互动")
     print(f"  禁止: AI句式/硬科普/总结腔/空泛心理")
+    if ch_plan:
+        print(f"  ─── 标题骨架指引 ───")
+        print(f"  章节目标: {ch_plan['chapter_goal']}")
+        print(f"  核心事件: {ch_plan['main_event'] or '(自由发挥)'}")
+        print(f"  冲突点:   {ch_plan['conflict_point']}")
+        print(f"  结尾钩子: {ch_plan['ending_hook_direction']}")
+        if ch_plan['must_include']: print(f"  必须包含: {ch_plan['must_include']}")
     if prev_ending:
-        print(f"  承接: {prev_ending[-120:]}")
+        print(f"  ─── 承接上章 ───")
+        print(f"  {prev_ending[-120:]}")
     print(f"{'='*60}")
 
     cur.execute("INSERT INTO novel_logs(action,target_type,detail) VALUES('pre_write','chapter',?)", ("; ".join(log_entries),))
@@ -508,6 +559,92 @@ def ingest(chapter_no, chapter_type="normal"):
 
 
 # ============================================================
+# VOLUME_POST — 卷级总结与承接
+# ============================================================
+def volume_post():
+    """卷级后处理：统计 + 状态 + 下一卷承接点"""
+    conn = connect(); cur = conn.cursor(); nid = _get_novel_id(cur)
+    ts = now()
+
+    if nid is None:
+        print(f"[FAIL] 小说 '{app.novel_slug}' 不存在于数据库"); conn.close(); return
+
+    vol_no = app.volume_no
+
+    # 统计本卷章节
+    cur.execute("SELECT chapter_no, title, word_count, status FROM chapters WHERE novel_id=? AND volume_id=(SELECT id FROM volumes WHERE novel_id=? AND volume_no=?) ORDER BY chapter_no",
+        (nid, nid, vol_no))
+    chapters = cur.fetchall()
+    if not chapters:
+        print(f"[FAIL] 第{vol_no}卷无章节数据"); conn.close(); return
+
+    total_ch = len(chapters)
+    total_wc = sum(c['word_count'] for c in chapters)
+    drafts = [c for c in chapters if c['status'] != 'final']
+
+    # 卷计划
+    vol_plan = cur.execute("SELECT * FROM volume_plans WHERE novel_id=? AND volume_no=?", (nid, vol_no)).fetchone()
+
+    # 上一卷结尾（用于连续）
+    prev_vol = None
+    if vol_no > 1:
+        prev_vol = cur.execute("SELECT volume_no, title FROM volumes WHERE novel_id=? AND volume_no=?",
+            (nid, vol_no - 1)).fetchone()
+
+    # 角色状态（最近的角色弧线变化）
+    cur.execute("SELECT name, role, status, arc FROM characters WHERE novel_id=? AND status='active'", (nid,))
+    active_chars = cur.fetchall()
+
+    # 伏笔状态
+    cur.execute("SELECT title, status, introduced_chapter FROM plot_threads WHERE novel_id=? AND status IN ('open','active') ORDER BY importance DESC", (nid,))
+    open_threads = cur.fetchall()
+
+    print("=" * 60)
+    print(f"VOLUME POST — 第{vol_no}卷")
+    print("=" * 60)
+    print(f"  章节数: {total_ch}")
+    print(f"  总字数: {total_wc:,}")
+    print(f"  均字数: {total_wc // total_ch if total_ch else 0}")
+    if drafts:
+        print(f"  [WARN] {len(drafts)}章非final状态: {[c['chapter_no'] for c in drafts]}")
+
+    if vol_plan:
+        ending_target = vol_plan['ending_target'] or '(未设定)'
+        unresolved = vol_plan['unresolved_hooks_to_next'] or '(无)'
+        print(f"\n  卷目标完成状态:")
+        print(f"    计划结局: {ending_target}")
+        print(f"    遗留钩子: {unresolved}")
+
+    if open_threads:
+        print(f"\n  开放伏笔 ({len(open_threads)}):")
+        for t in open_threads[:8]:
+            print(f"    [{t['status']}] {t['title']} (引入: 第{t['introduced_chapter'] or '?'}章)")
+
+    if active_chars:
+        print(f"\n  活跃角色 ({len(active_chars)}):")
+        for c in active_chars[:10]:
+            arc_info = f" — {c['arc'][:60]}" if c.get('arc') else ""
+            print(f"    [{c['role']}] {c['name']}{arc_info}")
+
+    # 下一卷承接点
+    if vol_plan and vol_plan.get('unresolved_hooks_to_next'):
+        print(f"\n  >>> 下一卷承接点 <<<")
+        print(f"  {vol_plan['unresolved_hooks_to_next']}")
+
+    print(f"\n  [OK] 卷级总结完成")
+
+    # 更新 volume_plans 标记
+    if vol_plan:
+        cur.execute("UPDATE volume_plans SET updated_at=? WHERE novel_id=? AND volume_no=?",
+            (ts, nid, vol_no))
+
+    cur.execute("INSERT INTO novel_logs(action,target_type,detail) VALUES('volume_post','volume',?)",
+        (f"第{vol_no}卷:{total_ch}章{total_wc}字",))
+    conn.commit()
+    conn.close()
+
+
+# ============================================================
 # 3章复盘
 # ============================================================
 def stage_review(chapter_no):
@@ -531,9 +668,9 @@ def main():
     global app
 
     parser = argparse.ArgumentParser(description="Novel Pipeline - Chapter Write Engine")
-    parser.add_argument("action", choices=["pre", "post", "review"],
-                        help="pre: 写作前门禁 | post: 后处理+入库 | review: 3章复盘")
-    parser.add_argument("chapter_no", type=int, help="章节号")
+    parser.add_argument("action", choices=["pre", "post", "review", "volume"],
+                        help="pre: 写作前门禁 | post: 后处理+入库 | review: 3章复盘 | volume: 卷级总结")
+    parser.add_argument("chapter_no", type=int, nargs='?', default=1, help="章节号")
     parser.add_argument("--config", default=None, help="配置文件路径 (默认: config.json)")
     parser.add_argument("--novel-slug", default="demo_novel", help="小说 slug (默认: demo_novel)")
     parser.add_argument("--novel-title", default="", help="小说标题 (默认: 同 novel-slug)")
@@ -626,6 +763,9 @@ def main():
 
     elif args.action == "review":
         stage_review(chapter_no)
+
+    elif args.action == "volume":
+        volume_post()
 
 
 if __name__ == "__main__":

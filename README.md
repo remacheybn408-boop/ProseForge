@@ -21,6 +21,15 @@ python scripts/init_db.py --config config.json
 # 导入 Demo 标题骨架
 python scripts/import_outline_skeleton.py --config config.json --input examples/demo_novel/outline_skeleton.json
 
+# 写作前准备（pre — 自动读取标题骨架）
+python scripts/chapter_pipeline.py pre 1 --config config.json --novel-slug demo_novel
+
+# 写完 TXT 后入库（post）
+python scripts/chapter_pipeline.py post 1 --config config.json --novel-slug demo_novel
+
+# 卷级总结
+python scripts/chapter_pipeline.py volume --config config.json --novel-slug demo_novel --volume-no 1
+
 # 跑测试
 pip install pytest && pytest tests/ -v
 ```
@@ -64,7 +73,9 @@ novel-pipeline-write-engine/
 
 | 模块 | 说明 |
 |------|------|
-| `chapter_pipeline.py` | 8 步流水线（pre → ingest），argparse + config 驱动 |
+| `chapter_pipeline.py` | 8 步流水线（pre / post / review / volume），argparse + config 驱动 |
+| pre 标题骨架 | 自动从 volume_plans / chapter_plans 读取，TASK CARD 展示指引 |
+| volume_post | 卷级总结：统计 + 伏笔状态 + 角色状态 + 下一卷承接点 |
 | 字数门禁 | < 3300 失败，3500–3900 最佳 |
 | 场景门禁 | ≥ 4 有效场景 |
 | `schema.sql` | 26 表 + 6 FTS5 索引，含 volume_plans / chapter_plans / title_history |
