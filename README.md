@@ -62,9 +62,9 @@ pre → task_card → write → word_count → continuity → scene → anti_ai 
 | pre | 读上章结尾 + 查 SQLite + 生成 context_pack | pipeline_state 文件锁 |
 | task_card | 22 项字段的任务卡 | 缺失则停止 |
 | write | 场景块展开（≥4 场景，3500-3800 字初稿） | - |
-| word_count | 字数门禁 | < 3000 红灯 |
+| word_count | 字数门禁 | < 3300 红灯 |
 | continuity | 与上章结尾比对 | 关键词 + 人物承接 |
-| scene | 场景质量（防水文） | ≥ 3 有效场景 |
+| scene | 场景质量（防水文） | ≥ 4 有效场景 |
 | anti_ai | 反 AI 腔（10 项检测） | ≤ 2 处轻微可过 |
 | ingest | 入库 + 切片 + FTS + 版本 + 摘要 + 日志 | 失败禁止下一章 |
 
@@ -106,6 +106,7 @@ novel-pipeline/
 - [数据库 Schema](docs/database.md)
 - [流水线实现参考](docs/pipeline.md)
 - [部署指南](docs/setup-guide.md)
+- [长篇写作规范 Skill](docs/skills/long_novel_writing_SKILL.md) ← Agent 写作行为规范（门禁/连续性/卷序/标题骨架/入库规则）
 
 ## License
 
