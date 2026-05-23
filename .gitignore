@@ -1,0 +1,35 @@
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Backups
+backups/
+
+# Logs
+logs/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Pipeline state
+pipeline_state/
+
+# Exports
+exports/
+!exports/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Novel content (user's own work)
+novels/
+小说/
