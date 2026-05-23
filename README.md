@@ -92,6 +92,7 @@ novel-pipeline-write-engine/
 | `import_outline_skeleton.py` | JSON 标题骨架导入（校验 chapter_goal / conflict_point / ending_hook_direction） |
 | `agent_run_guard.py` | chapter_run_report.json 自检（PASS/FAIL） |
 | `hallucination_guard.py` | 幻觉拦截：阻止无依据新设定/矛盾/遗忘状态 |
+| `backup_db.py` | 一键备份 SQLite 数据库（online backup） |
 | `novel_factory_router_SKILL.md` | Agent 模式路由：NOVEL_WRITE_MODE / PLAN_MODE 触发词 + 执行头 |
 | Demo 项目 | `examples/demo_novel/` — 25 章骨架 + README |
 | Skill 文档 | `docs/skills/long_novel_writing_SKILL.md`（通用版） |
