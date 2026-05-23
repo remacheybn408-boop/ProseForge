@@ -15,6 +15,9 @@ git clone https://github.com/remacheybn408-boop/novel-pipeline-write-engine.git
 cd novel-pipeline-write-engine
 cp config.example.json config.json
 
+# 正式写作前建议手动运行备份
+python scripts/backup_db.py --config config.json
+
 # 初始化数据库
 python scripts/init_db.py --config config.json
 

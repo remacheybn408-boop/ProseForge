@@ -70,7 +70,7 @@ pytest tests/ -v
 
 - [ ] scripts/create_novel.py — 创建新小说项目
 - [ ] scripts/export_novel.py — 导出完整小说
-- [x] scripts/backup_db.py — 一键备份（online backup，使用中也可备份）
+- [x] scripts/backup_db.py — 极简版（v0.3.1；v0.4.0 完整工具增强）
 - [ ] 端到端流水线测试
 
 **未来可考虑（backlog）：**

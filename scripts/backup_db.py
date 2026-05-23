@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""backup_db.py — 一键备份 SQLite 数据库
+"""backup_db.py — 极简备份（数据库 + config.json）
 
 用法:
+  python scripts/backup_db.py
   python scripts/backup_db.py --config config.json
   python scripts/backup_db.py --db-path ./data/novel_memory.db
-  python scripts/backup_db.py --db-path ./data/novel_memory.db --output ./backups/
+
+输出: backups/YYYYMMDD_HHMMSS/novel_memory.db + config.json
 """
 
 import sqlite3, shutil, argparse, json
@@ -20,58 +22,49 @@ def load_config(config_path=None):
     return cfg
 
 
-def backup_db(db_path, output_dir=None):
+def backup_all(db_path, config_path=None):
     db_path = Path(db_path)
-    if not db_path.exists():
-        print(f"[FAIL] 数据库不存在: {db_path}")
-        return None
 
-    # 输出目录
-    if output_dir:
-        out = Path(output_dir)
-    else:
-        out = db_path.parent.parent / "backups"
+    # ── 创建时间戳目录 ──
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out = Path("backups") / ts
     out.mkdir(parents=True, exist_ok=True)
 
-    # 备份文件名
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    size_mb = db_path.stat().st_size / (1024 * 1024)
-    backup_name = f"novel_memory_{ts}.db"
-    backup_path = out / backup_name
+    # ── 备份数据库 ──
+    if db_path.exists():
+        src = sqlite3.connect(str(db_path))
+        dst = sqlite3.connect(str(out / "novel_memory.db"))
+        src.backup(dst)
+        src.close()
+        dst.close()
+        size_mb = db_path.stat().st_size / (1024 * 1024)
+        print(f"  [OK] novel_memory.db ({size_mb:.1f} MB)")
+    else:
+        print(f"  [WARN] 数据库不存在: {db_path}")
 
-    # SQLite online backup (safe while DB is in use)
-    src = sqlite3.connect(str(db_path))
-    dst = sqlite3.connect(str(backup_path))
-    src.backup(dst)
-    src.close()
-    dst.close()
+    # ── 备份 config.json ──
+    cfg_file = Path(config_path) if config_path else Path("config.json")
+    if cfg_file.exists():
+        shutil.copy2(str(cfg_file), str(out / "config.json"))
+        print(f"  [OK] config.json")
+    else:
+        print(f"  [WARN] config.json 不存在")
 
-    print(f"[OK] 备份完成")
-    print(f"  源:  {db_path} ({size_mb:.1f} MB)")
-    print(f"  目标: {backup_path}")
-
-    # 列出已有备份
-    backups = sorted(out.glob("novel_memory_*.db"), reverse=True)
-    if len(backups) > 1:
-        print(f"  已有备份: {len(backups)} 个")
-        for b in backups[:5]:
-            age = datetime.now() - datetime.fromtimestamp(b.stat().st_mtime)
-            print(f"    {b.name}  ({age.days}d ago, {b.stat().st_size/(1024*1024):.1f} MB)")
-
-    return str(backup_path)
+    print(f"\n[OK] 备份完成 → {out}/")
+    return str(out)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Novel Pipeline — 数据库备份")
+    parser = argparse.ArgumentParser(description="Novel Pipeline — 极简备份")
     parser.add_argument("--config", default=None, help="配置文件路径")
     parser.add_argument("--db-path", default=None, help="数据库路径 (覆盖配置)")
-    parser.add_argument("--output", default=None, help="备份输出目录")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
     db_path = args.db_path or cfg["db_path"]
+    config_path = args.config or "config.json"
 
-    result = backup_db(db_path, args.output)
+    result = backup_all(db_path, config_path)
     if not result:
         exit(1)
 
