@@ -122,6 +122,34 @@ SQLite 记住 → 门禁防偷懒 → 摘要防迷路 → 版本可回滚
 
 ---
 
+## Hermes Agent 正文写作强制规则
+
+本项目的 8 步流水线不是普通提示词，而是 Agent 强制执行协议。
+
+当用户要求写正文、续写、写第 N 章、下一章、写完本卷、继续整本书时，Hermes Agent 必须进入 NOVEL_WRITE_MODE，并调用 novel-factory skill。
+
+禁止使用普通聊天模式直接生成章节正文。
+
+正文写作前必须输出执行头：
+
+```
+mode = NOVEL_WRITE_MODE
+required_skill = novel-factory
+skill_called = true
+pipeline = pre → task_card → write → word_count → continuity → scene → anti_ai → ingest
+```
+
+如果 novel-factory skill 不可用，必须停止并报错：
+
+```
+ERROR: novel-factory skill not available.
+Refuse to write novel正文 in normal chat mode.
+```
+
+详见 [novel-factory Router Skill](docs/skills/novel_factory_router_SKILL.md)
+
+---
+
 ## Skills
 
 - [长篇写作行为规范](docs/skills/long_novel_writing_SKILL.md) — 3300 红线 / 4 场景 / 章章入库 / 卷卷入库 / 标题骨架规则
