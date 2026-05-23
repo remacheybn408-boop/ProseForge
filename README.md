@@ -24,7 +24,10 @@ python scripts/import_outline_skeleton.py --config config.json --input examples/
 # 写作前准备（pre — 自动读取标题骨架）
 python scripts/chapter_pipeline.py pre 1 --config config.json --novel-slug demo_novel
 
-# 写完 TXT 后入库（post）
+# 正文写作 — 必须走 novel-factory skill（详见 novel_factory_router_SKILL.md）
+# 禁止普通聊天模式直接生成章节正文
+
+# 写完 TXT 后入库（post — 自动生成 brief + run_report）
 python scripts/chapter_pipeline.py post 1 --config config.json --novel-slug demo_novel
 
 # 卷级总结
@@ -86,6 +89,8 @@ novel-pipeline-write-engine/
 | `init_db.py` | 一键建库 |
 | `check_schema.py` | Schema 完整性检查 |
 | `import_outline_skeleton.py` | JSON 标题骨架导入（校验 chapter_goal / conflict_point / ending_hook_direction） |
+| `agent_run_guard.py` | chapter_run_report.json 自检（PASS/FAIL） |
+| `novel_factory_router_SKILL.md` | Agent 模式路由：NOVEL_WRITE_MODE / PLAN_MODE 触发词 + 执行头 |
 | Demo 项目 | `examples/demo_novel/` — 25 章骨架 + README |
 | Skill 文档 | `docs/skills/long_novel_writing_SKILL.md`（通用版） |
 | 测试 | 21 个测试 + GitHub Actions CI |

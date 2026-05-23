@@ -1,118 +1,107 @@
 # 8 步流水线参考实现
 
-本章节是 `chapter_pipeline.py` 的设计文档，完整源码见 `scripts/chapter_pipeline.py`。
+`chapter_pipeline.py` 设计文档。完整源码见 `scripts/chapter_pipeline.py`。
 
 ## 流水线架构
 
 ```
 main()
-  ├── pre  → pre_write_gate()       # 写作前：加载上下文
-  └── post → word_count_gate()      # 字数门禁
-            → continuity_gate()      # 连续性检查
-            → scene_quality_gate()   # 场景质量
-            → anti_ai_style_gate()   # 反AI腔
-            → ingest()              # 入库
-            → stage_review()        # 3章复盘(条件触发)
+  ├── pre  → pre_write_gate()        # 写作前：标题骨架 + 上章brief + 上下文
+  └── post → word_count_gate()       # 字数门禁 (<3300 失败)
+            → continuity_gate()       # 连续性检查
+            → scene_quality_gate()    # 场景质量 (>=4)
+            → anti_ai_style_gate()    # 反AI腔 (≤2处轻微)
+            → ingest()               # 入库 + brief + run_report
+              ├── generate_chapter_brief()   → chapter_briefs/
+              └── chapter_run_report.json    → run_reports/
+            → stage_review()         # 3章复盘(条件触发)
+  volume → volume_post()             # 卷级总结 → volume_reports/
+
+完整调用:
+  pre → task_card → write(novel-factory) → post(gates+ingest) → volume_post
 ```
 
-## 字数门禁实现
+## Agent 路由闭环 (v0.3.0+)
+
+正文写作必须走 `novel-factory` skill，禁止聊天模式直接生成。详见 `docs/skills/novel_factory_router_SKILL.md`。
+
+每次 ingest 后自动生成 `chapter_run_report.json`：
+
+```json
+{
+  "mode": "NOVEL_WRITE_MODE",
+  "required_skill": "novel-factory",
+  "skill_called": true,
+  "chapter_no": 1,
+  "word_count": 3680,
+  "pre_done": true,
+  "task_card_done": true,
+  "word_count_gate": true,
+  "continuity_gate": true,
+  "scene_quality_gate": true,
+  "anti_ai_style_gate": true,
+  "ingest_done": true,
+  "next_allowed": true,
+  "next_action": "pre_next_chapter"
+}
+```
+
+自检：
+
+```bash
+python scripts/agent_run_guard.py exports/run_reports/chapter_001_run_report.json
+# PASS_NOVEL_WRITE_GUARD  或  FAILED_NOVEL_WRITE_GUARD: <原因>
+```
+
+guard 不通过 → 章节不得视为完成。
+
+## 字数门禁 (V4)
 
 ```python
-WORD_RULES = {
-    "normal":  {"target": 3700, "min": 3300, "max": 4200, "fail": 3000},
-    "climax":  {"target": 4500, "min": 4200, "max": 5000, "fail": 3000},
-    "final":   {"target": 5000, "min": 4500, "max": 6000, "fail": 3000},
-    "short":   {"target": 3200, "min": 3000, "max": 3300, "fail": 2800},
-}
+wc_rules = {"hard_min": 3300, "ideal_min": 3500, "ideal_max": 3900, "normal_max": 4200, "special_max": 5000}
 
 def word_count_gate(content, chapter_no, chapter_type="normal"):
-    rules = WORD_RULES.get(chapter_type, WORD_RULES["normal"])
     wc = _count_chinese(content)
-    
-    if rules['min'] <= wc <= rules['max']:
-        return True, wc                        # 正常通过
-    elif rules['fail'] <= wc < rules['min']:
-        if vcount >= 3:
-            return "patch_suspect", wc         # 疑似凑数
-        return "yellow", wc                    # 黄灯
-    else:
-        return False, wc                       # 红灯失败
+    if wc < rules['hard_min']:       return False, wc        # 红灯失败
+    if ideal_min <= wc <= ideal_max:  return "ideal", wc     # 最佳
+    if hard_min <= wc < ideal_min:    return "pass_but_low", wc  # 偏短
+    if ideal_max < wc <= normal_max:  return True, wc        # 正常
+    if normal_max < wc <= special_max:                       # 偏长
+        return True if climax/final else "oversize", wc
+    return "oversize", wc                                    # 超长
 ```
 
-## 场景质量检测
+## 场景质量 (>=4)
 
 ```python
 def scene_quality_gate(content):
-    # 检测场景标记（时间词+地点词）
-    scene_markers = re.findall(r'(第.*天|早上|傍晚|...|站在|蹲在)', content)
-    location_changes = len(set(re.findall(r'(杂役院|劈柴场|矿洞|...)', content)))
-    estimated_scenes = max(len(scene_markers)//2, location_changes, 1)
-    
-    # 检查水症
-    issues = []
-    if summary_lines > 5: issues.append("总结腔过多")
-    if dialogue_lines < 3: issues.append("对话过少")
-    if action_verbs < 15: issues.append("动作描写过少")
-    
-    return estimated_scenes >= 3 and len(issues) < 3, issues
+    estimated_scenes = max(scene_markers//2, location_changes, 1)
+    passed = estimated_scenes >= 4 and len(issues) < 3
+    return passed, issues
 ```
 
-## 反AI腔检测
+## 反AI腔
 
-```python
-def anti_ai_style_gate(content):
-    checks = {
-        "不是A而是B": re.findall(r'不是.{2,10}而是', content),
-        "那一刻终于明白": re.findall(r'那一刻.{0,5}终于明白', content),
-        "从未想过": re.findall(r'从未想过|从未见过|从未感受过', content),
-        "他意识到": re.findall(r'他意识到|他明白', content),
-        "这意味着": re.findall(r'这意味着|这说明|这代表', content),
-        "沉默了几秒": re.findall(r'沉默了几秒|沉默了.{1,4}秒', content),
-        "救赎": re.findall(r'救赎|他就是她的|她就是他的', content),
-        "硬科普": re.findall(r'公式|定律|方程|定理|热力学|量子力学|相对论', content),
-        "论文式": re.findall(r'通过.{5,20}实现了|基于.{5,20}进行了|本质上是|事实上', content),
-    }
-    total = sum(len(v) for v in checks.values())
-    return total <= 2, [...]  # ≤2处轻微通过，>2处不通过
-```
+10 项检测（不是A而是B / 那一刻终于明白 / 从未想过 / 他意识到 / 这意味着 / 像一座雕像 / 沉默了几秒 / 救赎 / 硬科普 / 论文式），≤2 处轻微通过。
 
-## Pipeline State 文件锁
+## 输出文件
 
-```python
-# pre 完成后保存状态
-state = {
-    "chapter_no": chapter_no,
-    "pre_done": True,
-    "previous_tail_loaded": True,
-    "allowed_to_write": True,
-    "timestamp": now()
-}
-state_path.write_text(json.dumps(state, ...))
-
-# post 前验证
-if not state_path.exists() or not state.get("allowed_to_write"):
-    sys.exit(1)  # 禁止 post
-```
-
-## 版本管理
-
-```python
-# ingest 时自动保存版本
-vno = cur.execute("SELECT COALESCE(MAX(version_no),0) FROM chapter_versions WHERE ...").fetchone()[0] + 1
-cur.execute("INSERT INTO chapter_versions(...version_no, version_status, content, word_count...) VALUES(..., 'draft', ...)")
-```
+| 阶段 | 输出 | 位置 |
+|------|------|------|
+| pre | context_pack.txt | exports/ |
+| pre | pipeline_state.json | exports/pipeline_state/ |
+| post | chapter_brief.json | exports/chapter_briefs/ |
+| post | chapter_run_report.json | exports/run_reports/ |
+| volume | volume_report.json | exports/volume_reports/ |
 
 ## 调用示例
 
 ```bash
-# 普通章节
-python chapter_pipeline.py pre 4 --type normal
-python chapter_pipeline.py post 4 --type normal
+# 配置驱动调用
+python scripts/chapter_pipeline.py pre 1 --config config.json --novel-slug demo_novel
+python scripts/chapter_pipeline.py post 1 --config config.json --novel-slug demo_novel
+python scripts/chapter_pipeline.py volume --config config.json --novel-slug demo_novel --volume-no 1
 
-# 高潮章节
-python chapter_pipeline.py pre 10 --type climax
-python chapter_pipeline.py post 10 --type climax
-
-# 3章复盘
-python chapter_pipeline.py review 6
+# 自检
+python scripts/agent_run_guard.py exports/run_reports/chapter_001_run_report.json
 ```
