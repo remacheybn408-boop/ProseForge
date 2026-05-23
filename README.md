@@ -61,9 +61,10 @@ novel-pipeline-write-engine/
 │   └── demo_novel/
 │       └── outline_skeleton.json    ← 完整 demo：25 章标题骨架
 │
-├── tests/                           ← 14 个基础测试
+├── tests/                           ← 21 个测试
 ├── docs/                            ← 架构 / 规范 / 文档
 │   └── skills/
+│       ├── novel_factory_router_SKILL.md
 │       └── long_novel_writing_SKILL.md
 │
 ├── .github/workflows/test.yml       ← CI（pytest 自动跑）

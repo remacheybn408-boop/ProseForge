@@ -70,4 +70,4 @@ pytest tests/ -v
 
 ---
 
-> 当前：Phase 1 完成，Phase 2 进行中。
+> 当前：Phase 2.5 已完成，下一步 Phase 3 工具增强。
