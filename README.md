@@ -1,5 +1,7 @@
 # Novel Pipeline - Write Engine
 
+[![Test](https://github.com/remacheybn408-boop/novel-pipeline-write-engine/actions/workflows/test.yml/badge.svg)](https://github.com/remacheybn408-boop/novel-pipeline-write-engine/actions/workflows/test.yml)
+
 AI 长篇小说工程化写作流水线：SQLite 长期记忆 + 8 步门禁 Pipeline。
 
 > **当前阶段：早期原型。** 基础流水线和数据库已可运行，高级功能逐步落地中。
