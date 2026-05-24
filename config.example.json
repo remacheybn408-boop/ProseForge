@@ -101,5 +101,31 @@
       "enabled": true,
       "top_revision_tasks": 5
     }
+  },
+
+  "quality_policy": {
+    "_comment": "Guard Orchestrator 门禁调度策略 v0.4.0",
+    "version": "v0.4.0",
+    "run_mode": "standard",
+    "max_final_revision_tasks": 5,
+    "min_warning_confidence": 0.55,
+    "min_top_task_confidence": 0.70,
+    "require_two_evidence_for_warning": true,
+    "quality_guards_warning_only": true,
+    "compliance_guard_can_block": true,
+    "deduplicate_warnings": true,
+    "skip_heavy_guards_for_short_chapters": true,
+    "short_chapter_threshold_chars": 1000,
+    "baseline_required_for_strong_warning": true
+  },
+
+  "style_allowlist": {
+    "_comment": "方言/文言/角色口癖保护白名单，防止被 QGP/style_variation 误报",
+    "dialect_enabled": true,
+    "classical_chinese_enabled": true,
+    "character_catchphrase_enabled": true,
+    "allowed_dialect_terms": [],
+    "allowed_classical_terms": [],
+    "character_voice_profiles": {}
   }
 }

@@ -1225,205 +1225,39 @@ def main():
             print(f"  [WARN] padding_detected (level={pg_report['padding_level']}, score={pg_report['padding_score']})")
             # Non-fail levels can proceed with warning
 
-        # ── STEP 7.6: 角色口吻与动作证据系统 (Phase 2: WARNING only) ──
-        voice_report = {}
-        classic_report = {}
-        sdt_report = {}
-        chook_report = {}
-        dbeat_report = {}
-
-        # 7.6.1 character_voice_guard
+        # ── STEP 7.6: Guard Orchestrator (替代硬编码，集中调度所有质量门禁) ──
+        quality_policy = cfg.get("quality_policy", {})
+        orchestrator_mode = quality_policy.get("run_mode", "standard")
         try:
-            from character_voice_guard import run_character_voice_check as run_cvg
-            cvg_report = run_cvg(content, chapter_no)
-            cvg_path = ce_reports_dir / f"chapter_{chapter_no:03d}_character_voice_report.json"
-            cvg_path.write_text(json.dumps(cvg_report, ensure_ascii=False, indent=2), encoding='utf-8')
-            print(f"  [OK] character_voice_report: {cvg_path}")
-            voice_report = cvg_report
-            if not cvg_report.get("character_voice_pass", True):
-                print(f"  [WARN] character_voice: {len(cvg_report.get('violations',[]))} violations")
+            from guard_orchestrator import run_orchestrated
+            orch_report = run_orchestrated(
+                content, chapter_no, mode=orchestrator_mode,
+                config=cfg, reports_dir=str(ce_reports_dir))
+            orch_path = ce_reports_dir / f"chapter_{chapter_no:03d}_orchestrator_report.json"
+            orch_path.write_text(json.dumps(orch_report, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"  [OK] orchestrator ({orchestrator_mode}): {len(orch_report['executed_guards'])} guards, {orch_report['warning_count']} warnings")
+            if orch_report.get("blocked_by"):
+                print(f"  [BLOCK] compliance: {orch_report['blocked_by']}")
+
+            # ── 去重 + Top 5 修改任务 ──
+            if quality_policy.get("deduplicate_warnings", True):
+                from report_deduplicator import deduplicate_warnings, get_top_revision_tasks
+                merged = deduplicate_warnings(
+                    orch_report.get("warnings", []),
+                    quality_policy.get("min_warning_confidence", 0.55))
+                tasks = get_top_revision_tasks(
+                    merged, quality_policy.get("max_final_revision_tasks", 5))
+                dedup_path = ce_reports_dir / f"chapter_{chapter_no:03d}_deduplicated_report.json"
+                dedup_path.write_text(json.dumps({
+                    "version": "v0.4.0", "merged_issues": merged,
+                    "top_revision_tasks": tasks,
+                }, ensure_ascii=False, indent=2), encoding="utf-8")
+                print(f"  [OK] deduplicated: {len(merged)} issues → {len(tasks)} tasks")
+                if tasks:
+                    for t in tasks[:3]:
+                        print(f"    {t['rank']}. {t['issue']}")
         except Exception as e:
-            print(f"  [WARN] character_voice_guard skipped: {e}")
-
-        # 7.6.2 classical_register_guard
-        try:
-            from classical_register_guard import run_classical_register_check as run_crg
-            crg_report = run_crg(content, chapter_no)
-            crg_path = ce_reports_dir / f"chapter_{chapter_no:03d}_classical_register_report.json"
-            crg_path.write_text(json.dumps(crg_report, ensure_ascii=False, indent=2), encoding='utf-8')
-            print(f"  [OK] classical_register_report: {crg_path}")
-            classic_report = crg_report
-            if not crg_report.get("classical_register_pass", True):
-                print(f"  [WARN] classical_register: {crg_report.get('wenyan_density_percent',0)}% density")
-        except Exception as e:
-            print(f"  [WARN] classical_register_guard skipped: {e}")
-
-        # 7.6.3 show_dont_tell_guard
-        try:
-            from show_dont_tell_guard import run_show_dont_tell_check as run_sdt
-            sdt_report = run_sdt(content, chapter_no)
-            sdt_path = ce_reports_dir / f"chapter_{chapter_no:03d}_show_dont_tell_report.json"
-            sdt_path.write_text(json.dumps(sdt_report, ensure_ascii=False, indent=2), encoding='utf-8')
-            print(f"  [OK] show_dont_tell_report: {sdt_path}")
-            if sdt_report.get("total_matches", 0) > 0:
-                print(f"  [WARN] show_dont_tell: {sdt_report['total_matches']} AI总结句")
-        except Exception as e:
-            print(f"  [WARN] show_dont_tell_guard skipped: {e}")
-
-        # 7.6.4 concrete_hook_guard
-        try:
-            from concrete_hook_guard import run_concrete_hook_check as run_chg
-            chg_report = run_chg(content, chapter_no)
-            chg_path = ce_reports_dir / f"chapter_{chapter_no:03d}_concrete_hook_report.json"
-            chg_path.write_text(json.dumps(chg_report, ensure_ascii=False, indent=2), encoding='utf-8')
-            print(f"  [OK] concrete_hook_report: {chg_path}")
-            chook_report = chg_report
-            if not chg_report.get("concrete_hook_pass", True):
-                print(f"  [WARN] concrete_hook: {chg_report.get('hook_type','none')} anchor, {chg_report.get('anchor_count',0)} anchors")
-        except Exception as e:
-            print(f"  [WARN] concrete_hook_guard skipped: {e}")
-
-        # 7.6.5 dialogue_beat_guard
-        try:
-            from dialogue_beat_guard import run_dialogue_beat_check as run_dbg
-            dbg_report = run_dbg(content, chapter_no)
-            dbg_path = ce_reports_dir / f"chapter_{chapter_no:03d}_dialogue_beat_report.json"
-            dbg_path.write_text(json.dumps(dbg_report, ensure_ascii=False, indent=2), encoding='utf-8')
-            print(f"  [OK] dialogue_beat_report: {dbg_path}")
-            dbeat_report = dbg_report
-            if not dbg_report.get("dialogue_beat_pass", True):
-                print(f"  [WARN] dialogue_beat: {dbg_report['scenes_failing']}/{dbg_report['scenes_analyzed']} scenes need more beats")
-        except Exception as e:
-            print(f"  [WARN] dialogue_beat_guard skipped: {e}")
-
-        # ── STEP 7.7: QGP 困惑度质量门禁 (Phase 2: WARNING only, 不阻断 ingest) ──
-        qgp_enabled = cfg.get("qgp", {}).get("enabled", True)
-        if qgp_enabled:
-            try:
-                from perplexity_quality_guard import build_report as build_qgp
-                qgp_cfg = cfg.get("qgp", {})
-                # 尝试加载 baseline
-                qgp_baseline = None
-                baseline_path_template = qgp_cfg.get("baseline_path", "")
-                if baseline_path_template:
-                    baseline_path = baseline_path_template.replace("{novel_slug}", app.novel_slug)
-                    full_baseline = Path(baseline_path)
-                    if not full_baseline.is_absolute():
-                        full_baseline = Path.cwd() / full_baseline
-                    if full_baseline.exists():
-                        qgp_baseline = json.loads(full_baseline.read_text(encoding="utf-8"))
-                qgp_report = build_qgp(content, qgp_cfg, app.novel_slug, chapter_no, qgp_baseline)
-                qgp_path = ce_reports_dir / f"chapter_{chapter_no:03d}_perplexity_quality_report.json"
-                qgp_path.write_text(json.dumps(qgp_report, ensure_ascii=False, indent=2), encoding="utf-8")
-                print(f"  [OK] perplexity_quality_report: {qgp_path}")
-                if qgp_report["status"] == "WARNING":
-                    print(f"  [WARN] QGP: {len(qgp_report.get('flags',[]))} flags")
-                    if qgp_report.get("suggestions"):
-                        for s in qgp_report["suggestions"][:2]:
-                            print(f"    → {s}")
-            except Exception as e:
-                print(f"  [WARN] QGP guard skipped: {e}")
-        else:
-            print(f"  [INFO] QGP disabled in config")
-
-        # ── v0.4.0 Human-Grade Revision Suite ──
-        hgr_enabled = cfg.get("human_grade_revision", {}).get("enabled", True)
-        hgr_cfg = cfg.get("human_grade_revision", {})
-        if hgr_enabled:
-            # STEP 7.8: editor_revision_guard
-            try:
-                from editor_revision_guard import run_editor_revision_check as run_erg
-                erg_report = run_erg(content, chapter_no, hgr_cfg.get("editor_revision_guard", {}))
-                erg_path = ce_reports_dir / f"chapter_{chapter_no:03d}_editor_revision_report.json"
-                erg_path.write_text(json.dumps(erg_report, ensure_ascii=False, indent=2), encoding='utf-8')
-                print(f"  [OK] editor_revision_report: {erg_path}")
-                if not erg_report.get("editor_revision_pass", True):
-                    print(f"  [WARN] editor_revision: over_explained_ratio={erg_report.get('over_explained_ratio',0):.2f}, texture_score={erg_report.get('revision_texture_score',0):.2f}")
-            except Exception as e:
-                print(f"  [WARN] editor_revision_guard skipped: {e}")
-
-            # STEP 7.9: concrete_anchor_guard
-            try:
-                from concrete_anchor_guard import run_concrete_anchor_check as run_cag
-                cag_report = run_cag(content, chapter_no, hgr_cfg.get("concrete_anchor_guard", {}))
-                cag_path = ce_reports_dir / f"chapter_{chapter_no:03d}_concrete_anchor_report.json"
-                cag_path.write_text(json.dumps(cag_report, ensure_ascii=False, indent=2), encoding='utf-8')
-                print(f"  [OK] concrete_anchor_report: {cag_path}")
-                if not cag_report.get("concrete_anchor_pass", True):
-                    print(f"  [WARN] concrete_anchor: density={cag_report.get('anchor_density',0):.2f}")
-            except Exception as e:
-                print(f"  [WARN] concrete_anchor_guard skipped: {e}")
-
-            # STEP 7.10: scene_causality_guard
-            try:
-                from scene_causality_guard import run_scene_causality_check as run_scg
-                scg_report = run_scg(content, chapter_no, hgr_cfg.get("scene_causality_guard", {}))
-                scg_path = ce_reports_dir / f"chapter_{chapter_no:03d}_scene_causality_report.json"
-                scg_path.write_text(json.dumps(scg_report, ensure_ascii=False, indent=2), encoding='utf-8')
-                print(f"  [OK] scene_causality_report: {scg_path}")
-                if not scg_report.get("causality_pass", True):
-                    print(f"  [WARN] scene_causality: {scg_report.get('scenes_failing_carcrh',0)}/{scg_report.get('scenes_analyzed',0)} scenes")
-            except Exception as e:
-                print(f"  [WARN] scene_causality_guard skipped: {e}")
-
-            # STEP 7.11: dialogue_naturalness_guard
-            try:
-                from dialogue_naturalness_guard import run_dialogue_naturalness_check as run_dng
-                dng_report = run_dng(content, chapter_no, hgr_cfg.get("dialogue_naturalness_guard", {}))
-                dng_path = ce_reports_dir / f"chapter_{chapter_no:03d}_dialogue_naturalness_report.json"
-                dng_path.write_text(json.dumps(dng_report, ensure_ascii=False, indent=2), encoding='utf-8')
-                print(f"  [OK] dialogue_naturalness_report: {dng_path}")
-                if not dng_report.get("dialogue_naturalness_pass", True):
-                    print(f"  [WARN] dialogue_naturalness: variation={dng_report.get('dialogue_variation_score',0):.2f}")
-            except Exception as e:
-                print(f"  [WARN] dialogue_naturalness_guard skipped: {e}")
-
-            # STEP 7.12: style_variation_guard
-            try:
-                from style_variation_guard import run_style_variation_check as run_svg
-                svg_report = run_svg(content, chapter_no, hgr_cfg.get("style_variation_guard", {}))
-                svg_path = ce_reports_dir / f"chapter_{chapter_no:03d}_style_variation_report.json"
-                svg_path.write_text(json.dumps(svg_report, ensure_ascii=False, indent=2), encoding='utf-8')
-                print(f"  [OK] style_variation_report: {svg_path}")
-                if not svg_report.get("style_variation_pass", True):
-                    print(f"  [WARN] style_variation: repeated_opening={svg_report.get('repeated_opening_ratio',0):.2f}, abstract_words={svg_report.get('overused_abstract_words',0)}")
-            except Exception as e:
-                print(f"  [WARN] style_variation_guard skipped: {e}")
-
-            # STEP 7.13: compliance_selfcheck_guard (唯一可 BLOCK)
-            try:
-                from compliance_selfcheck_guard import run_compliance_selfcheck as run_csc
-                csc_report = run_csc(content, chapter_no, hgr_cfg.get("compliance_selfcheck_guard", {}))
-                csc_path = ce_reports_dir / f"chapter_{chapter_no:03d}_compliance_selfcheck_report.json"
-                csc_path.write_text(json.dumps(csc_report, ensure_ascii=False, indent=2), encoding='utf-8')
-                print(f"  [OK] compliance_selfcheck_report: {csc_path}")
-                if csc_report.get("status") == "BLOCK":
-                    print(f"  [BLOCK] compliance_selfcheck: high-risk content detected")
-                    high_risks = csc_report.get("high_risk_items", [])
-                    for item in high_risks[:3]:
-                        print(f"    - {item}")
-                    sys.exit(1)
-                elif csc_report.get("status") == "WARNING":
-                    print(f"  [WARN] compliance_selfcheck: medium-risk items found")
-            except Exception as e:
-                print(f"  [WARN] compliance_selfcheck_guard skipped: {e}")
-
-            # STEP 7.14: final_submission_report (纯报告，不阻断)
-            try:
-                from final_submission_report import build_submission_report as run_fsr
-                fsr_report = run_fsr(
-                    content, chapter_no, app.novel_slug, app.volume_no, chapter_type,
-                    hgr_cfg.get("final_submission_report", {})
-                )
-                fsr_path = ce_reports_dir / f"chapter_{chapter_no:03d}_final_submission_report.json"
-                fsr_path.write_text(json.dumps(fsr_report, ensure_ascii=False, indent=2), encoding='utf-8')
-                print(f"  [OK] final_submission_report: {fsr_path}")
-                if fsr_report.get("recommendation") == "REVISE":
-                    print(f"  [WARN] final_submission: top {fsr_report.get('top_revision_tasks_count',0)} tasks suggested")
-            except Exception as e:
-                print(f"  [WARN] final_submission_report skipped: {e}")
-        else:
-            print(f"  [INFO] Human-Grade Revision Suite disabled in config")
+            print(f"  [WARN] orchestrator skipped: {e}")
 
         # STEP 8: ingest
         result = ingest(chapter_no, chapter_type)
