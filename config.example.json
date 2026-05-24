@@ -127,5 +127,27 @@
     "allowed_dialect_terms": [],
     "allowed_classical_terms": [],
     "character_voice_profiles": {}
+  },
+
+  "revision_loop": {
+    "_comment": "Revision Loop — 自动改稿闭环 v0.4.0. 默认不覆盖原文, 不自动入库.",
+    "enabled": true,
+    "version": "v0.4.0",
+    "default_mode": "controlled",
+    "max_rounds": 2,
+    "auto_overwrite_source": false,
+    "auto_ingest_revised": false,
+    "require_user_approval": true,
+    "only_fix_top_tasks": true,
+    "max_tasks_per_round": 5,
+    "min_task_confidence": 0.70,
+    "preserve_chapter_ending": true,
+    "preserve_character_voice": true,
+    "preserve_dialect_and_classical_style": true,
+    "preserve_foreshadowing": true,
+    "max_changed_paragraph_ratio": 0.35,
+    "allow_aggressive_mode": false,
+    "rerun_guards_after_revision": true,
+    "stop_if_quality_worse": true
   }
 }
