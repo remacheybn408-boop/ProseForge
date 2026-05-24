@@ -106,6 +106,8 @@ novel-pipeline-write-engine/
 | `show_dont_tell_guard.py` | [新] AI 总结句：30+ 禁用模式检测 (Phase 2: WARNING) |
 | `concrete_hook_guard.py` | [新] 具体钩子：结尾必须绑定 object/person/location/relationship/cost |
 | `dialogue_beat_guard.py` | [新] 对白节拍：每场景 ≥2 项动作/停顿/误会/代价 (Phase 2: WARNING) |
+| `perplexity_quality_guard.py` | [新] QGP 困惑度质量：ngram 惊讶度/模板风险/节奏异常 (WARNING only) |
+| `qgp_baseline.py` | [新] QGP 基线构建：从作者样本建立风格基线 |
 | `novel_factory_router_SKILL.md` | Agent 模式路由：NOVEL_WRITE_MODE / PLAN_MODE 触发词 + 执行头 |
 | Demo 项目 | `examples/demo_novel/` — 25 章骨架 + README |
 | Skill 文档 | `docs/skills/long_novel_writing_SKILL.md`（通用版） |
@@ -142,6 +144,7 @@ SQLite 记住 → 门禁防偷懒 → 摘要防迷路 → 版本可回滚
 | anti_ai | 反 AI 腔（10 项检测） | ≤ 2 轻微 |
 | padding | 反水文 | 阻止凑字/重复/灌水 |
 | voice_guards | 角色口吻+动作证据 (Phase 2: WARNING) | character_voice / classical_register / show_dont_tell / concrete_hook / dialogue_beat |
+| qgp | QGP 困惑度质量 (WARNING only) | ngram 惊讶度/模板风险/节奏异常/对白变化度 |
 | ingest | 入库 + 切片 + FTS + 版本 + 摘要 + 日志 | 失败禁止下一章 |
 
 ---
@@ -155,6 +158,7 @@ SQLite 记住 → 门禁防偷懒 → 摘要防迷路 → 版本可回滚
 | Anti-hallucination | `canon_evidence_map.json` + `hard_claims_without_source` | 每个硬事实有明确来源 |
 | Volume bridge | `volume_bridge_report.json` | 卷与卷之间的衔接有据可查 |
 | Execution proof | `execution_receipt.json` | 命令确实执行过，工具调用可审计 |
+| QGP Perplexity Quality | `perplexity_quality_report.json` | 检测文本平滑度、模板风险、节奏异常，只 WARNING 不硬拦 |
 
 ### 硬规则
 
@@ -194,6 +198,14 @@ SQLite 记住 → 门禁防偷懒 → 摘要防迷路 → 版本可回滚
 > 门禁不能只硬，还要准。角色不能同声，结尾不能空喊，情绪不能只靠总结。
 
 详见 [角色口吻与动作证据系统](docs/character_voice_action_proof_system.md)
+
+### 3. QGP 困惑度质量门禁 (V5.1, WARNING only)
+
+v0.3.1-qgp 增加 QGP（Quality Guard Perplexity）。通过 ngram 惊讶度、句长节奏、重复短语、抽象总结密度、具体锚点密度、对白变化度，辅助发现章节过度模板化、节奏过平或异常混乱。
+
+**QGP 不是 AI 检测器**，不输出 AI 率，不承诺平台检测结果。默认 ngram 后端，无需 GPU/联网。只 WARNING，不硬拦入库。
+
+详见 [QGP 文档](docs/PERPLEXITY_QGP.md)
 
 ---
 

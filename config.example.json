@@ -25,5 +25,28 @@
   },
 
   "default_novel_slug": "demo_novel",
-  "default_novel_title": "示例小说"
+  "default_novel_title": "示例小说",
+
+  "qgp": {
+    "_comment": "QGP (Quality Guard Perplexity) — 困惑度质量门禁. WARNING only, 不硬拦入库.",
+    "enabled": true,
+    "mode": "warning_only",
+    "backend": "ngram",
+    "baseline_enabled": false,
+    "baseline_path": "data/qgp_baselines/{novel_slug}.qgp_baseline.json",
+    "paragraph_min_chars": 40,
+    "low_surprise_z_threshold": -1.2,
+    "high_surprise_z_threshold": 1.8,
+    "template_risk_threshold": 0.35,
+    "rhythm_flatness_threshold": 0.72,
+    "dialogue_variation_min": 0.18,
+    "max_warning_paragraphs": 8,
+    "transformers": {
+      "enabled": false,
+      "model_path": "",
+      "device": "cpu",
+      "stride": 256,
+      "max_length": 512
+    }
+  }
 }

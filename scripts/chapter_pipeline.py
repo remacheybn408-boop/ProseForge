@@ -2,7 +2,10 @@
 chapter_pipeline.py — 章节写作总控流水线 V4.1
 
 9步精简流水线:
-  pre → task_card → write → word_count → continuity → scene → anti_ai → padding → voice_guards → ingest
+  pre → task_card → write → word_count → continuity → scene → anti_ai → padding → voice_guards → qgp → ingest
+
+QGP 困惑度质量门禁 (V5.1, WARNING only):
+  ngram 惊讶度 / 句长节奏 / 重复短语 / 抽象总结 / 具体锚点 / 对白变化度
 
 证据门禁 (V5):
   continuity_evidence | canon_evidence | scene_delta | hallucination | anti_ai | padding
@@ -848,6 +851,11 @@ def ingest(chapter_no, chapter_type="normal"):
         "concrete_hook_pass": True,
         "dialogue_beat_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_dialogue_beat_report.json"),
         "dialogue_beat_pass": True,
+        # ── QGP 困惑度质量门禁 (V5.1, WARNING only) ──
+        "qgp_enabled": True,
+        "qgp_status": "PASS",
+        "qgp_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_perplexity_quality_report.json"),
+        "qgp_hard_fail": False,
     }
     reports_dir = app.exports_root / "run_reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -1265,6 +1273,36 @@ def main():
                 print(f"  [WARN] dialogue_beat: {dbg_report['scenes_failing']}/{dbg_report['scenes_analyzed']} scenes need more beats")
         except Exception as e:
             print(f"  [WARN] dialogue_beat_guard skipped: {e}")
+
+        # ── STEP 7.7: QGP 困惑度质量门禁 (Phase 2: WARNING only, 不阻断 ingest) ──
+        qgp_enabled = cfg.get("qgp", {}).get("enabled", True)
+        if qgp_enabled:
+            try:
+                from perplexity_quality_guard import build_report as build_qgp
+                qgp_cfg = cfg.get("qgp", {})
+                # 尝试加载 baseline
+                qgp_baseline = None
+                baseline_path_template = qgp_cfg.get("baseline_path", "")
+                if baseline_path_template:
+                    baseline_path = baseline_path_template.replace("{novel_slug}", app.novel_slug)
+                    full_baseline = Path(baseline_path)
+                    if not full_baseline.is_absolute():
+                        full_baseline = Path.cwd() / full_baseline
+                    if full_baseline.exists():
+                        qgp_baseline = json.loads(full_baseline.read_text(encoding="utf-8"))
+                qgp_report = build_qgp(content, qgp_cfg, app.novel_slug, chapter_no, qgp_baseline)
+                qgp_path = ce_reports_dir / f"chapter_{chapter_no:03d}_perplexity_quality_report.json"
+                qgp_path.write_text(json.dumps(qgp_report, ensure_ascii=False, indent=2), encoding="utf-8")
+                print(f"  [OK] perplexity_quality_report: {qgp_path}")
+                if qgp_report["status"] == "WARNING":
+                    print(f"  [WARN] QGP: {len(qgp_report.get('flags',[]))} flags")
+                    if qgp_report.get("suggestions"):
+                        for s in qgp_report["suggestions"][:2]:
+                            print(f"    → {s}")
+            except Exception as e:
+                print(f"  [WARN] QGP guard skipped: {e}")
+        else:
+            print(f"  [INFO] QGP disabled in config")
 
         # STEP 8: ingest
         result = ingest(chapter_no, chapter_type)
