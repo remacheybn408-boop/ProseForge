@@ -16,6 +16,11 @@ concrete_anchor_guard.py — 具体锚点门禁 v0.4.0
 import re, json, sys, argparse
 from pathlib import Path
 from typing import List, Dict
+from consequence_lexicon import (
+    find_all_consequences,
+    count_visible_consequences,
+    has_minimum_visible_cost,
+)
 
 
 # ═══════════════════════════════════════════════════
@@ -283,12 +288,14 @@ def run_concrete_anchor_check(content: str, chapter_no: int) -> dict:
             "检查空白窗口，确保每个场景段落都有可感知的物理世界细节。"
         )
 
-    # 可见后果检测
-    if total_consequences == 0 and len(content.strip()) > 100:
+    # 可见后果检测 — 综合传统检测 + consequence_lexicon
+    lexicon_passed, lexicon_count, lexicon_details = has_minimum_visible_cost(content, min_cost=2)
+    has_consequences = total_consequences > 0 or lexicon_passed
+    if not has_consequences and len(content.strip()) > 100:
         flags.append({
             "level": "WARNING",
             "type": "NO_VISIBLE_CONSEQUENCES",
-            "message": "整章未检测到任何可见后果（裂开、湿了、破皮、渗血等）。"
+            "message": f"整章未检测到任何可见后果（传统：{total_consequences}处，叙事化：{lexicon_count}处）。"
         })
         suggestions.append(
             "让角色的行动产生可见、可触的后果——打破东西、留下痕迹、弄湿衣裳等。"
@@ -299,7 +306,7 @@ def run_concrete_anchor_check(content: str, chapter_no: int) -> dict:
 
     report = {
         "guard": "concrete_anchor_guard",
-        "version": "v0.4.0",
+        "version": "v0.4.5",
         "status": status,
         "total_windows": window_analysis["total_windows"],
         "windows_with_object": window_analysis["windows_with_object"],
@@ -311,6 +318,13 @@ def run_concrete_anchor_check(content: str, chapter_no: int) -> dict:
         "total_scene_anchors": total_scene,
         "total_visible_consequences": total_consequences,
         "missing_types": window_analysis["missing_types"],
+        "metrics": {
+            "visible_consequence_count": lexicon_count,
+            "physical_count": lexicon_details["physical_count"],
+            "object_count": lexicon_details["object_count"],
+            "social_count": lexicon_details["social_count"],
+            "rule_count": lexicon_details["rule_count"],
+        },
         "flags": flags,
         "suggestions": suggestions,
         "hard_fail": False,

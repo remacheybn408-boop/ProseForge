@@ -15,6 +15,11 @@ scene_causality_guard.py — 场景因果链门禁 v0.4.0
 import re, json, sys, argparse
 from pathlib import Path
 from typing import List, Dict, Tuple
+from consequence_lexicon import (
+    find_all_consequences,
+    count_visible_consequences,
+    has_minimum_visible_cost,
+)
 
 
 # ═══════════════════════════════════════════════════
@@ -329,14 +334,19 @@ def run_scene_causality_check(content: str, chapter_no: int) -> dict:
             "加强场景因果链：确保每个重要场景有 Cause→Action→Resistance→Cost→Result→Hook。"
         )
 
-    # Cost 缺失普遍
-    if analysis["scenes_with_cost"] < max(1, analysis["scene_count"] * 0.4):
+    # Cost 缺失普遍 — 先用 lexicon 检查叙事化代价
+    lexicon_passed, lexicon_count, lexicon_details = has_minimum_visible_cost(content, min_cost=2)
+    legacy_cost_hit = analysis["scenes_with_cost"] >= max(1, analysis["scene_count"] * 0.4)
+    cost_sufficient = legacy_cost_hit or lexicon_passed
+
+    if not cost_sufficient:
         flags.append({
             "level": "WARNING",
             "type": "MISSING_COST_ELEMENT",
             "message": (
                 f"代价(Cost)元素缺失严重，仅 {analysis['scenes_with_cost']}"
-                f"/{analysis['scene_count']} 场景包含代价/损失/破碎。"
+                f"/{analysis['scene_count']} 场景包含传统代价关键词，"
+                f"且叙事化可见代价仅 {lexicon_count} 处。"
             )
         })
         suggestions.append(
@@ -390,7 +400,7 @@ def run_scene_causality_check(content: str, chapter_no: int) -> dict:
 
     report = {
         "guard": "scene_causality_guard",
-        "version": "v0.4.0",
+        "version": "v0.4.5",
         "status": status,
         "scene_count": analysis["scene_count"],
         "scenes_with_cause": analysis["scenes_with_cause"],
@@ -398,6 +408,14 @@ def run_scene_causality_check(content: str, chapter_no: int) -> dict:
         "scenes_with_result": analysis["scenes_with_result"],
         "scenes_meeting_threshold": analysis["scenes_meeting_threshold"],
         "causality_coverage": analysis["causality_coverage"],
+        "metrics": {
+            "legacy_cost_hits": analysis["scenes_with_cost"],
+            "visible_consequence_count": lexicon_count,
+            "physical_count": lexicon_details["physical_count"],
+            "object_count": lexicon_details["object_count"],
+            "social_count": lexicon_details["social_count"],
+            "rule_count": lexicon_details["rule_count"],
+        },
         "flags": flags,
         "suggestions": suggestions,
         "hard_fail": False,
