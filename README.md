@@ -1,10 +1,10 @@
-# Novel Pipeline - Write Engine
+# Novel Pipeline - Write Engine v0.4.0
 
 [![Test](https://github.com/remacheybn408-boop/novel-pipeline-write-engine/actions/workflows/test.yml/badge.svg)](https://github.com/remacheybn408-boop/novel-pipeline-write-engine/actions/workflows/test.yml)
 
-AI 长篇小说工程化写作流水线：SQLite 长期记忆 + v0.4.0 拟人审稿流水线。
+AI 长篇小说工程化写作流水线：SQLite 长期记忆 + 拟人审稿质量套件 + 门禁总控 + 自动改稿闭环。
 
-> **当前阶段：早期原型。** 基础流水线和数据库已可运行，高级功能逐步落地中。
+> **当前稳定版：v0.4.0 Human-Grade Revision Suite。** 支持 20+ 质量门禁、4 模式调度、自动改稿闭环。241 测试通过。
 
 ---
 
