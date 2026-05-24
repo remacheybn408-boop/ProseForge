@@ -93,9 +93,9 @@ def load_voice_context(
     if character_names:
         profiles = [p for p in profiles if p.get("character_name", "") in character_names]
 
-    narration_policy = voice_cfg.get("narration_policy", {
+    narration_policy = voice_cfg.get("default_narration_policy", voice_cfg.get("narration_policy", {
         "dialect_level": 0, "meme_level": 0, "english_level": 0, "wenyan_level": 1,
-    })
+    }))
 
     if not profiles:
         warnings.append("No voice profiles found for any character")

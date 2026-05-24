@@ -6,6 +6,26 @@
   "novels_root": "./novels",
   "exports_root": "./exports",
 
+  "voice_system": {
+    "_comment": "多语体声纹系统 v0.4.5 — 方言/梗/英语/语体分包检测",
+    "enabled": true,
+    "storage": "sqlite",
+    "use_database_profiles": true,
+    "db_path": "./data/novel_memory.db",
+    "voice_packs_dir": "./voice_packs",
+    "character_voice_profiles_dir": "./voice_profiles",
+    "version": "v0.4.5",
+    "write_observations_to_database": true,
+    "default_narration_policy": {
+      "dialect_level": 0,
+      "meme_level": 0,
+      "english_level": 0,
+      "wenyan_level": 1
+    },
+    "warning_only": true,
+    "require_voice_profiles": false
+  },
+
   "word_count": {
     "_rule": "chapter_type只决定允许上限，不决定必须写长。高潮不代表字多。",
     "normal":       {"min": 1900, "best_min": 1900, "best_max": 2800, "max": 3300},
