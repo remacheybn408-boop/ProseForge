@@ -1,8 +1,8 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo   Novel Pipeline - Write Engine v0.4.0
-echo   Human-Grade Revision Suite
+echo   Novel Pipeline - Write Engine v0.4.5
+echo   Guard Truth Source Fix
 echo ============================================
 echo.
 
@@ -56,6 +56,6 @@ echo.
 echo ============================================
 echo   安装完成！
 echo   运行: run_demo.bat    快速体验
-echo   运行: run_tests.bat   跑全量测试
+echo   运行: pytest tests/ -v    跑全量测试
 echo ============================================
 pause

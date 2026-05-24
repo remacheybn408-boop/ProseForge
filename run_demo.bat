@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo   Novel Pipeline - Write Engine v0.4.0
+echo   Novel Pipeline - Write Engine v0.4.5
 echo   Demo Run
 echo ============================================
 echo.
