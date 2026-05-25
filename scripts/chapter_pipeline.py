@@ -437,8 +437,11 @@ def continuity_gate(chapter_no, content):
     print(f"\n{'='*50}\nSTEP 5: 连续性检查\n{'='*50}")
     print(f"  重合词: {list(overlap)[:8]} | 人物承接: {names_prev & names_start} | 得分: {score}/15")
 
-    cur.execute("INSERT INTO continuity_checks(novel_id,chapter_id,check_type,issue,severity,status) VALUES(?, (SELECT id FROM chapters WHERE novel_id=? AND chapter_no=?), 'continuity', ?, ?, ?)",
-        (nid, nid, chapter_no, f"得分{score}/15" if score < 15 else "正常", 3 if score < 15 else 1, 'open' if score < 15 else 'resolved'))
+    try:
+        cur.execute("INSERT INTO continuity_checks(novel_id,chapter_id,check_type,issue,severity,status) VALUES(?, (SELECT id FROM chapters WHERE novel_id=? AND chapter_no=?), 'continuity', ?, ?, ?)",
+            (nid, nid, chapter_no, f"得分{score}/15" if score < 15 else "正常", 3 if score < 15 else 1, 'open' if score < 15 else 'resolved'))
+    except Exception:
+        pass  # chapter not yet ingested — skip continuity_checks insert
     conn.commit(); conn.close()
 
     if score >= 12: print("  [OK] 通过"); return True
