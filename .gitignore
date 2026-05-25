@@ -44,3 +44,4 @@ tmp/
 *.tmp
 *.log
 outputs/
+examples/novels/

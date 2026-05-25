@@ -561,11 +561,15 @@ def anti_ai_style_gate(content):
     }
 
     # v0.5.1: Reduce false positives for 这意味着 in character analysis
-    # e.g. 罗千钧: "这意味着赵二河提前准备好了材料"
-    analysis_names = r'(罗千钧|林观澜|赵管事|宋炉公|魂主|裴天衡|齐岳|鲁砚山|许铁牛|赵二河|孙白山)'
+    analysis_names = [
+        re.findall(r'[\u4e00-\u9fff]{2,4}(?:看着|翻开|写下|分析|记录|报告|调查|判断|推算|认定|断言)', content)
+    ]
+    # If the text has character-driven analysis patterns, be more lenient
+    has_analysis = any(len(names) > 0 for names in analysis_names)
     for m in re.finditer(r'这意味着|这说明|这代表', content):
         ctx = content[max(0, m.start()-120):m.end()]
-        if re.search(analysis_names, ctx):
+        # Check for evidence/analysis keywords nearby (data, records, evidence)
+        if re.search(r'(数据|记录|证据|案卷|观测|统计|比对|对照)', ctx):
             checks['这意味着'] = max(0, checks['这意味着'] - 1)
 
     total = sum(checks.values())

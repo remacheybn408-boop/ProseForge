@@ -6,7 +6,7 @@ Thin wrapper around src/task_card/task_card_builder.py.
 Provides a command-line interface for generating chapter task cards.
 
 Usage:
-  python scripts/task_card_builder.py <chapter_no> [--config config.json] [--novel-slug gewuzhengdao]
+  python scripts/task_card_builder.py <chapter_no> [--config config.json] [--novel-slug demo_novel]
 
 Output:
   outputs/task_cards/chapter_NNN_task_card.md
@@ -59,7 +59,7 @@ def _standalone_main():
         help="Path to config.json",
     )
     parser.add_argument(
-        "--novel-slug", default="gewuzhengdao",
+        "--novel-slug", default="demo_novel",
         help="Novel slug identifier",
     )
     args = parser.parse_args()
