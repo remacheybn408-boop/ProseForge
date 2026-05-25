@@ -286,7 +286,7 @@ next chapter context        ← 自动读取上章 brief，进入下章 pre
 |------|-------------------|
 | 定位 | 轻量小说质量流水线 |
 | 入口 | `novel.py` 一条命令搞定全部流程 |
-| 许可证 | MIT |
+| 许可证 | MIT OR GPL-3.0 双许可 |
 | 依赖 | Python + SQLite，无需 Docker / Node / npm |
 | 报告 | 纯 HTML，双击即开，无 CDN |
 | 门禁 | 17+ 规则门禁，可校准 |
@@ -327,4 +327,9 @@ next chapter context        ← 自动读取上章 brief，进入下章 pre
 
 ## License
 
-MIT
+本项目采用双许可：**MIT OR GPL-3.0**（用户可任选其一）。
+
+- **MIT**：最宽松，允许闭源商用，只需保留版权声明
+- **GPL-3.0**：强制开源，修改和分发必须保持同协议
+
+详情见 [LICENSE](LICENSE)。
