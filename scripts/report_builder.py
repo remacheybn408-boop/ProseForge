@@ -6,7 +6,7 @@ Thin wrapper around src/report/html_report_builder.py.
 Provides a command-line interface for generating the self-contained HTML report.
 
 Usage:
-  python scripts/report_builder.py [--config config.json] [--novel-slug gewuzhengdao]
+  python scripts/report_builder.py [--config config.json] [--novel-slug demo_novel]
   python scripts/report_builder.py --output reports/index.html
 """
 
@@ -53,7 +53,7 @@ def _standalone_main():
         help="Path to config.json",
     )
     parser.add_argument(
-        "--novel-slug", default="gewuzhengdao",
+        "--novel-slug", default="demo_novel",
         help="Novel slug identifier",
     )
     parser.add_argument(

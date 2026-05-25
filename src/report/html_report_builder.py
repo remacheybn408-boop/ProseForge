@@ -5,7 +5,7 @@ html_report_builder.py — Generate self-contained HTML report v0.5.0
 Builds reports/index.html from SQLite data. No external CDN, inline CSS only.
 
 Usage:
-  python -m src.report.html_report_builder [--config config.json] [--novel-slug gewuzhengdao]
+  python -m src.report.html_report_builder [--config config.json] [--novel-slug demo_novel]
   python novel.py report  (calls this via subprocess)
 """
 
@@ -19,7 +19,7 @@ from datetime import datetime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_SLUG = "gewuzhengdao"
+DEFAULT_SLUG = "demo_novel"
 DEFAULT_CONFIG = PROJECT_ROOT / "config.json"
 VERSION = "v0.5.0"
 PROJECT_NAME = "Novel Pipeline Write Engine"

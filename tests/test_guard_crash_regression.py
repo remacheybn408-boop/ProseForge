@@ -7,7 +7,7 @@ from guard_registry import run_standard_guards
 
 SAMPLE = """他从水里爬出来，胸口一阵肺痉挛，喉咙里全是铁锈味。
 咳出来的水沫子挂在下巴上，右手还在抖。
-韩烈看了他一眼：\"规矩在这。\"
+测试角色看了他一眼：\"规矩在这。\"
 """
 
 

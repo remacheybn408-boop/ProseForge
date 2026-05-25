@@ -5,12 +5,12 @@ export_novel.py — 导出小说合集 v0.5.0
 从 SQLite 读取指定小说的所有章节，按 chapter_no 排序，输出单个 .txt 或 .md 文件。
 
 用法:
-  python scripts/export_novel.py --slug gewuzhengdao --format md --output ./exports/novel.md
-  python scripts/export_novel.py --slug gewuzhengdao --format txt --output ./exports/novel.txt
-  python scripts/export_novel.py --slug gewuzhengdao --output ./exports/gewuzhengdao.md
+  python scripts/export_novel.py --slug demo_novel --format md --output ./exports/novel.md
+  python scripts/export_novel.py --slug demo_novel --format txt --output ./exports/novel.txt
+  python scripts/export_novel.py --slug demo_novel --output ./exports/demo_novel.md
 
 参数:
-  --slug        小说 slug 标识 (默认: gewuzhengdao)
+  --slug        小说 slug 标识 (默认: demo_novel)
   --config      config.json 路径 (默认: PROJECT_ROOT/config.json)
   --format      输出格式: txt 或 md (默认: md)
   --output      输出文件路径 (默认: exports/<slug>_full.<format>)
@@ -32,7 +32,7 @@ from datetime import datetime
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
-DEFAULT_SLUG = "gewuzhengdao"
+DEFAULT_SLUG = "demo_novel"
 
 
 def load_config(config_path: str) -> dict:

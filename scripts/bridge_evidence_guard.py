@@ -157,9 +157,9 @@ def _extract_key_nouns(text: str) -> set[str]:
     """Extract key nouns that could be hooks."""
     noun_re = re.compile(
         r'(柴刀|水缸|石碑|矿[洞车石]|木牌|役牌|'
-        r'韩烈|顾长庚|马瘸子|小五|吴执事|刘三|周旺|'
         r'考核|搬运|劈柴|灵矿|禁地|脉动|执事堂|'
-        r'百分之一百二十|灰纸|规则|规矩)')
+        r'百分之一百二十|灰纸|规则|规矩|'
+        r'[\u4e00-\u9fff]{2,3})')  # generic 2-3 char names
     return set(m.group() for m in noun_re.finditer(text))
 
 
@@ -192,7 +192,9 @@ def _check_object_continuity(prev_tail: str, current: str) -> int:
 
 def _check_cast_continuity(prev_tail: str, current: str) -> int:
     """Check if key characters from previous chapter influence current."""
-    characters = ["韩烈", "马瘸子", "小五", "刘三", "周旺", "顾长庚", "赵管事"]
+    # Generic: detect 2-4 char Chinese names using regex pattern
+    name_matches = re.findall(r'(?:说|道|问|喊)[\s，。！？]*(?:[\u4e00-\u9fff]{2,4})', current[:2000])
+    characters = list(set(re.findall(r'[\u4e00-\u9fff]{2,4}', ' '.join(name_matches))))[:7]
     score = 0
     for name in characters:
         if name in prev_tail and (name in current[:2000] or name in current):

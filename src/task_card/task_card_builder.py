@@ -8,7 +8,7 @@ structured Markdown task card at:
   outputs/task_cards/chapter_NNN_task_card.md
 
 Usage:
-  python -m src.task_card.task_card_builder <chapter_no> [--config config.json] [--novel-slug gewuzhengdao]
+  python -m src.task_card.task_card_builder <chapter_no> [--config config.json] [--novel-slug demo_novel]
 """
 
 import json
@@ -20,7 +20,7 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_SLUG = "gewuzhengdao"
+DEFAULT_SLUG = "demo_novel"
 DEFAULT_CONFIG = PROJECT_ROOT / "config.json"
 
 

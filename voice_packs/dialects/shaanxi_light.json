@@ -2,7 +2,7 @@
   "pack_id": "shaanxi_light",
   "name": "轻关中话",
   "type": "dialect",
-  "description": "罗千钧、戒律堂硬派官腔适用。",
+  "description": "执事、戒律堂硬派官腔适用。",
   "markers": [
     "咱",
     "莫要",
@@ -19,13 +19,13 @@
   ],
   "danger_markers": [],
   "allowed_contexts": [
-    "罗千钧",
+    "执事",
     "戒律堂执事",
     "关中籍配角"
   ],
   "forbidden_contexts": [
-    "林观澜",
-    "魂主",
+    "理工主角",
+    "反派",
     "旁白"
   ],
   "overuse_warning_threshold": 5,
