@@ -571,6 +571,58 @@ def cmd_rag(args):
         return 1
 
 
+def cmd_genre(args):
+    """Genre pack management."""
+    action = getattr(args, "genre_action", None)
+    if action == "list":
+        from scripts.genre.genre_loader import list_genres
+        genres = list_genres()
+        print(f"Available genres ({len(genres)}):")
+        for g in genres:
+            print(f"  {g}")
+    elif action == "show":
+        from scripts.genre.genre_loader import load_genre_pack
+        gid = getattr(args, "genre_id", "generic")
+        pack = load_genre_pack(gid)
+        print(f"Genre: {pack.get('name', gid)} ({pack.get('genre_id', gid)})")
+        print(f"  {pack.get('description', '')[:100]}")
+        for key in ["core_promises", "forbidden_patterns", "agent_focus"]:
+            items = pack.get(key, [])
+            if items:
+                print(f"  {key}:")
+                for item in items[:5]:
+                    print(f"    - {item}")
+    else:
+        print("Usage: python novel.py genre {list|show <id>}")
+    return 0
+
+
+def cmd_style(args):
+    """Style pack management."""
+    action = getattr(args, "style_action", None)
+    if action == "list":
+        from scripts.genre.style_loader import list_styles
+        styles = list_styles()
+        print(f"Available styles ({len(styles)}):")
+        for s in styles:
+            print(f"  {s}")
+    elif action == "show":
+        from scripts.genre.style_loader import load_style_pack
+        sid = getattr(args, "style_id", "generic")
+        pack = load_style_pack(sid)
+        print(f"Style: {pack.get('name', sid)} ({pack.get('style_id', sid)})")
+        print(f"  {pack.get('description', '')[:100]}")
+        for key in ["narrative_features", "forbidden_patterns", "agent_focus"]:
+            items = pack.get(key, [])
+            if items:
+                print(f"  {key}:")
+                for item in items[:5]:
+                    print(f"    - {item}")
+    else:
+        print("Usage: python novel.py style {list|show <id>}")
+    return 0
+
+
 def main():
     import argparse
 
@@ -614,6 +666,8 @@ def main():
     p_agents_review.add_argument("chapter_no", nargs="?", help="Chapter number")
     p_agents_review.add_argument("--mode", default="light", choices=["light", "full"])
     p_agents_review.add_argument("--slug", help="Novel slug")
+    p_agents_review.add_argument("--genre", help="Genre pack ID (e.g. xianxia, mystery)")
+    p_agents_review.add_argument("--style", default=None, help="Style pack ID (e.g. webnovel, black_humor)")
 
     # rag
     p_rag = sub.add_parser("rag", help="Vector RAG (optional)")
@@ -629,6 +683,18 @@ def main():
     # wc
     p_wc = sub.add_parser("wc", help="Count Chinese characters in a chapter file")
     p_wc.add_argument("file_path", nargs="?", help="Path to chapter TXT file")
+    # genre
+    p_genre = sub.add_parser("genre", help="Genre pack management")
+    p_genre_sub = p_genre.add_subparsers(dest="genre_action")
+    p_genre_sub.add_parser("list", help="List available genres")
+    p_genre_show = p_genre_sub.add_parser("show", help="Show genre pack details")
+    p_genre_show.add_argument("genre_id", help="Genre ID (e.g. xianxia)")
+    # style
+    p_style = sub.add_parser("style", help="Style pack management")
+    p_style_sub = p_style.add_subparsers(dest="style_action")
+    p_style_sub.add_parser("list", help="List available styles")
+    p_style_show = p_style_sub.add_parser("show", help="Show style pack details")
+    p_style_show.add_argument("style_id", help="Style ID (e.g. black_humor)")
 
     args = parser.parse_args()
 
@@ -664,6 +730,10 @@ def main():
         sys.exit(cmd_export(args.slug))
     elif args.command == "wc":
         sys.exit(cmd_wc(args.file_path))
+    elif args.command == "genre":
+        sys.exit(cmd_genre(args))
+    elif args.command == "style":
+        sys.exit(cmd_style(args))
     else:
         parser.print_help()
 
