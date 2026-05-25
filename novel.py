@@ -571,24 +571,6 @@ def cmd_rag(args):
         return 1
 
 
-def cmd_dashboard(args):
-    """Launch Web Dashboard (v0.6.0)."""
-    try:
-        import uvicorn
-        from src.dashboard.app import app
-        host = getattr(args, "host", "127.0.0.1")
-        port = getattr(args, "port", 8080)
-        print(f"  Novel Pipeline Dashboard v0.6.0")
-        print(f"  启动地址: http://{host}:{port}")
-        print(f"  按 Ctrl+C 停止")
-        uvicorn.run(app, host=host, port=port, log_level="info")
-    except ImportError:
-        print("  [WARN] Dashboard 依赖未安装。请运行:")
-        print("    pip install -r requirements-dashboard.txt")
-        return 1
-    return 0
-
-
 def main():
     import argparse
 
@@ -647,10 +629,6 @@ def main():
     # wc
     p_wc = sub.add_parser("wc", help="Count Chinese characters in a chapter file")
     p_wc.add_argument("file_path", nargs="?", help="Path to chapter TXT file")
-    # dashboard
-    p_dash = sub.add_parser("dashboard", help="Launch Web Dashboard (v0.6.0)")
-    p_dash.add_argument("--host", default="127.0.0.1", help="Bind address (default: 127.0.0.1)")
-    p_dash.add_argument("--port", type=int, default=8080, help="Port (default: 8080)")
 
     args = parser.parse_args()
 
@@ -686,8 +664,6 @@ def main():
         sys.exit(cmd_export(args.slug))
     elif args.command == "wc":
         sys.exit(cmd_wc(args.file_path))
-    elif args.command == "dashboard":
-        sys.exit(cmd_dashboard(args))
     else:
         parser.print_help()
 

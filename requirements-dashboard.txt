@@ -1,8 +1,0 @@
-# Web Dashboard 可选依赖 (v0.6.0)
-# 安装: pip install -r requirements-dashboard.txt
-# 不安装时, CLI 不受影响
-fastapi>=0.100.0
-uvicorn>=0.23.0
-jinja2>=3.1.0
-python-multipart>=0.0.6
-aiofiles>=23.0
