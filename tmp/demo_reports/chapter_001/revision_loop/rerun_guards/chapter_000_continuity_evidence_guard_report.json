@@ -1,6 +1,0 @@
-{
-  "guard": "continuity_evidence_guard",
-  "status": "WARNING",
-  "error": "'int' object is not subscriptable",
-  "hard_fail": false
-}
