@@ -863,7 +863,23 @@ def cmd_export(slug: str = None, fmt: str = "md"):
         if result.stderr:
             print(result.stderr.strip(), file=sys.stderr)
         if result.returncode == 0:
-            print(f"  ✅ 已导出到 {out_path}")
+            print(f"  ✅ 已导出全书到 {out_path}")
+            # v0.6.5-clean7: 同时拆分每章为独立文件
+            full_text = Path(out_path).read_text(encoding="utf-8")
+            # Split by chapter headers: 第N章 or ---\n第N章
+            import re as _re
+            parts = _re.split(r'\n(?=第\d+章\s)', full_text)
+            count = 0
+            for part in parts:
+                m = _re.match(r'第(\d+)章\s+(.+)', part.strip())
+                if m:
+                    ch_num = int(m.group(1))
+                    ch_title = m.group(2).strip().split('\n')[0][:20]
+                    ch_file = out_dir / f"第{ch_num}章_{ch_title}.txt"
+                    ch_file.write_text(part.strip() + "\n", encoding="utf-8")
+                    count += 1
+            if count:
+                print(f"  ✅ 已拆分 {count} 章到 {out_dir}/")
         else:
             print(f"  ⚠️ 导出未完成（退出码: {result.returncode}）")
         return result.returncode
