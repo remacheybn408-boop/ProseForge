@@ -7,6 +7,7 @@
   "paths": {
     "db_path": "./data/novel_memory.db",
     "novels_root": "./novels",
+    "outline_dir": "../大纲",
     "exports_root": "./exports",
     "reports_root": "./exports/reports",
     "outputs_root": "./outputs",

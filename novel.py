@@ -725,6 +725,20 @@ def _get_novels_root(cfg_path=None):
         return str(PROJECT_ROOT / "novels")
 
 
+def _get_outline_dir():
+    """v0.6.5-clean7: Read outline_dir from config, fallback to ../大纲 relative to novels_root."""
+    try:
+        cfg = _load_project_config()
+        od = cfg.get("paths", {}).get("outline_dir", "")
+        if od:
+            return str(resolve_path(PROJECT_ROOT, od))
+    except Exception:
+        pass
+    # Fallback: ../大纲 relative to novels_root
+    nr = Path(_get_novels_root())
+    return str(nr.parent / "大纲")
+
+
 def _resolve_post_context(cfg):
     """v0.6.5-clean6: Resolve chapters_dir + db_path from active slot if available.
     Returns (chapters_dir, db_path, slug). Falls back to config defaults.
@@ -2629,16 +2643,21 @@ def _check_outline_gate() -> int:
     try:
         mgr = _get_outline_manager()
         if not mgr.has_active_outline():
+            # v0.6.5-clean7: 引导用户把大纲放到统一的 大纲/ 目录
+            outline_dir = Path(_get_outline_dir())
             print("=" * 60)
             print("  ⛔ 没有激活的大纲")
             print("=" * 60)
             print()
             print("  当前小说没有激活大纲，不能开写。")
             print()
-            print("  💡 把大纲文件放到项目目录，或在 Hermes 里输入「添加大纲」。")
+            print(f"  💡 请把大纲文件放到「大纲」文件夹里：")
+            print(f"     {outline_dir}")
+            print()
+            print(f"  然后在 Hermes 说「添加大纲」即可。")
             print()
             print("  高级用法:")
-            print("  python novel.py outline add 大纲.txt")
+            print(f"  python novel.py outline add {outline_dir / '大纲.txt'}")
             return 1
     except Exception as e:
         # If outline module not available, allow pass-through
@@ -2700,6 +2719,44 @@ def cmd_outline(args):
 def _outline_add(file_path, title="", genre="", style="",
                   replace_current=False, keep_inactive=False, dry_run=False):
     """添加大纲文件 — P0-6/P0-7 智能行为"""
+    # v0.6.5-clean7: 无文件时自动扫描 大纲/ 目录
+    if not file_path:
+        outline_dir = Path(_get_outline_dir())
+        if outline_dir.exists():
+            candidates = sorted(outline_dir.glob("*.txt"))
+            if candidates:
+                print(f"  📂 扫描 {outline_dir} ...")
+                print(f"  找到 {len(candidates)} 个大纲文件:")
+                for i, c in enumerate(candidates, 1):
+                    try:
+                        first = c.read_text(encoding="utf-8").strip().split("\n")[0].lstrip("# ")[:60]
+                    except Exception:
+                        first = "(无法预览)"
+                    print(f"    [{i}] {c.name}")
+                    print(f"        {first}")
+                print()
+                print(f"  请输入编号 (1-{len(candidates)}) 或完整路径:")
+                try:
+                    choice = input("  > ").strip()
+                    idx = int(choice) - 1
+                    if 0 <= idx < len(candidates):
+                        file_path = str(candidates[idx])
+                        print(f"  已选择: {candidates[idx].name}")
+                    else:
+                        file_path = choice
+                except (ValueError, EOFError):
+                    file_path = choice
+                if not file_path:
+                    print("  ❌ 未选择文件")
+                    return 1
+            else:
+                print(f"  📂 {outline_dir} 目录为空，请先放入 .txt 大纲文件")
+                return 1
+        else:
+            print(f"  💡 请创建大纲目录: {outline_dir}")
+            print(f"     然后放入 .txt 大纲文件，再运行此命令")
+            return 1
+
     fp = Path(file_path)
     if not fp.exists():
         print(f"  ❌ 文件不存在: {file_path}")
@@ -3490,16 +3547,17 @@ def cmd_scc_help():
     print("  " + "━" * 60)
     print()
     print("  Q: 为什么 pre/post/write 提示「没有激活的大纲」？")
-    print("  A: 必须先添加大纲才能开始写作。执行：")
-    print("     python novel.py outline add 大纲.txt")
+    print("  A: 必须先添加大纲才能开始写作。")
+    print("     1) 把大纲 .txt 文件放到「大纲」文件夹（如 D:\\小说\\大纲\\）")
+    print("     2) 执行: python novel.py outline add D:\\小说\\大纲\\大纲.txt")
+    print("     或在 Hermes 里直接说「添加大纲」")
     print()
     print("  Q: 如何开始一部新小说？")
     print("  A: 推荐流程：")
-    print("     1) python novel.py db new --name \"我的新小说\"   # 创建新工作区")
-    print("     2) python novel.py db use slot_004               # 切换到新工作区")
-    print("     3) python novel.py outline add 大纲.txt           # 添加大纲")
-    print("     4) python novel.py pre 1                          # 生成第1章任务卡")
-    print("     5) python novel.py post 1                         # 写完后执行守卫")
+    print("     1) 在 D:\\小说\\大纲\\ 下创建小说大纲 .txt 文件")
+    print("     2) python novel.py outline add <大纲路径>    # 自动检测相似度，不同小说自动创建新 slot")
+    print("     3) python novel.py pre 1                      # 生成第1章任务卡")
+    print("     4) python novel.py post 1                     # 写完后入库 + 守卫检查")
     print()
     print("  Q: outline upgrade 和 db new 有什么区别？")
     print("  A: 同一部小说的新大纲用 outline add（自动检测相似度，建议升级）")
@@ -4431,7 +4489,7 @@ def main():
     p_outline = sub.add_parser("outline", help="大纲管理（添加/列出/切换/对比/回滚）")
     p_outline_sub = p_outline.add_subparsers(dest="outline_action")
     p_outline_add = p_outline_sub.add_parser("add", help="添加大纲（自动相似度检测与智能处理）")
-    p_outline_add.add_argument("outline_file", help="大纲文件路径 (.txt)")
+    p_outline_add.add_argument("outline_file", nargs="?", default="", help="大纲文件路径 (.txt)，留空自动扫描 大纲/")
     p_outline_add.add_argument("--title", default="", help="大纲标题")
     p_outline_add.add_argument("--genre", default="", help="题材")
     p_outline_add.add_argument("--style", default="", help="风格")
@@ -4602,7 +4660,7 @@ def main():
         print()
         print("  1. 第一次使用 →  python novel.py start")
         print("  2. 检查环境   →  python novel.py status")
-        print("  3. 添加大纲   →  python novel.py outline add 大纲.txt")
+        print("  3. 添加大纲   →  python novel.py outline add D:\\小说\\大纲\\XXX.txt")
         print("  4. 查看作品   →  python novel.py books")
         print("  5. 开始写作   →  python novel.py write 1")
         print("  6. 审稿       →  python novel.py jury 1")
