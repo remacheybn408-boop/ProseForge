@@ -808,9 +808,10 @@ def cmd_export(slug: str = None, fmt: str = "md"):
     fmt = fmt or "md"
     ext = ".txt" if fmt == "txt" else ".md"
 
-    # v0.6.5-clean7: 尝试从活跃 slot DB 读取小说标题
+    # v0.6.5-clean7: 从活跃 slot DB 读取标题 + DB 路径
     import sqlite3 as _sql
     title = slug
+    slot_db_path = None
     try:
         ws = PROJECT_ROOT / "workspace"
         reg_file = ws / "registry.json"
@@ -820,6 +821,7 @@ def cmd_export(slug: str = None, fmt: str = "md"):
             active = reg.get("active_slot", "")
             slot_db = ws / active / "novel.db"
             if slot_db.exists():
+                slot_db_path = slot_db
                 conn = _sql.connect(str(slot_db))
                 row = conn.execute("SELECT title FROM novels WHERE slug=?", (slug,)).fetchone()
                 if row:
@@ -828,8 +830,14 @@ def cmd_export(slug: str = None, fmt: str = "md"):
     except Exception:
         pass
 
-    # 输出到 exports/{书名}/{书名}{ext}
-    exports_root = resolve_path(PROJECT_ROOT, _load_project_config().get("exports_root", "./exports"))
+    # 输出到导出目录：config 的 export_output_dir 或 novels_root/../导出/
+    cfg = _load_project_config()
+    export_base = cfg.get("paths", {}).get("export_output_dir", "")
+    if export_base:
+        exports_root = resolve_path(PROJECT_ROOT, export_base)
+    else:
+        nr = Path(_get_novels_root())
+        exports_root = nr.parent / "导出"
     out_dir = exports_root / title
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{title}{ext}"
@@ -840,6 +848,8 @@ def cmd_export(slug: str = None, fmt: str = "md"):
         args = [sys.executable, str(SCRIPTS_DIR / "export_novel.py"),
                 "--slug", slug, "--config", str(PROJECT_ROOT / "config.json"), "--format", fmt,
                 "--output", str(out_path)]
+        if slot_db_path:
+            args.extend(["--db-path", str(slot_db_path)])
         result = subprocess.run(args, cwd=str(PROJECT_ROOT), timeout=60, capture_output=True, text=True)
         if result.stdout:
             print(result.stdout.strip())

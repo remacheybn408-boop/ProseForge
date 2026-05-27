@@ -11,7 +11,8 @@
     "exports_root": "./exports",
     "reports_root": "./exports/reports",
     "outputs_root": "./outputs",
-    "tmp_root": "./tmp"
+    "tmp_root": "./tmp",
+    "export_output_dir": "../导出"
   },
   "novel": {
     "default_slug": "demo_novel",

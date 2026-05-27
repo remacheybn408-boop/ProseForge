@@ -204,12 +204,15 @@ def export_novel(
     to_ch: int | None = None,
     include_toc: bool = True,
     separator: str = "\n\n---\n\n",
+    db_path_override: str | None = None,
 ) -> dict:
     """Export all chapters of a novel to a single file.
 
     Returns a dict with status info.
     """
     config = load_config(config_path)
+    if db_path_override:
+        config["db_path"] = db_path_override
     db_path = get_db_path(config)
 
     if not Path(db_path).exists():
@@ -305,6 +308,10 @@ def main():
         help="Path to config.json",
     )
     parser.add_argument(
+        "--db-path", default=None,
+        help="Override database path from config",
+    )
+    parser.add_argument(
         "--format", choices=["txt", "md"], default="md",
         help="Output format (default: md)",
     )
@@ -348,6 +355,7 @@ def main():
         to_ch=args.to_ch,
         include_toc=not args.no_toc,
         separator=args.separator,
+        db_path_override=args.db_path,
     )
 
     if args.json:
