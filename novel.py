@@ -4549,13 +4549,15 @@ def cmd_stability_check(args=None):
         p1_issues.append(f"无法检查 slot FTS: {e}")
         score -= 5
 
-    # 11. v0.6.5-clean8: --full 真跑 demo + 检查 exit code
+    # 11. v0.6.5-clean9: --full 真跑 demo（stdin=DEVNULL 防交互挂起）
     if full_mode:
         try:
+            import os as _os
             demo_result = _sp.run(
                 [sys.executable, "novel.py", "demo"],
                 cwd=str(PROJECT_ROOT), timeout=180,
-                capture_output=True, text=True
+                capture_output=True, text=True,
+                stdin=_sp.DEVNULL
             )
             demo_ok = demo_result.returncode == 0
             detail = "demo 通过" if demo_ok else f"demo 失败 (exit={demo_result.returncode})"
@@ -4905,4 +4907,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BrokenPipeError:
+        # Silently exit on broken pipe (e.g., | head)
+        pass
