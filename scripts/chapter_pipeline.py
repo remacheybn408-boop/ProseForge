@@ -575,7 +575,7 @@ def anti_ai_style_gate(content):
         "她/他从未想过": len(re.findall(r'从未想过|从未见过|从未感受过', content)),
         "他意识到": len(re.findall(r'他意识到|她意识到|他明白', content)),
         "这意味着": len(re.findall(r'这意味着|这说明|这代表', content)),
-        "像一座废墟/像一尊雕像": len(re.findall(r'像一座|像一尊|像一个.*的', content)),
+        "像一座废墟/像一尊雕像": len(re.findall(r'像一座(废墟|孤岛|坟墓)|像一尊(雕像|雕塑|石像)', content)),
         "沉默了几秒": len(re.findall(r'沉默了几秒|沉默了片刻|沉默了.{1,4}秒', content)),
         "是她的救赎": len(re.findall(r'救赎|他就是她的|她就是他的', content)),
         "硬科普指标": len(re.findall(r'(公式|定律|方程|定理|热力学|量子力学|相对论)', content)),

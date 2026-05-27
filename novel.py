@@ -613,11 +613,14 @@ def cmd_pre(chapter_no: str = None, slug: str = None, volume_no: str = None):
     if _check_outline_gate():
         return 1
     print(f"  Running pre-write gate for chapter {chapter_no}...")
-    slug = slug or _get_default_slug(cfg)
+    # v0.6.5-clean7: resolve slug from active slot
+    chapters_dir, slot_db_path, resolved_slug, resolved_title = _resolve_post_context(cfg)
+    slug = slug or resolved_slug
     try:
         import subprocess
         cmd = [sys.executable, str(SCRIPTS_DIR / "chapter_pipeline.py"), "pre", str(chapter_no),
-               "--config", str(cfg), "--novel-slug", slug]
+               "--config", str(cfg), "--novel-slug", slug,
+               "--novel-title", resolved_title]
         if volume_no: cmd.extend(["--volume-no", str(volume_no)])
         result = subprocess.run(cmd, cwd=str(PROJECT_ROOT), timeout=120)
         return result.returncode
@@ -641,7 +644,7 @@ def cmd_post(chapter_no: str = None, slug: str = None, volume_no: str = None, fi
         print(f"  Running post-write guards for chapter {chapter_no}...")
 
     # v0.6.5-clean6: Resolve from active slot, fallback to config
-    chapters_dir, slot_db_path, resolved_slug = _resolve_post_context(cfg)
+    chapters_dir, slot_db_path, resolved_slug, resolved_title = _resolve_post_context(cfg)
     slug = slug or resolved_slug
 
     try:
@@ -740,8 +743,8 @@ def _get_outline_dir():
 
 
 def _resolve_post_context(cfg):
-    """v0.6.5-clean6: Resolve chapters_dir + db_path from active slot if available.
-    Returns (chapters_dir, db_path, slug). Falls back to config defaults.
+    """v0.6.5-clean7: Resolve chapters_dir + db_path + slug + title from active slot.
+    Returns (chapters_dir, db_path, slug, title). Falls back to config defaults.
     """
     import json as _json
     ws = PROJECT_ROOT / "workspace"
@@ -756,24 +759,25 @@ def _resolve_post_context(cfg):
                 ch_dir = slot_dir / "chapters"
                 db_path = slot_dir / "novel.db"
                 if db_path.exists():
-                    # Find slug from slot's novel.db
                     import sqlite3 as _sql
                     conn = _sql.connect(str(db_path))
                     try:
-                        row = conn.execute("SELECT slug FROM novels LIMIT 1").fetchone()
+                        row = conn.execute("SELECT slug, title FROM novels LIMIT 1").fetchone()
                         slug = row[0] if row else _get_default_slug(cfg)
+                        title = row[1] if row and row[1] else slug
                     except Exception:
                         slug = _get_default_slug(cfg)
+                        title = slug
                     finally:
                         conn.close()
-                    return str(ch_dir), str(db_path), slug
+                    return str(ch_dir), str(db_path), slug, title
         except Exception:
             pass
 
     # Fallback: old config-based paths
     slug = _get_default_slug(cfg)
     novels_root = _get_novels_root(cfg)
-    return str(Path(novels_root) / slug / "第01卷"), None, slug
+    return str(Path(novels_root) / slug / "第01卷"), None, slug, slug
 
 
 def cmd_review(chapter_no: str = None, slug: str = None, volume_no: str = None):
@@ -798,8 +802,24 @@ def cmd_review(chapter_no: str = None, slug: str = None, volume_no: str = None):
 
 def cmd_export(slug: str = None, fmt: str = "md"):
     """Export novel to a single file, v0.6.5-clean7: 用小说名建文件夹."""
+    # v0.6.5-clean7: 无slug时自动从活跃slot读取
     if not slug:
-        print("用法: python novel.py export --slug <小说标识> [--format txt|md]")
+        try:
+            import json as _j, sqlite3 as _s
+            ws = PROJECT_ROOT / "workspace"
+            reg = _j.loads((ws / "registry.json").read_text(encoding="utf-8"))
+            active = reg.get("active_slot", "")
+            slot_db = ws / active / "novel.db"
+            if slot_db.exists():
+                conn = _s.connect(str(slot_db))
+                row = conn.execute("SELECT slug FROM novels LIMIT 1").fetchone()
+                conn.close()
+                if row:
+                    slug = row[0]
+        except Exception:
+            pass
+    if not slug:
+        print("用法: python novel.py export [--slug <标识>] [--format txt|md]")
         print()
         print("  示例:")
         print("    python novel.py export --slug demo_novel --format md")
@@ -977,6 +997,8 @@ def cmd_agents(args):
         result = run_agent_review(content, int(chapter_no), mode=mode)
         print(f"  Score: {result.get('overall_score', 'N/A')}")
         print(f"  Status: {result.get('status', 'N/A')}")
+        if result.get('status') == 'FAIL':
+            print(f"  💡 审稿 FAIL ≠ 程序出错，是 AI 对内容质量的建议，可忽略")
         chief = result.get("chief_editor", {})
         for cat in ["must_fix", "should_fix", "keep"]:
             items = chief.get(cat, [])
@@ -2738,6 +2760,8 @@ def cmd_outline(args):
         return _outline_compare(getattr(args, "compare_file", ""))
     elif action == "delete":
         return _outline_delete(getattr(args, "delete_id", ""))
+    elif action == "undo":
+        return _outline_undo()
     else:
         print("用法: python novel.py outline {add|import|list|current|switch|diff|rollback|compare|delete}")
         print()
@@ -3454,6 +3478,17 @@ def _outline_delete(outline_id):
     return 0
 
 
+def _outline_undo():
+    """v0.6.5-clean7: 撤销最近一次 outline add"""
+    mgr = _get_outline_manager()
+    result = mgr.undo_last_add()
+    if result.get("status") == "error":
+        print(f"  ❌ {result.get('message', '')}")
+        return 1
+    print(f"  ✅ {result.get('message', '')}")
+    return 0
+
+
 # ═══════════════════════════════════════════════════════════════
 #  scc-help — 中文用户手册
 # ═══════════════════════════════════════════════════════════════
@@ -4077,6 +4112,53 @@ def _menu_advanced():
             print("  无效选择，请重试。")
 
 
+def cmd_chapters():
+    """v0.6.5-clean7: 列出当前活跃 slot 的所有章节及字数."""
+    import json as _json, sqlite3 as _sql
+    ws = PROJECT_ROOT / "workspace"
+    reg_file = ws / "registry.json"
+    if not reg_file.exists():
+        print("  workspace 未初始化。")
+        return 1
+
+    reg = _json.loads(reg_file.read_text(encoding="utf-8"))
+    active = reg.get("active_slot", "")
+    if not active:
+        print("  没有活跃 slot。")
+        return 1
+
+    slot_dir = ws / active
+    db_path = slot_dir / "novel.db"
+    if not db_path.exists():
+        print(f"  {active} 没有 novel.db")
+        return 1
+
+    conn = _sql.connect(str(db_path))
+    conn.row_factory = _sql.Row
+    rows = conn.execute(
+        "SELECT chapter_no, title, word_count, status, created_at FROM chapters ORDER BY chapter_no"
+    ).fetchall()
+    # Also get novel title
+    novel_row = conn.execute("SELECT title FROM novels LIMIT 1").fetchone()
+    novel_title = novel_row["title"] if novel_row else active
+    conn.close()
+
+    print()
+    print(f"  📖 {novel_title} ({active})")
+    print(f"  " + "─" * 50)
+    if not rows:
+        print("  (暂无章节)")
+    else:
+        total_wc = 0
+        for r in rows:
+            total_wc += r["word_count"] or 0
+            print(f"  第{r['chapter_no']:02d}章  {r['title'] or '(无标题)':20s}  {r['word_count'] or 0:>5,}字  [{r['status']}]")
+        print(f"  " + "─" * 50)
+        print(f"  共 {len(rows)} 章，{total_wc:,} 字")
+    print()
+    return 0
+
+
 def cmd_setup():
     """v0.6.5-clean7: 交互式设置 — 引导用户配置小说文件夹路径."""
     import json as _json
@@ -4230,6 +4312,9 @@ def cmd_menu():
 
         elif choice.upper() == "S":
             cmd_setup()
+
+        elif choice.upper() == "C":
+            cmd_chapters()
 
         elif choice == "0":
             print()
@@ -4633,6 +4718,7 @@ def main():
     p_outline_compare.add_argument("compare_file", help="文件路径 (.txt)")
     p_outline_delete = p_outline_sub.add_parser("delete", help="删除指定大纲")
     p_outline_delete.add_argument("delete_id", help="大纲 ID")
+    p_outline_sub.add_parser("undo", help="撤销最近一次大纲添加")
     # wc
     p_wc = sub.add_parser("wc", help="Count Chinese characters in a chapter file")
     p_wc.add_argument("file_path", nargs="?", help="Path to chapter TXT file")
@@ -4689,8 +4775,9 @@ def main():
     # P2-1: stability-check
     p_sc = sub.add_parser("stability-check", help="运行稳定性自检，输出评分和问题清单")
     p_sc.add_argument("--full", action="store_true", help="完整模式（含 pytest + demo）")
-    # v0.6.5-clean7: setup
+    # v0.6.5-clean7: setup + chapters
     sub.add_parser("setup", help="设置小说文件夹路径")
+    sub.add_parser("chapters", help="列出当前作品所有章节")
 
     args = parser.parse_args()
 
@@ -4770,6 +4857,8 @@ def main():
         sys.exit(cmd_stability_check(args))
     elif args.command == "setup":
         sys.exit(cmd_setup())
+    elif args.command == "chapters":
+        sys.exit(cmd_chapters())
     else:
         # P2-2: 友好的"我该做什么"提示
         print("=" * 50)

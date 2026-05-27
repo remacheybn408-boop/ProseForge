@@ -707,6 +707,48 @@ class OutlineManager:
         self._save_registry(reg)
         return reg
 
+    def undo_last_add(self) -> Dict:
+        """v0.6.5-clean7: 撤销最近一次 outline add，恢复之前的状态."""
+        reg = self._get_registry()
+        active = reg.get("active_slot", "")
+        if not active:
+            return {"status": "error", "message": "没有活跃 slot"}
+
+        proj_file = self.workspace_dir / active / "project.json"
+        if not proj_file.exists():
+            return {"status": "error", "message": "project.json 不存在"}
+
+        proj = json.loads(proj_file.read_text(encoding="utf-8"))
+        oid = proj.get("active_outline", "")
+        if not oid:
+            return {"status": "error", "message": "没有激活的大纲可撤销"}
+
+        outlines_dir = self.workspace_dir / active / "outlines"
+        outline_files = sorted(outlines_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if len(outline_files) < 2:
+            return {"status": "error", "message": "只有一个大纲，无法撤销（需要至少两个版本）"}
+
+        current_file = outlines_dir / f"{oid}.json"
+        prev_file = outline_files[1]
+        prev_id = prev_file.stem
+
+        trash_dir = self.workspace_dir / "_trash"
+        trash_dir.mkdir(exist_ok=True)
+        import shutil
+        shutil.move(str(current_file), str(trash_dir / current_file.name))
+
+        proj["active_outline"] = prev_id
+        proj["updated_at"] = datetime.now().isoformat()
+        proj_file.write_text(json.dumps(proj, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        prev_data = json.loads(prev_file.read_text(encoding="utf-8"))
+        return {
+            "status": "ok",
+            "message": f"已撤销到: {prev_data.get('title', prev_id)}",
+            "removed": oid,
+            "active": prev_id,
+        }
+
     def _switch_active_slot(self, slot_id: str) -> str:
         """切换活跃 slot，返回旧的活跃 slot"""
         reg = self._get_registry()
