@@ -646,6 +646,33 @@ class OutlineManager:
                                  tags: list = None,
                                  similarity_result: Dict = None) -> Dict:
         """P0-6: 为新小说创建独立 slot 并导入大纲"""
+        # 0. 如果没传标题，从内容提取
+        if not title:
+            for line in content.strip().split("\n"):
+                raw = line.strip()
+                if not raw: continue
+                import re as _re
+                m = _re.search(r'[《「](.+?)[》」]', raw)
+                if m:
+                    title = m.group(1)[:40]
+                    break
+            if not title:
+                for line in content.strip().split("\n"):
+                    raw = line.strip()
+                    if not raw: continue
+                    m = _re.match(r'^(?:标题[：:]|书名[：:]|小说名[：:]|作品名[：:])\s*(.+)', raw)
+                    if m:
+                        title = m.group(1).strip()[:40]
+                        break
+            if not title:
+                for line in content.strip().split("\n"):
+                    raw = line.strip()
+                    if raw.startswith("# "):
+                        t = raw[2:].strip()
+                        # strip 《》if present
+                        m2 = _re.search(r'[《「](.+?)[》」]', t)
+                        title = (m2.group(1) if m2 else t)[:40]
+                        break
         # 1. 寻找空闲 slot 或创建新的
         idle = self._find_idle_slot()
         if idle:

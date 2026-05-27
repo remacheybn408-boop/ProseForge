@@ -2644,7 +2644,7 @@ def _outline_add(file_path, title="", genre="", style="",
                 print("  → 正在为新小说创建独立工作区..." )
                 result = mgr.add_outline_to_new_slot(
                     content=content,
-                    title=title or fp.stem,
+                    title=title or "",
                     genre=genre,
                     style=style,
                     similarity_result=similarity,
