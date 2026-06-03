@@ -227,6 +227,12 @@ def main():
     p_voice_delete.add_argument("character_name", help="角色名")
     p_voice_check = p_voice_sub.add_parser("check", help="检测章节声纹一致性")
     p_voice_check.add_argument("chapter_no", help="章节号")
+    p_voice_set = p_voice_sub.add_parser("set", help="声纹卡组管理")
+
+    p_voice_set_sub = p_voice_set.add_subparsers(dest="voice_set_action")
+    p_voice_set_sub.add_parser("list", help="列出声纹卡组")
+    p_voice_set_use = p_voice_set_sub.add_parser("use", help="切换声纹卡组")
+    p_voice_set_use.add_argument("set_name", help="卡组名")
     # texture 人工味质量层
     p_tx = sub.add_parser("texture", help="人工味质量层检测")
     p_tx_sub = p_tx.add_subparsers(dest="texture_action")

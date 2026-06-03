@@ -25,8 +25,8 @@ VOICE_CARD_FIELDS = [
 ]
 
 
-def get_voice_cards_dir(project_root: Path) -> Path:
-    """获取当前活跃 slot 的声纹卡目录."""
+def get_voice_cards_dir(project_root: Path, set_name: str = None) -> Path:
+    """获取当前活跃 slot 的声纹卡目录（指定卡组则返回卡组子目录）."""
     try:
         ws_dir = project_root / "workspace"
         reg_file = ws_dir / "registry.json"
@@ -37,15 +37,89 @@ def get_voice_cards_dir(project_root: Path) -> Path:
         if not active:
             return None
         vc_dir = ws_dir / active / "voice_cards"
+        if set_name:
+            vc_dir = vc_dir / set_name
         vc_dir.mkdir(parents=True, exist_ok=True)
         return vc_dir
     except Exception:
         return None
 
 
+
+def get_active_voice_card_set(project_root: Path) -> str:
+    """from project.json active_voice_card_set, default 'default'."""
+    try:
+        ws_dir = project_root / "workspace"
+        reg_file = ws_dir / "registry.json"
+        if not reg_file.exists():
+            return "default"
+        reg = json.loads(reg_file.read_text(encoding="utf-8"))
+        active = reg.get("active_slot", "")
+        if not active:
+            return "default"
+        proj_file = ws_dir / active / "project.json"
+        if proj_file.exists():
+            proj = json.loads(proj_file.read_text(encoding="utf-8"))
+            return proj.get("active_voice_card_set", "default")
+    except Exception:
+        pass
+    return "default"
+
+
+def set_active_voice_card_set(project_root: Path, set_name: str) -> bool:
+    """Set active voice card set for current novel."""
+    try:
+        ws_dir = project_root / "workspace"
+        reg_file = ws_dir / "registry.json"
+        if not reg_file.exists():
+            return False
+        reg = json.loads(reg_file.read_text(encoding="utf-8"))
+        active = reg.get("active_slot", "")
+        if not active:
+            return False
+        proj_file = ws_dir / active / "project.json"
+        if proj_file.exists():
+            proj = json.loads(proj_file.read_text(encoding="utf-8"))
+        else:
+            proj = {}
+        proj["active_voice_card_set"] = set_name
+        from datetime import datetime
+        proj["updated_at"] = datetime.now().isoformat()
+        proj_file.write_text(json.dumps(proj, ensure_ascii=False, indent=2), encoding="utf-8")
+        return True
+    except Exception:
+        return False
+
+
+def list_voice_card_sets(project_root: Path) -> list[str]:
+    """List all voice card sets for current slot."""
+    try:
+        ws_dir = project_root / "workspace"
+        reg_file = ws_dir / "registry.json"
+        if not reg_file.exists():
+            return []
+        reg = json.loads(reg_file.read_text(encoding="utf-8"))
+        active = reg.get("active_slot", "")
+        if not active:
+            return []
+        vc_dir = ws_dir / active / "voice_cards"
+        if not vc_dir.exists():
+            return ["default"]
+        sets = []
+        for item in sorted(vc_dir.iterdir()):
+            if item.is_dir():
+                sets.append(item.name)
+        if not sets:
+            sets.append("default")
+        return sets
+    except Exception:
+        return ["default"]
+
+
 def list_voice_cards(project_root: Path) -> list[dict]:
     """列出当前 slot 所有声纹卡."""
-    vc_dir = get_voice_cards_dir(project_root)
+    set_name = get_active_voice_card_set(project_root)
+    vc_dir = get_voice_cards_dir(project_root, set_name)
     if not vc_dir or not vc_dir.exists():
         return []
     cards = []
@@ -61,7 +135,8 @@ def list_voice_cards(project_root: Path) -> list[dict]:
 
 def get_voice_card(project_root: Path, name: str) -> dict | None:
     """获取单个角色声纹卡."""
-    vc_dir = get_voice_cards_dir(project_root)
+    set_name = get_active_voice_card_set(project_root)
+    vc_dir = get_voice_cards_dir(project_root, set_name)
     if not vc_dir:
         return None
     f = vc_dir / f"{name}.json"
@@ -72,7 +147,8 @@ def get_voice_card(project_root: Path, name: str) -> dict | None:
 
 def save_voice_card(project_root: Path, name: str, card: dict) -> bool:
     """保存声纹卡到当前 slot."""
-    vc_dir = get_voice_cards_dir(project_root)
+    set_name = get_active_voice_card_set(project_root)
+    vc_dir = get_voice_cards_dir(project_root, set_name)
     if not vc_dir:
         return False
     card["name"] = name
@@ -83,7 +159,8 @@ def save_voice_card(project_root: Path, name: str, card: dict) -> bool:
 
 def delete_voice_card(project_root: Path, name: str) -> bool:
     """删除声纹卡."""
-    vc_dir = get_voice_cards_dir(project_root)
+    set_name = get_active_voice_card_set(project_root)
+    vc_dir = get_voice_cards_dir(project_root, set_name)
     if not vc_dir:
         return False
     f = vc_dir / f"{name}.json"

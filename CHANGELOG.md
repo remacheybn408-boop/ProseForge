@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.6.5-fixed.2 - Voice Card System v2: per-novel card sets + outline integration (2026-06-03)
+
+### Added
+- **声纹卡组系统** — 每本小说独立声纹卡组，互不干扰
+  - `python novel.py voice set list` 列出声纹卡组
+  - `python novel.py voice set use <卡组名>` 切换卡组
+  - `project.json` 新增 `active_voice_card_set` 字段
+- 声纹卡存储路径: `workspace/<slot>/voice_cards/<卡组名>/<角色>.json`
+- 切换小说 slot 时自动切换对应的声纹卡组
+
+### Changed
+- `get_voice_cards_dir()` 支持 set_name 参数
+- 所有 voice CRUD 命令操作当前激活卡组
+
 ## v0.6.5-fixed - Human Texture Quality Layer Integration (2026-06-03)
 
 ### Added

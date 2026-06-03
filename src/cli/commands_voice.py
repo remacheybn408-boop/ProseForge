@@ -15,6 +15,7 @@ from src.cli.shared import PROJECT_ROOT, SCRIPTS_DIR
 from src.guards.human_texture.voice_diversity_guard import (
     list_voice_cards, get_voice_card, save_voice_card,
     delete_voice_card, run_voice_diversity_check,
+    get_active_voice_card_set, set_active_voice_card_set, list_voice_card_sets,
     VOICE_CARD_FIELDS,
 )
 
@@ -148,8 +149,31 @@ def cmd_voice(args):
             print(f"    [{lvl:5s}] {msg}")
             if sug:
                 print(f"          建议: {sug}")
-        if not result.get("findings"):
-            print("  未发现问题")
+    elif action == "set":
+        set_action = getattr(args, "voice_set_action", "")
+        if set_action == "list":
+            sets = list_voice_card_sets(PROJECT_ROOT)
+            current = get_active_voice_card_set(PROJECT_ROOT)
+            print(f"  声纹卡组 ({len(sets)} 个):")
+            for s in sets:
+                mark = "→ " if s == current else "  "
+                print(f"    {mark}{s}")
+            print(f"\n  当前: {current}")
+            print("  切换: python novel.py voice set use <卡组名>")
+        elif set_action == "use":
+            name = getattr(args, "set_name", "")
+            if not name:
+                print("  用法: python novel.py voice set use <卡组名>")
+                return
+            ok = set_active_voice_card_set(PROJECT_ROOT, name)
+            if ok:
+                print(f"  ✅ 已切换到声纹卡组「{name}」")
+            else:
+                print("  ❌ 切换失败（无法确定当前 slot）")
+        else:
+            print("用法: python novel.py voice set {list|use}")
+            print("  list              — 列出声纹卡组")
+            print("  use <卡组名>       — 切换声纹卡组")
 
     else:
         print("用法: python novel.py voice {list|show|create|delete|check}")
