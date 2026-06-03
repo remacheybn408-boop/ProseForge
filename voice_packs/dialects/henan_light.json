@@ -1,0 +1,38 @@
+{
+  "pack_id": "henan_light",
+  "name": "轻中原话",
+  "type": "dialect",
+  "description": "周不器、搞笑工程型配角适用。",
+  "markers": [
+    "中",
+    "不中",
+    "恁",
+    "咋弄",
+    "怪吓人",
+    "可中"
+  ],
+  "soft_markers": [
+    "得劲",
+    "弄啥"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "周不器",
+    "中原籍配角"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "沈青霜",
+    "反派",
+    "齐岳老祖",
+    "旁白",
+    "严肃剧情"
+  ],
+  "overuse_warning_threshold": 5,
+  "max_density_per_1000_chars": 6,
+  "sample_lines": [
+    "这事儿中不中？",
+    "恁说咋弄？",
+    "可中！"
+  ]
+}

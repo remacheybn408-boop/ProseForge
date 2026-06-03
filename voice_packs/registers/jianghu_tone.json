@@ -1,0 +1,39 @@
+{
+  "pack_id": "jianghu_tone",
+  "name": "江湖腔",
+  "type": "register",
+  "description": "散修、佣兵、底层修士口吻。",
+  "markers": [
+    "老子",
+    "兄弟",
+    "道上",
+    "混",
+    "给个面子",
+    "不客气",
+    "别怪"
+  ],
+  "soft_markers": [
+    "买卖",
+    "交易",
+    "情报"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "散修",
+    "佣兵",
+    "底层修士"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "齐岳老祖",
+    "反派",
+    "沈青霜",
+    "旁白"
+  ],
+  "overuse_warning_threshold": 4,
+  "max_density_per_1000_chars": 5,
+  "sample_lines": [
+    "兄弟给个面子。",
+    "道上混的都懂。"
+  ]
+}

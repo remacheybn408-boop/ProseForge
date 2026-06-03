@@ -1,0 +1,40 @@
+{
+  "pack_id": "classical_tone",
+  "name": "文言腔",
+  "type": "register",
+  "description": "古修、老怪物、上古传承口吻。",
+  "markers": [
+    "本座",
+    "蝼蚁",
+    "尔等",
+    "念尔",
+    "且看",
+    "罢了",
+    "也罢",
+    "未尝不可",
+    "何须"
+  ],
+  "soft_markers": [
+    "千年",
+    "上古",
+    "老夫"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "反派",
+    "古修",
+    "老怪物"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "周不器",
+    "马瘸子",
+    "旁白"
+  ],
+  "overuse_warning_threshold": 4,
+  "max_density_per_1000_chars": 5,
+  "sample_lines": [
+    "本座念尔无知，饶尔一命。",
+    "蝼蚁也敢放肆。"
+  ]
+}

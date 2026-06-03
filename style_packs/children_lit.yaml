@@ -1,0 +1,34 @@
+style_id: children_lit
+name: 儿童文学
+description: 面向儿童读者的创作风格，语言简洁明了，主题积极向上。
+narrative_features:
+  - 主线简单清晰
+  - 因果关系明确易懂
+  - 主题积极向上
+  - 想象力丰富但不过于复杂
+language_features:
+  - 句子简短
+  - 词汇简单
+  - 避免抽象概念
+  - 对话生动有趣
+rhythm_features:
+  - 节奏明快
+  - 章节短小
+allowed_patterns:
+  - 重复结构
+  - 幻想元素
+  - 动物/拟人角色
+  - 冒险旅程
+forbidden_patterns:
+  - 暴力血腥描写
+  - 复杂政治隐喻
+  - 过度黑暗主题
+  - 说教味太重
+agent_focus:
+  - 语言是否适合目标年龄
+  - 主题是否积极
+  - 是否有不适合的内容
+review_questions:
+  - 本章语言是否儿童能理解？
+  - 是否有不适合儿童的黑暗内容？
+  - 趣味性是否足够？

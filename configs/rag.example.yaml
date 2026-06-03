@@ -1,0 +1,58 @@
+# ============================================================
+# RAG 检索增强 — 示例配置
+# ============================================================
+# 复制此文件为 rag.yaml 并根据需要调整
+#   cp configs/rag.example.yaml configs/rag.yaml
+#
+# 说明:
+#   - FTS5 模式: 默认，无须额外依赖，使用 SQLite FTS5 全文检索
+#   - vector 模式: 需要 pip install -r requirements-rag.txt
+#   - hybrid 模式: 融合 FTS5 + Vector 结果，需要向量依赖
+
+# === 数据库路径 ===
+db_path: ./data/novel_memory.db
+
+# === RAG 配置 ===
+rag:
+  # 默认检索模式: fts5 / vector / hybrid
+  # 未安装向量依赖时 vector/hybrid 自动降级为 fts5
+  default_mode: fts5
+
+  # 默认返回结果条数
+  top_k: 8
+
+  # === FTS5 检索配置 ===
+  fts5:
+    # 检索时额外从 chapters 表补全 title/chapter_no
+    enrich_metadata: true
+    # 同时检索 chunk 级别 (更细粒度)
+    search_chunks: true
+    # chunk 结果上限
+    chunk_limit: 20
+
+  # === Vector 检索配置 ===
+  vector:
+    # 向量持久化目录
+    persist_dir: ./data/rag_vector_store
+    # chromadb 集合名称
+    collection_name: novel_chunks
+    # embedding 模型 (sentence-transformers 模型名)
+    embedding_model: "paraphrase-multilingual-MiniLM-L12-v2"
+    # 返回结果数
+    top_k: 16
+
+  # === Hybrid 混合检索配置 ===
+  hybrid:
+    # FTS5 权重 (0-1, 与 vector_weight 之和不必为 1)
+    fts5_weight: 0.5
+    # Vector 权重
+    vector_weight: 0.5
+    # 最终返回条数
+    top_k: 8
+
+# === 报告输出 ===
+report:
+  # 输出目录 (相对于项目根)
+  output_dir: ./reports/rag
+  # 输出格式
+  format: json

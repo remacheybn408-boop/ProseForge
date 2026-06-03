@@ -1,0 +1,97 @@
+# agent/ai_style.yaml — AI风格检测代理
+# 检测AI生成文本的典型特征：模板化表达、过度规整、缺乏个性等
+
+name: "AI风格检测"
+agent_id: ai_style
+description: >
+  检测文本中是否存在大型语言模型（LLM）生成的典型特征，
+  包括但不限于：模板化句式、过度使用连接词、缺乏情感波动、
+  过于工整的段落结构、套话、翻译腔等。
+
+category: style
+risk_level: high
+default_enabled: true
+weight: 1.3
+
+check_rules:
+  - id: AIST-001
+    name: "模板化开头/结尾"
+    description: >
+      检查章节开头和结尾是否使用了AI常见的模板句式：
+      - "随着..."开头
+      - "与此同时..."过度使用
+      - "就这样..."总结式结尾
+      - "然而..."生硬转折
+    severity: error
+    check_type: in_chapter
+
+  - id: AIST-002
+    name: "连接词滥用"
+    description: >
+      检查"然而""但是""因此""所以""不过""此外""与此同时"
+      等逻辑连接词的使用频率。AI倾向于过度使用这些词来制造"逻辑感"。
+      频率超过每500字5次标记为问题。
+    severity: warning
+    check_type: in_chapter
+
+  - id: AIST-003
+    name: "情感扁平化"
+    description: >
+      检查段落之间的情感起伏。AI生成文本往往情感均匀分布，
+      缺少真正的高潮低谷。检查情绪强度曲线是否过于平缓。
+    severity: warning
+    check_type: in_chapter
+
+  - id: AIST-004
+    name: "抽象概括过多"
+    description: >
+      AI倾向于使用抽象概括而非具体描写。
+      标记以下模式：
+      - "充满了...的气息"
+      - "给人一种...的感觉"
+      - "仿佛...一般"
+      这些表达应替换为具体的感官描写。
+    severity: warning
+    check_type: in_chapter
+
+  - id: AIST-005
+    name: "对白模板化"
+    description: >
+      AI生成的对白往往过于礼貌、完整、逻辑清晰，缺少真人对话的
+      碎片感、跳跃感和"未尽之意"。检查对白是否过于"书面化"。
+    severity: warning
+    check_type: per_character
+
+  - id: AIST-006
+    name: "句式单一"
+    description: >
+      检查连续段落是否使用相同的句式结构。
+      AI输出倾向于使用"主语+谓语+宾语"的标准句式，
+      缺少长短句交替、倒装、省略等修辞变化。
+    severity: warning
+    check_type: in_chapter
+
+  - id: AIST-007
+    name: "第X章标记"
+    description: >
+      检查正文中是否出现"第X章"作为章节标题的正文部分。
+      AI经常在生成的章节开头加上编号。
+    severity: error
+    check_type: in_chapter
+
+  - id: AIST-008
+    name: "总结性段落"
+    description: >
+      检查章节结尾是否存在AI偏好的"总结升华"段落：
+      "这一天的经历让XX明白了一个道理..."
+      "XX知道，这只是开始..."
+      网文读者反感说教式总结。
+    severity: warning
+    check_type: in_chapter
+
+filters:
+  # 人类作者也会使用的正常表达
+  ignore_normal:
+    - "片刻后"
+    - "不知不觉"
+    - "突然"

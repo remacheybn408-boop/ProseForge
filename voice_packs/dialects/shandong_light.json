@@ -1,0 +1,44 @@
+{
+  "pack_id": "shandong_light",
+  "name": "轻山东话",
+  "type": "dialect",
+  "description": "齐岳老祖、齐鲁古修适用。轻量声纹10-20%，不可搞笑化。",
+  "markers": [
+    "俺",
+    "甭",
+    "你这娃",
+    "不孬",
+    "怪得很",
+    "实诚",
+    "得劲",
+    "咋",
+    "咱"
+  ],
+  "soft_markers": [
+    "中",
+    "不中",
+    "可好",
+    "恁说",
+    "弄啥"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "齐岳老祖",
+    "齐鲁古修",
+    "山东籍配角"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "沈青霜",
+    "反派",
+    "旁白",
+    "严肃剧情"
+  ],
+  "overuse_warning_threshold": 6,
+  "max_density_per_1000_chars": 8,
+  "sample_lines": [
+    "俺说不行就是不行。",
+    "甭跟俺讲这些大道理。",
+    "你这娃倒是不孬。"
+  ]
+}

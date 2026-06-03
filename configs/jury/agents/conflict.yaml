@@ -1,0 +1,30 @@
+name: 冲突张力审查
+agent_id: conflict
+description: 检查章节的冲突设计和张力维持。评估冲突是否真实有力，是否有足够的代价和后果。
+category: plot
+risk_level: high
+default_enabled: true
+weight: 1.0
+check_rules:
+- id: CNF-001
+  name: 冲突真实性
+  description: 检查冲突是否真实有力。'伪冲突'（轻易解决/无代价/无后果）应标记为问题。
+  severity: error
+  check_type: single_chapter
+- id: CNF-002
+  name: 冲突层次
+  description: 检查是否有多层次冲突（外部冲突+内部冲突+人际关系冲突）。单一维度冲突的章节张力不足。
+  severity: warning
+  check_type: single_chapter
+- id: CNF-003
+  name: 冲突升级
+  description: 检查冲突是否有合理的升级路径。重复同级别冲突会导致读者疲劳。
+  severity: warning
+  check_type: cross_chapter
+- id: CNF-004
+  name: 代价可视化
+  description: 检查冲突的代价是否有具体的、可见的表现。仅仅是叙述'他付出了代价'是不够的。
+  severity: warning
+  check_type: single_chapter
+filters:
+  min_chapter_words: 500

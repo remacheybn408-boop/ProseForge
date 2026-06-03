@@ -1,0 +1,26 @@
+{
+  "pack_id": "banned_memes",
+  "name": "禁用网络梗",
+  "type": "meme",
+  "description": "全局禁用。任何角色任何场景出现即WARNING。",
+  "markers": [],
+  "soft_markers": [],
+  "danger_markers": [
+    "尊嘟假嘟",
+    "绝绝子",
+    "芭比Q",
+    "家人们谁懂啊",
+    "泰裤辣",
+    "yyds",
+    "666",
+    "emo了",
+    "破防了"
+  ],
+  "allowed_contexts": [],
+  "forbidden_contexts": [
+    "*"
+  ],
+  "overuse_warning_threshold": 0,
+  "max_density_per_1000_chars": 0,
+  "sample_lines": []
+}

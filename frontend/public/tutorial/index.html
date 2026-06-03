@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新手教程 - Novel Pipeline</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --card: #161b22;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --accent: #58a6ff;
+  --green: #3fb950;
+  --yellow: #d2991d;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+h1 { font-size: 28px; color: #f0f6fc; margin-bottom: 8px; }
+h2 { font-size: 20px; color: var(--accent); margin: 32px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+h3 { font-size: 16px; color: #f0f6fc; margin: 20px 0 8px; }
+p { margin: 8px 0; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+}
+.step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 16px 0;
+}
+.step-num {
+  background: var(--accent);
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.highlight { color: var(--green); font-weight: bold; }
+.warn { color: var(--yellow); }
+code {
+  background: #21262d;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #f0f6fc;
+}
+pre {
+  background: #21262d;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 8px 0;
+}
+a { color: var(--accent); }
+.back-link {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: var(--accent);
+  font-size: 14px;
+}
+ul { padding-left: 20px; }
+li { margin: 4px 0; }
+.tip { border-left: 3px solid var(--yellow); padding: 12px 16px; margin: 12px 0; background: #1a1a00; border-radius: 0 8px 8px 0; }
+@media (max-width:600px) {
+  body { padding: 20px 12px; }
+  h1 { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<a href="/" class="back-link">← 回到写作工作台</a>
+
+<h1>新手教程</h1>
+<p>写给从来没用过命令行的小说作者。</p>
+
+<h2>这个工具是什么？</h2>
+<div class="card">
+  <p>Novel Pipeline 是一个<strong>帮你记住前面写了什么</strong>的写作助手。</p>
+  <p>它不会自动写小说。它的工作方式是：</p>
+  <ul>
+    <li>你写第5章时，它帮你回忆第1-4章的伏笔、人物状态、待办事项</li>
+    <li>写完一章，它从21个角度帮你检查：有没有AI腔？人物忘了什么？设定自相矛盾了？</li>
+    <li>所有章节都存在数据库里，随时可以查</li>
+  </ul>
+</div>
+
+<h2>三步开始写作</h2>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div>
+    <h3>点击写作页</h3>
+    <p>左边菜单点「<span class="highlight">写作</span>」进入写作页。</p>
+    <p>输入章节号（默认是1），点击「<span class="highlight">生成任务卡</span>」。</p>
+    <p>任务卡会告诉你：这章要从哪里承接、需要推进哪些伏笔、禁止写什么。</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div>
+    <h3>开始写作</h3>
+    <p>在编辑器里写你的章节。右上角会实时显示字数。</p>
+    <p>可以随时点击「上传 TXT 文件」把本地写好的 txt 导进来。</p>
+    <p>写完后点「<span class="highlight">提交入库</span>」。</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div>
+    <h3>查看结果</h3>
+    <p>提交后系统会自动跑21道质量检查，然后入库。</p>
+    <p>去「<span class="highlight">报告</span>」页看检查结果。</p>
+    <p>绿色的 PASS = 通过，黄色的 WARN = 有建议，红色的 FAIL = 需要修。</p>
+  </div>
+</div>
+
+<h2>常见问题</h2>
+
+<div class="card">
+  <h3>Q：我写了一半能保存吗？</h3>
+  <p>A：目前不支持自动保存。建议在本地写好了再上传，或者写完全章一次性提交。下一版会加草稿保存功能。</p>
+
+  <h3 style="margin-top:20px">Q：字数不够怎么办？</h3>
+  <p>A：字数门禁是软性的，不够也能入库，但会在报告中标注警告。</p>
+
+  <h3 style="margin-top:20px">Q：可以同时写多部小说吗？</h3>
+  <p>A：可以。去「<span class="highlight">数据</span>」页新建档案，每个档案存一部小说。切换档案即可切换小说。</p>
+
+  <h3 style="margin-top:20px">Q：大纲怎么加？</h3>
+  <p>A：去「<span class="highlight">大纲</span>」页，点击添加大纲，填上你的大纲 txt 文件路径即可。系统会自动做相似度检测，防止重复添加。</p>
+
+  <h3 style="margin-top:20px">Q：审稿是什么意思？</h3>
+  <p>A：8个AI Agent 从对话、场景、人物、追读力等角度给你的章节打分。轻量模式快速扫描，完整模式深度审查。</p>
+</div>
+
+<h2>这些功能你不关心也没事</h2>
+<div class="tip">
+  <p>你只需要「写作」和「报告」两个页面就能正常写小说。</p>
+  <p>其他页面（审稿、大纲管理、数据档案）是进阶功能，不用也不会影响写作。</p>
+</div>
+
+<p style="text-align:center;margin-top:40px;color:#484f58;font-size:13px">Novel Pipeline v0.6.5 · 有问题随时问</p>
+
+</body>
+</html>

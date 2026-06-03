@@ -1,0 +1,63 @@
+# genre_texture_presets.yaml — 按题材调阈值 v0.6.6
+# 不同题材节奏不同，不能一刀切。
+# 接入: texture check 时传入 --genre 参数
+
+default:
+  water_density_min: 60
+  conflict_pressure_min: 60
+  life_texture_min: 60
+  voice_diversity_min: 60
+  cliche_sentence_max: 8
+  emotion_summary_max: 10
+
+xianxia:
+  water_density_min: 65
+  conflict_pressure_min: 70
+  goal_progress_min: 70
+  life_texture_min: 55
+  cliche_sentence_max: 7
+  emotion_summary_max: 8
+
+mystery:
+  water_density_min: 70
+  clue_shift_min: 70
+  conflict_pressure_min: 75
+  repeated_emotion_max: 5
+  cliche_sentence_max: 5
+  emotion_summary_max: 6
+
+suspense:
+  water_density_min: 70
+  conflict_pressure_min: 75
+  cliche_sentence_max: 5
+  emotion_summary_max: 6
+
+romance:
+  water_density_min: 55
+  relationship_shift_min: 70
+  conflict_pressure_min: 55
+  life_texture_min: 70
+  cliche_sentence_max: 8
+  emotion_summary_max: 10
+
+urban:
+  water_density_min: 60
+  life_texture_min: 70
+  relationship_shift_min: 60
+  conflict_pressure_min: 60
+  cliche_sentence_max: 8
+  emotion_summary_max: 10
+
+horror:
+  water_density_min: 65
+  atmosphere_progress_min: 70
+  conflict_pressure_min: 70
+  repeated_scare_phrase_max: 5
+  cliche_sentence_max: 6
+
+history:
+  water_density_min: 60
+  concrete_anchor_min: 75
+  exposition_overload_max: 8
+  conflict_pressure_min: 65
+  cliche_sentence_max: 7
