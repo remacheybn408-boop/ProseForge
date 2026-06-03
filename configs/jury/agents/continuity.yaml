@@ -1,0 +1,77 @@
+# agent/continuity.yaml — 情节连续性审查代理
+# 检查章节之间的逻辑连贯性，确保没有断裂、跳跃或矛盾
+
+name: "连续性审查"
+agent_id: continuity
+description: >
+  检查当前章节与前面章节之间的事件连续性、时间线一致性、角色状态连贯性。
+  防止出现"上一章重伤、这一章生龙活虎"之类的断裂。
+
+category: continuity
+risk_level: high                 # 连续性是基础，出问题影响很大
+default_enabled: true            # 默认启用
+weight: 1.2                      # 在总分中的权重（高于标准1.0）
+
+check_rules:
+  - id: CONT-001
+    name: "角色状态连贯"
+    description: >
+      检查角色在本章的状态（位置、伤势、情绪、修为等）是否与上一章结尾一致。
+      如果发生了状态变化，需要有明确的过渡说明。
+    severity: error
+    check_type: cross_chapter     # 跨章节对比
+
+  - id: CONT-002
+    name: "时间线一致性"
+    description: >
+      检查事件发生的时间顺序是否合理。同一时间段内不能出现超自然的时间压缩。
+      跨章时间跳跃需要明确标注（"三日后""半月后"等）。
+    severity: error
+    check_type: cross_chapter
+
+  - id: CONT-003
+    name: "物品/道具连贯"
+    description: >
+      角色持有的物品、法宝、信件等在章节间保持一致。
+      除非有明确的获得/丢失/使用描写，否则不能凭空出现或消失。
+    severity: warning
+    check_type: cross_chapter
+
+  - id: CONT-004
+    name: "信息因果链"
+    description: >
+      角色知道的信息必须有来源。不能出现"角色莫名知道上一章没被告知的事"。
+      信息传递链（A告诉B，B告诉C）需要完整。
+    severity: error
+    check_type: in_chapter
+
+  - id: CONT-005
+    name: "场景切换合理"
+    description: >
+      场景切换需要有过渡语句。不能从"室内对话"直接跳到"野外战斗"而没有中间叙述。
+      检查场景标签是否连贯。
+    severity: warning
+    check_type: in_chapter
+
+  - id: CONT-006
+    name: "人际关系一致性"
+    description: >
+      角色之间的关系状态（友好/敌对/陌生）在无事件驱动的情况下不应改变。
+      检查关系图谱是否与上一章一致。
+    severity: warning
+    check_type: cross_chapter
+
+  - id: CONT-007
+    name: "伏笔回收追踪"
+    description: >
+      如果本章涉及之前埋下的伏笔的回收，检查回收方式是否合理、是否有遗漏的细节。
+    severity: info
+    check_type: cross_chapter
+
+filters:
+  # 忽略常见的叙事性时间模糊表述
+  ignore_patterns:
+    - "片刻之后"
+    - "不久"
+    - "过了一会儿"
+    - "转眼间"

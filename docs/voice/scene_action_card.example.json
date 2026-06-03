@@ -1,0 +1,38 @@
+{
+  "scene_id": "chapter_005_scene_02",
+  "scene_type": "conflict_interrogation",
+  "characters_present": ["周砚", "沈师姐"],
+  "voice_profiles_loaded": true,
+  "action_card": {
+    "must_include": {
+      "actions": ["沈师姐用剑尖在地面划了一道线", "周砚没有立刻回答", "周砚走到测灵石前才开口"],
+      "pauses": ["沈师姐问完后有至少两次呼吸的沉默", "周砚在说话前摩挲玉牌三秒"],
+      "misunderstandings": ["沈师姐以为周砚在藏拙"],
+      "costs": ["周砚测试完后左耳耳鸣"]
+    },
+    "dialogue_beats": {
+      "action_beat_min": 2,
+      "pause_beat_min": 1,
+      "misunderstanding_present": true,
+      "cost_present": true
+    },
+    "character_voice_checklist": [
+      "周砚: 句式中等偏短，先用动作再用语言",
+      "沈师姐: 问句为主，不解释，用测试代替质问",
+      "沈师姐: 禁用 '好像/也许/可能'"
+    ]
+  },
+  "hook_requirement": {
+    "hook_type": "object_or_person",
+    "anchor_examples": [
+      "测灵铜钱裂了一条缝",
+      "沈师姐临走前多看了他一眼",
+      "矿壁上的纹路和周砚预判的完全一致"
+    ],
+    "forbidden_hooks": [
+      "真正的危机才刚刚开始",
+      "他不知道等待他的是什么",
+      "命运的齿轮开始转动"
+    ]
+  }
+}

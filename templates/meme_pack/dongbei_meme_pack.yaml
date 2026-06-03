@@ -1,0 +1,261 @@
+# dongbei_meme_pack.yaml — 东北口音梗包模板
+# novel-pipeline-write-engine v0.5.0
+# 东北方言/口音梗，适用于接地气角色或轻松场景
+
+pack_id: dongbei_meme_pack
+name: 东北口音梗包
+display_name: 东北味儿
+version: "0.5.0"
+type: meme_pack
+description: >
+  东北方言/口音风格梗包。让角色说话带东北味儿，
+  适用于接地气角色（好兄弟/商人/工匠长老）的轻松日常场景。
+  严禁在严肃场景（战斗/牺牲/审判/告白）中使用。
+
+# === 梗分类 ===
+category: cultural
+subcategory: dialect_humor
+
+# === 适用角色 ===
+allowed_roles:
+  - companion
+  - merchant
+  - elder
+forbidden_roles:
+  - protagonist
+  - villain
+  - narrator
+
+# === 触发条件 ===
+trigger:
+  scenes:
+    - 日常闲聊
+    - 讨价还价
+    - 喝酒吃饭
+    - 师徒闲话
+  required_context:
+    - 轻松氛围
+    - 非战斗场景
+  forbidden_contexts:
+    - 生死离别
+    - 重大牺牲
+    - 角色死亡
+    - 高压审判
+    - 告白/情感高潮
+    - 战斗进行中
+    - 突破境界
+
+# === 严重度限制 ===
+severity_limit:
+  max_scene_seriousness: low
+  must_not_undermine_tension: true
+
+# === 频率控制 ===
+frequency:
+  max_per_chapter: 5
+  max_per_1000_chars: 1
+  cooldown_chapters: 0
+  cooldown_paragraphs: 3
+  overuse_warning_threshold: 4
+
+# === 梗列表 ===
+memes:
+  - meme_id: dongbei_zheng
+    text: "整"
+    type: wordplay
+    tone: light
+    severity: low
+    context_required:
+      - 日常动作描述
+    context_forbidden:
+      - 正式场合
+    frequency: high
+    variants:
+      - "整一个"
+      - "整挺好"
+      - "咋整"
+      - "整不明白"
+    note: "东北万能动词。可替代'做/弄/搞/办'等动词。"
+
+  - meme_id: dongbei_lao
+    text: "老～了"
+    type: situational
+    tone: warm
+    severity: low
+    context_required:
+      - 日常对话
+    context_forbidden:
+      - 正式场合
+      - 长老训话
+    frequency: medium
+    variants:
+      - "老好了"
+      - "老厉害了"
+      - "老难了"
+    note: "程度副词，相当于'非常'。仅在口语对话中使用。"
+
+  - meme_id: dongbei_aiya
+    text: "哎呀妈呀"
+    type: situational
+    tone: light
+    severity: low
+    context_required:
+      - 惊讶/感叹场景
+    context_forbidden:
+      - 严肃场景
+    frequency: low
+    variants:
+      - "哎呀"
+      - "妈呀"
+    note: "表示惊讶的感叹词。限制使用频率以避免重复。"
+
+  - meme_id: dongbei_bie
+    text: "别（四声）"
+    type: wordplay
+    tone: light
+    severity: low
+    context_required:
+      - 劝阻/否定
+    context_forbidden: []
+    frequency: medium
+    variants:
+      - "别介"
+      - "别整那没用的"
+    note: "东北特色的'别'字发音。劝阻时使用。"
+
+  - meme_id: dongbei_ge
+    text: "搁"
+    type: wordplay
+    tone: light
+    severity: low
+    context_required:
+      - 位置描述
+    context_forbidden:
+      - 正式叙述
+    frequency: medium
+    variants:
+      - "搁哪儿"
+      - "搁这儿"
+      - "搁那"
+    note: "'在'的东北口语变体。仅在口语对话中使用。"
+
+  - meme_id: dongbei_sha
+    text: "啥"
+    type: wordplay
+    tone: light
+    severity: low
+    context_required:
+      - 疑问/反问
+    context_forbidden: []
+    frequency: high
+    variants:
+      - "啥玩意儿"
+      - "干啥"
+      - "图啥"
+    note: "'什么'的东北口语变体。"
+
+  - meme_id: dongbei_dele
+    text: "得了"
+    type: situational
+    tone: light
+    severity: low
+    context_required:
+      - 妥协/结束话题
+    context_forbidden:
+      - 正式谈判
+    frequency: medium
+    variants:
+      - "得了吧"
+      - "得了得了"
+      - "拉倒吧"
+    note: "表示算了/到此为止。"
+
+  - meme_id: dongbei_heda
+    text: "可劲儿"
+    type: wordplay
+    tone: warm
+    severity: low
+    context_required:
+      - 鼓励/放任
+    context_forbidden: []
+    frequency: low
+    variants:
+      - "可劲儿造"
+      - "可劲儿吃"
+    note: "表示尽情/放开。"
+
+  - meme_id: dongbei_guniang
+    text: "姑娘/小伙"
+    type: situational
+    tone: warm
+    severity: low
+    context_required:
+      - 长辈对晚辈说话
+    context_forbidden:
+      - 正式称呼
+    frequency: medium
+    variants:
+      - "这姑娘"
+      - "那小伙儿"
+    note: "长辈对晚辈的亲切称呼。"
+
+  - meme_id: dongbei_hushuo
+    text: "扯犊子"
+    type: situational
+    tone: light
+    severity: low
+    context_required:
+      - 反驳/不相信
+    context_forbidden:
+      - 严肃对话
+    frequency: low
+    variants:
+      - "瞎扯"
+      - "净扯"
+    note: "表示对方在胡说。使用需谨慎，避免粗俗。"
+
+# === 禁用术语 ===
+banned_terms:
+  - '你瞅啥（已被过度使用，沦为刻板印象）'
+  - '瞅你咋地（同上）'
+
+# === 滥用风险 ===
+misuse_risk:
+  - 过度使用会让角色变成小品演员
+  - 严肃场景中出现会彻底破坏氛围
+  - 连续使用多个东北梗会让对话像相声
+  - 注意与修仙/古代设定兼容性
+
+# === 使用策略 ===
+usage_policy:
+  default_level: light
+  can_override: true
+  require_character_binding: true
+  notes: >
+    东北梗在修仙/古代背景中使用需谨慎。
+    建议：1）仅在口语对话中使用；2）限制在轻松场景；3）配合角色设定（如"来自北方苦寒之地的散修"）；
+    4）避免连续使用，穿插正常白话；5）作为角色特征点缀，不作主要语言风格。
+
+# === 示例 ===
+examples:
+  good:
+    - context: "好兄弟角色在酒馆闲聊"
+      text: "\"这事儿整挺好！来来来，再喝一个！\""
+      reason: "轻松氛围、口语对话、接地气角色，使用自然"
+
+    - context: "商人角色讨价还价"
+      text: "\"道友，你这东西老贵了，咱能不能实在点儿？\""
+      reason: "讨价还价场景，使用适度，不破坏氛围"
+
+    - context: "工匠长老教徒弟"
+      text: "\"搁这儿看着，这玩意儿不是你这么整的。\""
+      reason: "师徒日常指导，场景轻松，带亲切感"
+
+  bad:
+    - context: "主角渡劫失败重伤后"
+      text: "\"哎呀妈呀，这雷老狠了，差点给我整没了。\""
+      reason: "严肃场景中使用东北梗，破坏紧张感和角色形象"
+
+    - context: "宗门大典上掌门讲话"
+      text: "\"各位道友，咱宗门老厉害了！\""
+      reason: "正式场合使用东北口音，严重违和"

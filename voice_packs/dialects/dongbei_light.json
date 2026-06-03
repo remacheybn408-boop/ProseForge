@@ -1,0 +1,38 @@
+{
+  "pack_id": "dongbei_light",
+  "name": "轻东北话",
+  "type": "dialect",
+  "description": "粗豪北地修士、爽朗配角适用。",
+  "markers": [
+    "咋整",
+    "嘎哈",
+    "老些",
+    "贼",
+    "整不明白",
+    "别扯",
+    "这旮沓",
+    "那旮沓"
+  ],
+  "soft_markers": [
+    "好使",
+    "得劲"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "北地修士",
+    "粗豪配角"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "齐岳老祖",
+    "反派",
+    "旁白"
+  ],
+  "overuse_warning_threshold": 5,
+  "max_density_per_1000_chars": 6,
+  "sample_lines": [
+    "这事儿咋整？",
+    "别扯那些没用的。",
+    "老些人搁这旮沓呢。"
+  ]
+}

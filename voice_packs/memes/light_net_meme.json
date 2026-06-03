@@ -1,0 +1,35 @@
+{
+  "pack_id": "light_net_meme",
+  "name": "轻网络梗",
+  "type": "meme",
+  "description": "周不器等搞笑配角低频使用。每章≤1处。",
+  "markers": [
+    "不对劲",
+    "这波",
+    "稳不稳",
+    "离谱",
+    "绷不住",
+    "别整这死出",
+    "我先不冲"
+  ],
+  "soft_markers": [],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "周不器",
+    "搞笑配角"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "沈青霜",
+    "反派",
+    "齐岳老祖",
+    "旁白",
+    "严肃剧情"
+  ],
+  "overuse_warning_threshold": 1,
+  "max_density_per_1000_chars": 1,
+  "sample_lines": [
+    "这波稳不稳？",
+    "离谱他妈给离谱开门。"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "pack_id": "shaanxi_light",
+  "name": "轻关中话",
+  "type": "dialect",
+  "description": "执事、戒律堂硬派官腔适用。",
+  "markers": [
+    "咱",
+    "莫要",
+    "娃娃",
+    "得是",
+    "咋个",
+    "额",
+    "不敢胡来"
+  ],
+  "soft_markers": [
+    "实诚",
+    "硬气",
+    "规矩"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "执事",
+    "戒律堂执事",
+    "关中籍配角"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "反派",
+    "旁白"
+  ],
+  "overuse_warning_threshold": 5,
+  "max_density_per_1000_chars": 6,
+  "sample_lines": [
+    "咱宗门不讲这个。",
+    "莫要胡来。",
+    "你这娃娃懂啥？"
+  ]
+}

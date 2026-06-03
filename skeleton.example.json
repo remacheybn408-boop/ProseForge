@@ -1,0 +1,26 @@
+{
+  "_comment": "最小示例骨架（3 章）— 用于快速测试 import_outline_skeleton.py",
+  "_full_demo": "完整 25 章 demo 见 examples/demo_novel/outline_skeleton.json",
+  "novel_outline": {
+    "slug": "demo_novel",
+    "title": "示例小说",
+    "genre": "玄幻",
+    "total_chapters_target": 25
+  },
+  "volume_plans": [
+    {
+      "volume_no": 1,
+      "planned_title": "初入宗门",
+      "volume_goal": "主角从凡人变成杂役弟子",
+      "opening_state": "主角是山村少年",
+      "ending_target": "成为杂役弟子",
+      "must_complete": "入门测试",
+      "suggested_chapters": 25
+    }
+  ],
+  "chapter_plans": [
+    {"volume_no":1,"chapter_no":1,"planned_title":"山村的清晨","chapter_goal":"建立主角出身","conflict_point":"与父亲的分歧","ending_hook_direction":"仙人路过——悬念"},
+    {"volume_no":1,"chapter_no":2,"planned_title":"入门测试","chapter_goal":"接触修炼世界","conflict_point":"淘汰压力","ending_hook_direction":"意外通过——转折"},
+    {"volume_no":1,"chapter_no":3,"planned_title":"离开家乡","chapter_goal":"告别家人","conflict_point":"母亲不舍","ending_hook_direction":"马车驶向未知——期待"}
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "pack_id": "sichuan_light",
+  "name": "轻川渝话",
+  "type": "dialect",
+  "description": "宋炉公、丹塔老匠人适用。",
+  "markers": [
+    "莫慌",
+    "晓得不",
+    "你娃儿",
+    "要得",
+    "安逸",
+    "啥子",
+    "啷个"
+  ],
+  "soft_markers": [
+    "巴适",
+    "火候"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "宋炉公",
+    "丹塔匠人",
+    "川渝籍配角"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "反派",
+    "旁白"
+  ],
+  "overuse_warning_threshold": 5,
+  "max_density_per_1000_chars": 6,
+  "sample_lines": [
+    "莫慌，火候还不到。",
+    "你娃儿晓得不？",
+    "要得，就这么办。"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "pack_id": "banned_english",
+  "name": "禁用日常英语",
+  "type": "english",
+  "description": "全局禁止日常英语。技术讨论除外。",
+  "markers": [],
+  "soft_markers": [],
+  "danger_markers": [
+    "OK",
+    "bro",
+    "sorry",
+    "hello",
+    "bye",
+    "nice",
+    "cool"
+  ],
+  "allowed_contexts": [],
+  "forbidden_contexts": [
+    "*"
+  ],
+  "overuse_warning_threshold": 0,
+  "max_density_per_1000_chars": 0,
+  "sample_lines": []
+}

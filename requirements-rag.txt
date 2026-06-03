@@ -1,0 +1,1 @@
+移到了 pyproject.toml [project.optional-dependencies] rag，安装：pip install .[rag]

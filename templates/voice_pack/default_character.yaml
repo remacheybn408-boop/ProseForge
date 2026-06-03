@@ -1,0 +1,151 @@
+# default_character.yaml — 通用角色声纹模板
+# novel-pipeline-write-engine v0.5.0
+# 用于创建新角色声纹时的参考模板，包含所有可选字段
+
+pack_id: default_character
+name: 通用角色声纹模板
+display_name: 未指定角色
+version: "0.5.0"
+type: character_voice
+
+# === 角色基础信息 ===
+role_type: protagonist               # protagonist | companion | rival | elder | villain | merchant | narrator | female_observer
+subtype: ""                          # 子类型：science_monk | martial_direct | cold_contract | ...
+description: >
+  通用角色声纹模板。包含所有可用字段及默认值。
+  新建角色声纹时复制此文件并修改。
+
+# === 语气设定 ===
+tone:
+  base: 冷静、自然                  # 基础语气描述
+  emotion_range:                     # 情绪幅度（0.0-1.0，越高越强烈）
+    calm: 0.7                       # 冷静
+    angry: 0.4                      # 愤怒
+    sad: 0.3                        # 悲伤
+    joy: 0.5                        # 喜悦
+    fear: 0.3                       # 恐惧
+    ironic: 0.3                     # 讽刺/冷幽默
+    warm: 0.5                       # 温暖/亲切
+    cold: 0.3                       # 冷漠/疏离
+  forbidden_tones:                   # 禁止出现的语气
+    - 过度热血中二
+    - 无脑咆哮
+
+# === 句式风格 ===
+sentence_style:
+  average_length: medium             # short | medium | long | mixed
+  rhythm: 自然流畅                   # 句式节奏描述
+  preferred_patterns:                # 偏好的句式模板
+    - "先观察，再判断。"
+  forbidden_patterns:                # 禁止的句式模板
+    - "嘴角微微上扬"
+    - "眼眸中闪过一丝"
+
+# === 词汇设定 ===
+vocabulary:
+  preferred:                         # 偏好词汇
+    - 具体物件名词
+  forbidden:                         # 禁用词汇
+    - 本座
+    - 桀桀
+    - 天命
+  favor_degree: medium               # 偏好强度：low | medium | high
+
+# === 对话规则 ===
+dialogue_rules:
+  avoid:                             # 避免的对话模式
+    - 无意义寒暄
+    - 长篇说教
+    - 角色替作者解释设定
+  prefer:                            # 倾向的对话模式
+    - 对话推进动作
+    - 对话透露人物关系
+    - 对话中暗藏信息
+  max_lines_per_turn: 5              # 单轮最大对话行数
+  must_reveal_character: true        # 每段对话必须体现角色特征
+
+# === 动作耦合 ===
+action_coupling:
+  must_pair_dialogue_with_action: true  # 对话必须伴随动作
+  action_types:                      # 常用动作类型
+    - 观察
+    - 走动
+    - 操作物件
+  min_actions_per_dialogue: 1        # 每段对话最少动作数
+
+# === 叙述级别 ===
+narration_levels:
+  dialect_level: 0                   # 方言级别 0-3（0=无方言）
+  meme_level: 0                      # 梗密度 0-3（0=禁用梗）
+  english_level: 0                   # 英文混用 0-2（0=不使用）
+  wenyan_level: 1                    # 文言级别 0-3（0=纯白话）
+
+# === 梗使用策略 ===
+meme_policy:
+  allowed_level: light               # none | light | medium | heavy
+  forbidden_scene:                   # 以下场景禁止使用梗
+    - 生死离别
+    - 重大牺牲
+    - 角色死亡
+    - 高压审判
+    - 告白/情感高潮
+  max_per_chapter: 3                 # 每章最大梗使用次数
+  cooldown_paragraphs: 5             # 两次梗之间的最少段落间隔
+
+# === 语体包绑定 ===
+register_bindings:
+  primary: baihua                    # 主要语体
+  secondary: []                      # 辅助语体列表
+  forbidden_registers:               # 禁止使用的语体
+    - 网络直播腔
+
+# === 方言包绑定 ===
+dialect_bindings:
+  primary: none                      # 主要方言包 ID
+  secondary: []                      # 辅助方言包
+
+# === 梗包绑定 ===
+meme_bindings:
+  allowed_packs: []                  # 允许的梗包 ID 列表
+  forbidden_packs:                   # 禁止的梗包 ID 列表
+    - forbidden_memes
+  preferred_packs: []                # 倾向的梗包 ID 列表
+
+# === 使用策略 ===
+usage_policy:
+  max_signature_lines_per_chapter: 3  # 每章最大标志性台词数
+  avoid_repetition: true             # 避免重复使用相同的句式/词汇
+  must_remain_readable: true         # 必须保持可读性
+  variation_frequency: medium        # 句式变化频率：low | medium | high
+
+# === 标志性特征 ===
+signature:
+  catchphrases: []                   # 标志性口头禅
+  gestures: []                       # 标志性动作/习惯
+  thinking_patterns: []              # 标志性思维模式
+  taboos: []                         # 该角色绝不会做的事
+
+# === 示例 ===
+samples:
+  good_lines:                        # 好的示例对话
+    - "先别急，把数据过一遍再说。"
+    - "我观察了一下，这扇门的机关不在锁上。"
+  bad_lines:                         # 坏的示例（应避免）
+    - "哈哈哈，就这？"
+    - "本座今日便要你好看！"
+  context_examples: []               # 特定场景下的示例
+
+# === 适用场景 ===
+applicability:
+  suitable_genres: []                # 适合的小说类型
+  suitable_scenes: []                # 适合的场景类型
+  unsuitable_scenes:                 # 不适合的场景类型
+    - 纯搞笑场景
+
+# === 元数据 ===
+metadata:
+  author: novel-pipeline-write-engine
+  created: "2024-01-01"
+  updated: "2024-01-01"
+  tags: []
+  notes: 通用模板，实际使用时请根据角色特点修改。

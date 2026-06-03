@@ -1,0 +1,29 @@
+{
+  "pack_id": "forbidden_casual_english",
+  "name": "禁用日常英语",
+  "type": "english",
+  "description": "禁止日常口语英语（OK/bro/sorry/hello等），修仙语境中严重出戏。技术讨论除外。",
+  "suitable_archetypes": [],
+  "forbidden_archetypes": ["*"],
+  "allowed_markers": [],
+  "soft_markers": [],
+  "danger_markers": [
+    "OK",
+    "bro",
+    "sorry",
+    "hello",
+    "bye",
+    "nice",
+    "cool",
+    "wow",
+    "lol",
+    "omg"
+  ],
+  "banned_markers": [],
+  "signature_phrases": [],
+  "sample_lines": [],
+  "allowed_contexts": [],
+  "forbidden_contexts": ["*"],
+  "overuse_warning_threshold": 0,
+  "max_density_per_1000_chars": 0
+}

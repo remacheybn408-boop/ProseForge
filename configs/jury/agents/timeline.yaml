@@ -1,0 +1,30 @@
+name: 时间线审查
+agent_id: timeline
+description: 检查章节内事件发生的时间顺序是否合理，跨章时间跳跃是否标注清晰，同日事件的时间密度是否合理。
+category: continuity
+risk_level: high
+default_enabled: true
+weight: 1.1
+check_rules:
+- id: TL-001
+  name: 时间标注检查
+  description: 检查跨章时间跳跃是否有明确标注（'三日后''半月后'等），无标注的时间跳跃可能导致读者困惑。
+  severity: warning
+  check_type: cross_chapter
+- id: TL-002
+  name: 同日事件密度
+  description: 检查同一天内发生的事件数量是否合理。日发生超过5个独立事件时应检查是否有人为堆砌。
+  severity: warning
+  check_type: single_chapter
+- id: TL-003
+  name: 时间倒序检查
+  description: 检查是否存在时间倒序叙述未被明确标注的情况。倒序/插叙需有明确的时间标记（'三年前''那日'等）。
+  severity: error
+  check_type: cross_chapter
+- id: TL-004
+  name: 四季/天气连贯
+  description: 检查季节、天气描写与时间标注是否一致。'盛夏'后突然'寒风刺骨'需有合理过渡。
+  severity: warning
+  check_type: cross_chapter
+filters:
+  min_chapter_words: 500

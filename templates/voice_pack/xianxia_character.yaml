@@ -1,0 +1,389 @@
+# xianxia_character.yaml — 修仙玄幻角色声纹模板
+# novel-pipeline-write-engine v0.5.0
+# 包含修仙玄幻中四种典型角色类型的声纹参考模板
+
+pack_id: xianxia_character
+name: 修仙玄幻角色声纹包
+version: "0.5.0"
+type: character_voice_bundle
+description: >
+  修仙玄幻中四种核心角色类型的声纹参考模板。
+  包含：主角、宗门长老、反派、市井商人。
+
+# === 主角（修仙废物逆袭型）===
+protagonist:
+  pack_id: xianxia_protagonist
+  role_type: protagonist
+  display_name: 修仙主角（逆袭型）
+  description: >
+    从废材/底层起步的修仙主角。起初低调隐忍，随实力增长逐渐展现锋芒。
+    修炼体系是核心驱动力，每一步成长都有代价。
+
+  tone:
+    base: 冷静中带有锋芒，随境界提升而变
+    emotion_range:
+      calm: 0.6
+      angry: 0.4
+      sad: 0.3
+      joy: 0.3
+      fear: 0.2
+      ironic: 0.4
+      warm: 0.5
+      cold: 0.3
+    forbidden_tones:
+      - 圣母式说教
+      - 无脑热血口号
+      - 中二病宣言
+
+  sentence_style:
+    average_length: mixed
+    rhythm: 观察→判断→行动
+    preferred_patterns:
+      - "既然如此，那便试试。"
+      - "这条路的尽头是什么，只有走过才知道。"
+      - "修为不够，那便再修。"
+    forbidden_patterns:
+      - "嘴角微微上扬"
+      - "恐怖如斯"
+      - "此子不可留"
+      - "倒吸一口凉气"
+
+  vocabulary:
+    preferred:
+      - 灵气
+      - 经脉
+      - 丹田
+      - 神识
+      - 功法
+      - 丹药
+      - 破境
+      - 淬体
+    forbidden:
+      - 蝼蚁
+      - 本座
+      - 桀桀
+      - 天命不可违
+    favor_degree: medium
+
+  dialogue_rules:
+    avoid:
+      - 长篇大论讲道理
+      - 逢人便说修炼心得
+      - 对敌人说"你不配"
+    prefer:
+      - 战斗前先观察
+      - 用行动代替宣言
+      - 关键时刻简短有力的表态
+
+  action_coupling:
+    must_pair_dialogue_with_action: true
+    action_types:
+      - 运气
+      - 掐诀
+      - 祭出法宝
+      - 神识探查
+      - 服丹
+      - 布阵
+
+  narration_levels:
+    dialect_level: 0
+    meme_level: 0
+    english_level: 0
+    wenyan_level: 1
+
+  meme_policy:
+    allowed_level: none
+    forbidden_scene:
+      - 突破境界
+      - 生死战斗
+      - 传承仪式
+      - 道侣对话
+
+  usage_policy:
+    max_signature_lines_per_chapter: 2
+    avoid_repetition: true
+    must_remain_readable: true
+
+  samples:
+    good_lines:
+      - "灵气的流动有问题。不是功法不对，是这片区域的灵脉被人动了手脚。"
+      - "你的剑很快。但剑意，没有。"
+    bad_lines:
+      - "哈哈哈，就凭你也配与我为敌？"
+      - "让你见识见识什么叫做真正的实力！"
+
+# === 宗门长老（半文言型）===
+elder:
+  pack_id: xianxia_elder
+  role_type: elder
+  display_name: 宗门长老/老祖
+  description: >
+    修行数百年的宗门长老。说话带文言色彩但不晦涩，威严中带有人情味。
+    对后辈既严厉又暗含期许，不轻易出手但一出手便见真章。
+
+  tone:
+    base: 沉稳威严，偶有惜才之叹
+    emotion_range:
+      calm: 0.9
+      angry: 0.4
+      sad: 0.5
+      joy: 0.3
+      fear: 0.1
+      ironic: 0.4
+      warm: 0.5
+      cold: 0.4
+    forbidden_tones:
+      - 市井粗俗
+      - 过度亲切
+      - 情绪失控
+
+  sentence_style:
+    average_length: medium
+    rhythm: 言简意深，不怒自威
+    preferred_patterns:
+      - "此子……倒有几分意思。"
+      - "修行一途，不在一时得失。"
+      - "你可知道，老夫为何收你为徒？"
+    forbidden_patterns:
+      - 网络用语
+      - 现代白话感叹词
+
+  vocabulary:
+    preferred:
+      - 此子
+      - 罢了
+      - 且慢
+      - 也罢
+      - 倒也
+      - 莫非
+      - 老夫
+      - 徒儿
+    forbidden:
+      - 搞笑词汇
+      - 现代术语
+      - 网络梗
+
+  dialogue_rules:
+    avoid:
+      - 啰嗦重复
+      - 直接说破（保持高深感）
+    prefer:
+      - 点到为止
+      - 用典故/比喻教导
+      - 话中有深意
+
+  action_coupling:
+    must_pair_dialogue_with_action: true
+    action_types:
+      - 拂袖
+      - 负手而立
+      - 轻叹
+      - 颔首
+      - 目光深远
+
+  narration_levels:
+    dialect_level: 0
+    meme_level: 0
+    english_level: 0
+    wenyan_level: 2
+
+  meme_policy:
+    allowed_level: none
+    forbidden_scene:
+      - 所有场景
+
+  usage_policy:
+    max_signature_lines_per_chapter: 3
+    avoid_repetition: true
+    must_remain_readable: true
+
+  samples:
+    good_lines:
+      - "修行四百载，老夫见过无数天才。能走到最后的，不是天赋最高的那个，而是最懂得惜命的那一个。"
+      - "你的剑里，有杀意，却没有杀气。去吧，等你杀气够了再来。"
+    bad_lines:
+      - "小伙子不错啊！"
+      - "我给你点赞！"
+
+# === 反派（冷契约型）===
+villain:
+  pack_id: xianxia_villain
+  role_type: villain
+  display_name: 修仙反派（冷契约型）
+  description: >
+    将世界视为资源博弈的冷酷反派。说话理性冰冷，把一切关系视为交易。
+    不靠无脑作恶，而是有自己的逻辑体系——只不过这套逻辑与主角冲突。
+
+  tone:
+    base: 冰冷、理性、筹码思维
+    emotion_range:
+      calm: 0.9
+      angry: 0.3
+      sad: 0.1
+      joy: 0.2
+      fear: 0.1
+      ironic: 0.7
+      warm: 0.1
+      cold: 0.9
+    forbidden_tones:
+      - 歇斯底里
+      - 无脑狂怒
+      - 小丑式表演
+
+  sentence_style:
+    average_length: medium
+    rhythm: 冷静陈述、反问句为主
+    preferred_patterns:
+      - "你觉得你有的选？"
+      - "代价？你能给出什么代价？"
+      - "杀你不是因为恨你，是因为你的存在降低了我计划的成功率。"
+    forbidden_patterns:
+      - "桀桀"
+      - "你死定了"
+      - "让你知道什么叫绝望"
+
+  vocabulary:
+    preferred:
+      - 代价
+      - 筹码
+      - 变量
+      - 效率
+      - 最优解
+      - 不可控
+      - 清除
+    forbidden:
+      - 桀桀
+      - 蝼蚁（除非极特殊语境）
+      - 本座
+    favor_degree: high
+
+  dialogue_rules:
+    avoid:
+      - 自曝计划
+      - 无意义威胁
+      - 对主角说"你不配"
+    prefer:
+      - 冷静分析局势
+      - 提出令人不适但合理的交易
+      - 用事实而非情绪摧毁对手
+
+  action_coupling:
+    must_pair_dialogue_with_action: true
+    action_types:
+      - 捏碎传讯符
+      - 合上卷宗
+      - 转身离去
+      - 弹指灭阵
+
+  narration_levels:
+    dialect_level: 0
+    meme_level: 0
+    english_level: 0
+    wenyan_level: 1
+
+  meme_policy:
+    allowed_level: none
+    forbidden_scene:
+      - 所有场景
+
+  usage_policy:
+    max_signature_lines_per_chapter: 2
+    avoid_repetition: true
+    must_remain_readable: true
+
+  samples:
+    good_lines:
+      - "一千三百年来，你是第一个让我重新计算成功率的人。所以，你必须消失。"
+      - "我不恨你。我只是不能让一个不可控的变量继续存在。"
+    bad_lines:
+      - "哈哈哈哈你终于来了！我等这一天等了好久！"
+      - "我要让你求生不得求死不能！"
+
+# === 市井商人 ===
+merchant:
+  pack_id: xianxia_merchant
+  role_type: merchant
+  display_name: 修仙商人
+  description: >
+    修行界的商人角色。把修炼资源当成生意做，精于算计但不失人情。
+    说话圆滑世故，常在交易中暗藏信息，是情报流通的关键节点。
+
+  tone:
+    base: 精明圆滑、话中有话
+    emotion_range:
+      calm: 0.7
+      angry: 0.2
+      sad: 0.2
+      joy: 0.5
+      fear: 0.4
+      ironic: 0.6
+      warm: 0.7
+      cold: 0.1
+    forbidden_tones:
+      - 一本正经
+      - 冷酷无情
+
+  sentence_style:
+    average_length: mixed
+    rhythm: 先套近乎再谈价，话里藏三分
+    preferred_patterns:
+      - "这位道友，一看就是行家。不过嘛……"
+      - "价钱好商量，但得看你拿什么换。"
+      - "老哥我说句实在话，这东西不是这个用法。"
+    forbidden_patterns:
+      - 官方通告腔
+
+  vocabulary:
+    preferred:
+      - 道友
+      - 行家
+      - 好商量
+      - 实在话
+      - 这个价
+      - 亏不了
+    forbidden:
+      - 学术术语
+      - 官方腔调
+
+  dialogue_rules:
+    avoid:
+      - 直接给底牌
+      - 无利可图的废话
+    prefer:
+      - 每句话都暗含交易机会
+      - 用闲聊传递情报
+      - 看似吃亏实则布局
+
+  action_coupling:
+    must_pair_dialogue_with_action: true
+    action_types:
+      - 搓手
+      - 压低声音
+      - 从袖中取出
+      - 左右看看
+      - 掂量物件
+
+  narration_levels:
+    dialect_level: 1
+    meme_level: 1
+    english_level: 0
+    wenyan_level: 0
+
+  meme_policy:
+    allowed_level: light
+    forbidden_scene:
+      - 生死危机
+      - 重大交易翻车
+
+  usage_policy:
+    max_signature_lines_per_chapter: 3
+    avoid_repetition: true
+    must_remain_readable: true
+
+  samples:
+    good_lines:
+      - "道友眼光毒啊！这块灵石品相一般，但里面封的阵法可不一般——要不要赌一把？"
+      - "老哥我这儿的规矩：钱货两清，出了这门概不认账。但道友你嘛……可以破个例。"
+    bad_lines:
+      - "走过路过不要错过！全场五折！"
+      - "亲，五星好评返现哦！"

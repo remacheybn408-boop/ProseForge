@@ -1,0 +1,56 @@
+# jury.strict.yaml — 严格评审团模式
+# 20 个代理（完整阵容），深度审查，适合关键章节（高潮/卷末/出版前）
+
+name: "严格评审团"
+mode: strict
+description: >
+  完整 20 个评审代理，覆盖连续性、角色、情节、世界观、风格、风险六大维度。
+  适合卷末章节、关键转折点、出版前最终审查。
+  运行时间较长，反馈详尽。
+
+agents:
+  # 连续性维度 (4 agents)
+  - continuity            # 情节连续性
+  - timeline              # 时间线检查
+  - location_tracker      # 地点追踪
+  - inventory             # 物品/道具一致性
+
+  # 角色维度 (4 agents)
+  - character_voice       # 角色声线
+  - character_arc         # 角色弧线
+  - dialogue              # 对话质量
+  - relationship          # 关系网络
+
+  # 情节维度 (4 agents)
+  - plot_logic            # 情节逻辑
+  - pacing                # 节奏控制
+  - conflict              # 冲突张力
+  - foreshadowing         # 伏笔管理
+
+  # 世界观维度 (3 agents)
+  - worldbuilding         # 世界观一致性
+  - power_system          # 战力/修炼体系
+  - cultural_rules        # 文化/社会规则
+
+  # 风格维度 (3 agents)
+  - ai_style              # AI味儿检测
+  - prose_quality         # 文笔质量
+  - genre                 # 类型合规
+
+  # 风险维度 (2 agents)
+  - reader_hook           # 读者钩子
+  - anti_padding          # 反灌水
+
+settings:
+  min_score_pass: 70
+  single_agent_fail_threshold: 45
+  max_issues_per_agent: 20
+  concurrent: true
+  timeout_seconds: 300
+
+report:
+  format: json
+  include_scores: true
+  include_suggestions: true
+  include_evidence: true       # 附上原文证据
+  output_dir: "./exports/reports/jury/"

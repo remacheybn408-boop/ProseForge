@@ -1,0 +1,39 @@
+{
+  "pack_id": "shanxi_light",
+  "name": "轻晋地话",
+  "type": "dialect",
+  "description": "老矿头、马瘸子、矿脉相关角色适用。",
+  "markers": [
+    "后生",
+    "不咋",
+    "甚",
+    "咧",
+    "可不敢",
+    "闹不成",
+    "圪蹴"
+  ],
+  "soft_markers": [
+    "矿",
+    "煤",
+    "窑"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "老矿头",
+    "马瘸子",
+    "矿工配角"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "齐岳老祖",
+    "反派",
+    "旁白"
+  ],
+  "overuse_warning_threshold": 5,
+  "max_density_per_1000_chars": 6,
+  "sample_lines": [
+    "后生可不敢乱来咧。",
+    "这矿脉不咋对劲。",
+    "闹不成咧。"
+  ]
+}

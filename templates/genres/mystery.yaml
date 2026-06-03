@@ -1,0 +1,71 @@
+# mystery.yaml — 悬疑推理类型模板
+# novel-pipeline-write-engine v0.5.0
+
+genre_id: mystery
+name: 悬疑推理
+description: >
+  以谜题/案件为核心驱动力的故事类型。通过线索铺设、误导设置、
+  推理过程，最终揭示真相。核心体验在于"被作者骗得很爽"。
+
+core_reader_expectation:
+  - 线索必须公平（读者理论上能推理出真相）
+  - 反转要有铺垫，不可凭空出现
+  - 真相必须比读者的猜测更精彩
+  - 推理过程逻辑清晰，不可跳跃
+  - 人物动机必须真实可信
+  - 结局要解释所有核心谜题
+
+common_arc:
+  - 案件发生/谜题呈现
+  - 初步调查/线索收集
+  - 第一个嫌疑人/第一个误导
+  - 线索矛盾/调查受阻
+  - 关键线索浮现/视角转换
+  - 第一次反转（推翻前期结论）
+  - 最终推理/真相大白
+  - 余波：真相带来的代价
+
+common_conflicts:
+  - 调查者与阻挠者的对抗
+  - 有限时间内的侦破压力
+  - 新案件与旧案件的纠缠
+  - 个人情感与职业判断的冲突
+  - 体制/权力对真相的压制
+  - 真相可能伤害无辜者
+
+common_hooks:
+  - 不可能犯罪（密室/完美不在场证明）
+  - 连环案件中的规律/仪式
+  - 多年前的悬案突然出现新线索
+  - 目击者/嫌疑人接连死亡
+  - 主角自身成为嫌疑人
+  - 收到凶手的挑战信/预告
+
+common_cool_points:
+  - 公开推理，当众指出凶手
+  - 利用一条被忽视的线索推翻全局
+  - 揭示凶手精心设计的诡计
+  - 在最后时刻阻止下一次犯罪
+  - 多重反转后的终极真相远超预期
+  - 凶手自白时的心理博弈
+
+risk_points:
+  - 线索给得太明显/太隐晦
+  - 反转太多导致逻辑混乱
+  - 凶手动机牵强
+  - 主角推理跳过关键步骤（"直觉"破案）
+  - 技术手段"神棍化"（随便一查就出结果）
+  - 社会派与推理派定位不清
+
+voice_suggestions:
+  - protagonist_science_monk
+  - female_observer_calm
+  - villain_cold_contract
+  - narrator_action_based
+
+guard_focus:
+  - continuity_evidence_guard: 线索跨章节必须一致
+  - scene_causality_guard: 每次调查行动必须有新发现或新阻碍
+  - concrete_anchor_guard: 时间线/地点/物证必须具体
+  - hallucination_guard: 新增设定不能与已有线索矛盾
+  - anti_ai_patterns: 避免"事情没那么简单"等推理腔模板

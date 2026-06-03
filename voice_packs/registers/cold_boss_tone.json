@@ -1,0 +1,38 @@
+{
+  "pack_id": "cold_boss_tone",
+  "name": "冷面Boss腔",
+  "type": "register",
+  "description": "终极Boss、冷面高手口吻。极简、压迫感。",
+  "markers": [
+    "退下",
+    "够了",
+    "不自量力",
+    "你配吗",
+    "区区",
+    "杀",
+    "死"
+  ],
+  "soft_markers": [
+    "有趣",
+    "竟然",
+    "倒是"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "反派",
+    "冷面Boss",
+    "高位修士"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "周不器",
+    "马瘸子",
+    "旁白"
+  ],
+  "overuse_warning_threshold": 3,
+  "max_density_per_1000_chars": 4,
+  "sample_lines": [
+    "退下。",
+    "不自量力。"
+  ]
+}

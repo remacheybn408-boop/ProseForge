@@ -1,0 +1,40 @@
+{
+  "pack_id": "physics_english",
+  "name": "物理学技术英语",
+  "type": "english",
+  "description": "理工主角可在内心/实验记录/技术对白中使用。",
+  "markers": [
+    "field",
+    "model",
+    "noise",
+    "baseline",
+    "error",
+    "feedback",
+    "signal",
+    "data"
+  ],
+  "soft_markers": [
+    "pattern",
+    "wave",
+    "frequency",
+    "resonance",
+    "coupling"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "理工主角",
+    "技术讨论"
+  ],
+  "forbidden_contexts": [
+    "古代角色",
+    "齐岳老祖",
+    "反派",
+    "旁白"
+  ],
+  "overuse_warning_threshold": 5,
+  "max_density_per_1000_chars": 4,
+  "sample_lines": [
+    "field coupling出现了异常。",
+    "noise level太高了。"
+  ]
+}

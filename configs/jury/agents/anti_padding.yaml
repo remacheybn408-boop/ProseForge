@@ -1,0 +1,84 @@
+# agent/anti_padding.yaml — 反灌水审查代理
+# 检测无意义的内容填充、注水描写、重复信息
+
+name: "反灌水审查"
+agent_id: anti_padding
+description: >
+  检测章节中的内容灌水现象：无意义的景物描写、
+  重复的信息传递、注水对话、流水账式叙述、过度解释等。
+  网文读者对灌水极度敏感，此代理在 webnovel 模式下权重更高。
+
+category: style
+risk_level: high
+default_enabled: true
+weight: 1.1
+
+check_rules:
+  - id: PAD-001
+    name: "重复信息检测"
+    description: >
+      检查同一信息是否在章节内被多次复述。
+      包括：角色反复回忆同一件事、旁白重复解释同一概念、
+      对话中重复已知信息。发现3次以上重复标记为严重问题。
+    severity: error
+    check_type: in_chapter
+
+  - id: PAD-002
+    name: "无意义景物描写"
+    description: >
+      检查是否存在与情节、氛围、角色心境无关的纯描写段落。
+      环境描写应服务于叙事（烘托氛围/暗示信息/过渡场景），
+      纯粹的"炫技式"风景描写标记为灌水。
+    severity: warning
+    check_type: in_chapter
+
+  - id: PAD-003
+    name: "注水对话"
+    description: >
+      检查对话是否推进情节或展示角色。
+      标记以下类型的对话：
+      - 纯粹寒暄（"吃了吗""今天天气不错"）
+      - 无信息量的确认（"真的吗""不会吧"的重复使用）
+      - 角色间互相复述读者已知信息
+    severity: warning
+    check_type: in_chapter
+
+  - id: PAD-004
+    name: "过度解释"
+    description: >
+      检查是否存在对读者已能推断的信息进行长篇解释。
+      "展示而非告知"原则——如果通过角色行为和对话已经传达了信息，
+      不应再用旁白解释一遍。
+    severity: warning
+    check_type: in_chapter
+
+  - id: PAD-005
+    name: "流水账段落"
+    description: >
+      检查是否有"然后...然后...然后..."式的流水账叙述。
+      日常动作的过度描写（起床、洗漱、吃饭的每一个步骤）标记为灌水。
+    severity: warning
+    check_type: in_chapter
+
+  - id: PAD-006
+    name: "灌水比例计算"
+    description: >
+      计算疑似灌水段落占全章的比例。超过15%标记为警告，超过25%标记为严重。
+      网文模式下的阈值更严格（10%/20%）。
+    severity: error
+    check_type: in_chapter
+
+  - id: PAD-007
+    name: "功法/技能重复描写"
+    description: >
+      修炼/施法过程的描写如果与之前章节高度相似，标记为灌水。
+      除非有新的变化（突破、新的理解），否则不应重复描写同样的修炼过程。
+    severity: info
+    check_type: cross_chapter
+
+filters:
+  # 合理的过渡性描写不被视为灌水
+  allowed_transitions:
+    - "时间跳跃过渡句"           # 如"一夜无话"
+    - "场景切换引导句"           # 如"与此同时，在..."
+    - "心境描写（服务于角色）"    # 角色的内心感受不是灌水

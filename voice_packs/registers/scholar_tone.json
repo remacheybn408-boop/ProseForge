@@ -1,0 +1,38 @@
+{
+  "pack_id": "scholar_tone",
+  "name": "学究腔",
+  "type": "register",
+  "description": "理论派、书院先生口吻。",
+  "markers": [
+    "据我所知",
+    "从理论上看",
+    "根据",
+    "原理",
+    "推导",
+    "方程",
+    "模型"
+  ],
+  "soft_markers": [
+    "假设",
+    "验证",
+    "实验",
+    "数据"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "书院先生",
+    "理论派角色"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "周不器",
+    "马瘸子",
+    "旁白"
+  ],
+  "overuse_warning_threshold": 4,
+  "max_density_per_1000_chars": 5,
+  "sample_lines": [
+    "据我所知，灵气的本质是一种场。",
+    "从理论上看这说不通。"
+  ]
+}

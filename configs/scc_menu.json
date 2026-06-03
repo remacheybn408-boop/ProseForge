@@ -1,0 +1,92 @@
+{
+  "version": "v0.6.5",
+  "entry_phrases": ["菜单", "帮助", "怎么用", "开始", "我想写小说", "下一步", "能做什么", "功能列表"],
+  "sections": [
+    {
+      "id": "start",
+      "title": "🚀 新手入门",
+      "description": "如果你是第一次用这个工具，从这里开始。我会帮你初始化项目、检查环境是否就绪、跑一遍演示流程感受一下。",
+      "items": [
+        {"label": "初始化项目，帮我建好所有需要的目录和配置", "user_says": ["初始化", "第一次使用", "开始吧"], "command": "python novel.py init", "danger": "safe", "description": "自动创建配置、目录结构和基础数据库，就像给小说项目打好地基。"},
+        {"label": "检查环境是否一切正常", "user_says": ["状态", "检查", "环境", "准备好了吗"], "command": "python novel.py status", "danger": "safe", "description": "快速诊断：Python版本、依赖包、数据库、配置文件是否都在正确的位置。"},
+        {"label": "跑一遍演示，看看完整流程怎么走", "user_says": ["演示", "demo", "试试看", "体验"], "command": "python novel.py demo", "danger": "safe", "description": "用内置的示例大纲跑一遍：初始化→写前任务卡→写后检查→导出报告，全程自动。"},
+        {"label": "打开项目看板，看一下整体情况", "user_says": ["看板", "总览", "概览", "整体情况"], "command": "python novel.py board", "danger": "safe", "description": "只读模式查看当前项目：有几本小说、大纲状态、最近章节、字数统计。"}
+      ]
+    },
+    {
+      "id": "archive",
+      "title": "📚 小说档案库",
+      "description": "管理你的小说作品。想看当前有多少本小说？想新增一本或切换正在写的？在这里操作。",
+      "items": [
+        {"label": "列出我所有的作品", "user_says": ["有哪些小说", "数据库列表", "我的作品", "作品列表"], "command": "python novel.py db list", "danger": "safe", "description": "显示所有小说工作区，包含每本的大纲标题、章节数、字数统计。"},
+        {"label": "看看当前正在写哪一本", "user_says": ["当前小说", "正在写", "当前作品"], "command": "python novel.py db current", "danger": "safe", "description": "显示当前活跃的小说工作区详情。"},
+        {"label": "创建一本新小说的工作区", "user_says": ["新建小说", "新数据库", "开新坑", "写新书"], "command": "python novel.py db new --name 新小说", "danger": "safe", "description": "为新小说创建一个独立的数据库工作区，互不干扰。"},
+        {"label": "切换到另一本小说来写", "user_says": ["切换小说", "换一本写", "切换作品"], "command": "python novel.py db use slot_002", "danger": "safe", "description": "在工作区之间切换，不会丢失任何数据。"},
+        {"label": "备份当前小说数据", "user_says": ["备份", "存档", "保存"], "command": "python novel.py db backup", "danger": "safe", "description": "创建当前工作区的完整备份，以防万一。"},
+        {"label": "删除一本小说的全部数据", "user_says": ["删除小说", "删库", "不想要了"], "command": "python novel.py db delete", "danger": "dangerous", "description": "⚠️ 会删除整本小说的数据。删除前会自动备份，需要输入YES确认。"},
+        {"label": "从备份恢复小说数据", "user_says": ["恢复小说", "还原", "找回"], "command": "python novel.py db restore", "danger": "safe", "description": "从最近的备份中恢复数据。"}
+      ]
+    },
+    {
+      "id": "outline",
+      "title": "📝 大纲管理",
+      "description": "写长篇小说离不开大纲。这里可以添加大纲、智能识别是不是同一本小说的升级版、在多个版本间切换对比、必要时回滚。",
+      "items": [
+        {"label": "添加一份新大纲", "user_says": ["添加大纲", "导入大纲", "新建大纲", "上传大纲"], "command": "python novel.py outline add", "danger": "safe", "description": "粘贴你的大纲文本，系统会智能判断：是新小说的第一版，还是已有小说的升级版。"},
+        {"label": "看看有哪些大纲版本", "user_says": ["大纲列表", "有哪些大纲", "查看大纲", "大纲版本"], "command": "python novel.py outline list", "danger": "safe", "description": "列出所有大纲，标记哪个是当前使用的、哪个是历史版本、哪个是候选版本。"},
+        {"label": "查看当前正在用的大纲", "user_says": ["当前大纲", "现在用的", "活跃大纲"], "command": "python novel.py outline current", "danger": "safe", "description": "显示当前激活的大纲详细内容。"},
+        {"label": "换一份大纲来用", "user_says": ["切换大纲", "换大纲", "用另一个"], "command": "python novel.py outline switch", "danger": "safe", "description": "切换到另一个大纲版本，旧大纲会保留，不会丢失。"},
+        {"label": "对比两份大纲的差异", "user_says": ["对比大纲", "比较", "有什么不同"], "command": "python novel.py outline diff", "danger": "safe", "description": "对比两个大纲的相似度和具体差异，帮你判断改动了哪些地方。"},
+        {"label": "回退到上一个版本", "user_says": ["回滚大纲", "撤销", "用回旧版"], "command": "python novel.py outline rollback", "danger": "dangerous", "description": "⚠️ 把大纲恢复到上一个版本。需要确认才能执行。"}
+      ]
+    },
+    {
+      "id": "writing",
+      "title": "✍️ 开始写作",
+      "description": "核心写作流程：先生成任务卡看这章要写什么，然后写正文，最后跑门禁检查入库。",
+      "items": [
+        {"label": "生成第1章的写前任务卡", "user_says": ["任务卡", "写前", "写哪章", "准备写第1章"], "command": "python novel.py pre 1", "danger": "safe", "description": "根据大纲和上一章内容，自动生成本章的写作指引：要承接什么、要推进什么、要避免什么。"},
+        {"label": "对第1章跑写后门禁检查", "user_says": ["检查章节", "写后检测", "检查第1章", "门禁"], "command": "python novel.py post 1", "danger": "safe", "description": "运行21项质量门禁检查（连续性、AI腔、追读力、角色口吻等），通过后自动入库。"},
+        {"label": "统计一下字数", "user_says": ["字数", "多少字", "统计", "字数统计"], "command": "python novel.py wc 1", "danger": "safe", "description": "查看指定章节或全书的字数统计。"}
+      ]
+    },
+    {
+      "id": "jury",
+      "title": "👥 Agent 陪审团审稿",
+      "description": "多个AI评审员从不同角度审稿：对话节奏、场景因果、人物口吻、文风变化、追读力、连续性、AI腔检测。",
+      "items": [
+        {"label": "快速审稿（轻量模式，单个Agent快速扫描）", "user_says": ["轻量审稿", "快速审稿", "简单看看"], "command": "python novel.py agents review 1 --mode light", "danger": "safe", "description": "1个Agent快速扫描，适合刚写完一章时快速自查。"},
+        {"label": "深度审稿（完整模式，8个Agent并行审查）", "user_says": ["完整审稿", "深度审稿", "认真审", "全面审查"], "command": "python novel.py agents review 1 --mode full", "danger": "safe", "description": "8个专业Agent并行审查，从对话、场景、人物、节奏、文风、追读力、连续性、AI腔等维度出详细报告。"}
+      ]
+    },
+    {
+      "id": "report",
+      "title": "📊 报告与导出",
+      "description": "查看审稿报告和写作统计，或者把整本小说导出成一个文件方便阅读和分享。",
+      "items": [
+        {"label": "查看最新的写作报告", "user_says": ["报告", "查看结果", "审稿结果", "质量报告"], "command": "python novel.py report", "danger": "safe", "description": "打开HTML格式的写作报告，包含门禁结果和审稿评分。"},
+        {"label": "导出为TXT纯文本文件", "user_says": ["导出txt", "导出文本", "存成txt"], "command": "python novel.py export --format txt", "danger": "safe", "description": "把所有章节合并成一个TXT文件，适合在手机或阅读器上看。"},
+        {"label": "导出为Markdown格式文件", "user_says": ["导出md", "导出markdown", "存成md"], "command": "python novel.py export --format md", "danger": "safe", "description": "导出为带目录的Markdown文件，适合发布到写作平台或继续编辑。"}
+      ]
+    },
+    {
+      "id": "memory",
+      "title": "🧠 项目记忆查询",
+      "description": "长篇小说角色多、伏笔多。在这里查询人物状态、世界观设定、伏笔列表、上一章结尾。",
+      "items": [
+        {"label": "搜索项目记忆中的内容", "user_says": ["查询", "搜索", "找一下", "查一下"], "command": "python novel.py query", "danger": "safe", "description": "在项目记忆中搜索：人物信息、伏笔状态、世界观设定、章节摘要等。"},
+        {"label": "查看我的写作规则和偏好", "user_says": ["规则", "偏好", "设置", "我的规则"], "command": "python novel.py learn list", "danger": "safe", "description": "列出所有已学习的写作规则和风格偏好。"}
+      ]
+    },
+    {
+      "id": "faq",
+      "title": "💡 常见问题",
+      "description": "刚开始用总会有些疑问，先看看这里再问吧。",
+      "items": [
+        {"label": "为什么我不能开始写？", "user_says": ["不能写", "没大纲", "为什么写不了", "怎么开始写"], "answer": "写小说需要先有一份大纲。请先在「大纲管理」里添加大纲，系统会自动关联到当前小说。有了大纲之后，就可以用「开始写作」里的功能了。"},
+        {"label": "新加的大纲会不会覆盖掉旧大纲？", "user_says": ["覆盖", "会不会丢", "旧大纲", "替换"], "answer": "不会覆盖。新大纲会作为独立的版本添加，旧大纲保留不会被删除。切换大纲时也不会删除任何数据，你可以随时切回去。"},
+        {"label": "我不小心删了小说数据，怎么找回来？", "user_says": ["恢复", "删错了", "找回数据", "误删"], "answer": "别担心。删除前系统会自动备份。在「小说档案库」里使用「从备份恢复小说数据」功能即可恢复。备份文件保存在 workspace 目录下。"}
+      ]
+    }
+  ]
+}

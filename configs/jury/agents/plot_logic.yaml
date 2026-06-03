@@ -1,0 +1,88 @@
+# agent/plot_logic.yaml — 情节逻辑审查代理
+# 检查情节的内在逻辑是否自洽，因果关系是否成立
+
+name: "情节逻辑审查"
+agent_id: plot_logic
+description: >
+  检查本章情节的因果链条是否完整、转折是否有铺垫、
+  角色的决策是否合理（基于其已知信息和性格）、有无逻辑漏洞。
+
+category: plot
+risk_level: high
+default_enabled: true
+weight: 1.15
+
+check_rules:
+  - id: PLT-001
+    name: "因果链完整"
+    description: >
+      每个重要事件都应有前因后果。"因为A所以B"的逻辑链不能断裂。
+      检查是否有"突兀"的事件——有结果但缺少原因。
+    severity: error
+    check_type: in_chapter
+
+  - id: PLT-002
+    name: "角色决策合理"
+    description: >
+      角色的重要决策必须基于其已知信息、性格和当前处境。
+      不能出现"角色选择了一条明显更差的路径而没有理由"的情况。
+      主角可以有缺陷，但不能降智。
+    severity: error
+    check_type: per_character
+
+  - id: PLT-003
+    name: "转折铺垫充分"
+    description: >
+      情节转折（反转、意外、揭示）需要有前期铺垫。
+      突然的"机械降神"式转折标记为严重问题。
+      铺垫不能是事后补充的——需要在前面章节中有迹可循。
+    severity: error
+    check_type: cross_chapter
+
+  - id: PLT-004
+    name: "世界观规则遵守"
+    description: >
+      情节发展不能违反已建立的世界观规则。
+      例如：如果设定中飞行需要筑基期，练气期角色不能突然飞行。
+      特殊例外需要有明确的解释。
+    severity: error
+    check_type: cross_chapter
+
+  - id: PLT-005
+    name: "信息对等原则"
+    description: >
+      反派的计谋、陷阱、伏击需要有合理解释——反派如何获得相关信息？
+      不能出现"反派莫名其妙知道主角的秘密"。
+    severity: warning
+    check_type: cross_chapter
+
+  - id: PLT-006
+    name: "冲突升级合理"
+    description: >
+      冲突的升级应该有递进的逻辑。不能从"口角"直接跳到"生死对决"。
+      检查冲突升级的阶梯是否存在、台阶大小是否合理。
+    severity: warning
+    check_type: in_chapter
+
+  - id: PLT-007
+    name: "解决方案不降智"
+    description: >
+      角色解决问题的方式应符合其能力和资源。
+      不能出现"恰好有需要的道具""恰好遇到贵人"之类的巧合堆砌。
+      一次巧合可以接受，多次巧合标记为问题。
+    severity: warning
+    check_type: cross_chapter
+
+  - id: PLT-008
+    name: "支线与主线关联"
+    description: >
+      检查本章的支线情节是否与主线有明确关联。
+      完全无关的支线需要标记，除非是刻意安排的"日常回"。
+    severity: info
+    check_type: in_chapter
+
+filters:
+  ignore_patterns:
+    - "机缘巧合"
+    - "鬼使神差"
+    - "不知为何"

@@ -1,0 +1,35 @@
+{
+  "pack_id": "system_english",
+  "name": "系统/编程英语",
+  "type": "english",
+  "description": "允许系统、编程、工程语境中的英语术语（system/loop/module/interface等），适合反派Boss或高维存在的对话。",
+  "suitable_archetypes": ["final_boss", "system_entity", "cold_villain"],
+  "forbidden_archetypes": ["folk_elder", "street_vendor", "martial_disciple"],
+  "allowed_markers": [
+    "system",
+    "loop",
+    "module",
+    "interface",
+    "protocol",
+    "reset",
+    "debug",
+    "override",
+    "patch",
+    "core",
+    "runtime",
+    "stack",
+    "thread"
+  ],
+  "soft_markers": ["error", "warning", "critical", "status", "state"],
+  "danger_markers": [],
+  "banned_markers": [],
+  "signature_phrases": ["system loop", "runtime override", "core protocol"],
+  "sample_lines": [
+    "这个 system 的 loop 已经持续太久了，该重置了。",
+    "我在这个 interface 层面做了 override。"
+  ],
+  "allowed_contexts": ["反派Boss", "高维存在", "系统管理员", "程序员穿越"],
+  "forbidden_contexts": ["日常闲聊", "凡人对话", "市井场景"],
+  "overuse_warning_threshold": 5,
+  "max_density_per_1000_chars": 8
+}

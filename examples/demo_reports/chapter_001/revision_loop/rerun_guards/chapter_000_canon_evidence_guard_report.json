@@ -1,0 +1,19 @@
+[
+  {
+    "chapter_no": 0,
+    "status": "PASS",
+    "final_decision": "PASS",
+    "claims_checked": 0,
+    "canon_confirmed_count": 0,
+    "allowed_new_canon_count": 0,
+    "inferred_claims_count": 0,
+    "soft_detail_count": 0,
+    "unsupported_claims": [],
+    "contradictions": [],
+    "blocked_items": [],
+    "canon_evidence_map_path": "",
+    "evidence_coverage": 1.0,
+    "hard_claims_without_source": 0
+  },
+  []
+]
