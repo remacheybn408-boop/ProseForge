@@ -9,7 +9,11 @@ description = "AI-powered long-form novel engineering pipeline"
 requires-python = ">=3.10"
 dependencies = [
     "pyyaml>=6.0",
+    "mcp>=1.0.0",
 ]
+
+[project.scripts]
+novel-mcp = "mcp_server.server:main"
 
 [project.optional-dependencies]
 rag = [
