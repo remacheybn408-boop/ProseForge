@@ -252,8 +252,7 @@ style_packs/                     ← 风格模板
 
 ## Contributors
 
-- [@remacheybn408-boop](https://github.com/remacheybn408-boop) — 引擎架构与核心开发
-- Hermes Agent — bugfix sprint, demo 流程修复, 代码清理, v0.7.1 发布
+See [CONTRIBUTORS.md](CONTRIBUTORS.md) for full list.
 
 ---
 
