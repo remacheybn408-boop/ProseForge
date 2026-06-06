@@ -124,6 +124,7 @@ class SlotManager:
                     relationship TEXT DEFAULT '',
                     arc TEXT DEFAULT '',
                     status TEXT DEFAULT 'active',
+                    focus_state TEXT DEFAULT '活跃',
                     tags TEXT DEFAULT ''
                 );
 

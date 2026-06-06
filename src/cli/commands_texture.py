@@ -84,14 +84,14 @@ def _resolve_chapter(chapter_no: str) -> str | None:
         # slot chapters/
         for d in [slot_dir / "chapters", slot_dir / "第01卷"]:
             if d.exists():
-                cs = sorted(d.glob(f"第{chapter_no}章*.txt"))
-                if cs:
-                    return str(cs[0])
+                ch_fp = find_chapter_file(int(chapter_no), d)
+                if ch_fp:
+                    return str(ch_fp)
         # v0.8.0: check volume subdirectories under chapters/
         ch_base = slot_dir / "chapters"
         if ch_base.exists():
             for vd in sorted(ch_base.glob("第*卷")):
-                ch_fp = find_chapter_file(chapter_no, vd)
+                ch_fp = find_chapter_file(int(chapter_no), vd)
                 if ch_fp:
                     return str(ch_fp)
 
@@ -108,7 +108,7 @@ def _resolve_chapter(chapter_no: str) -> str | None:
             from src.cli.shared import _resolve_chapter_path as _rcp
             d = Path(_rcp(slug))
             if d.exists():
-                ch_fp = find_chapter_file(chapter_no, d)
+                ch_fp = find_chapter_file(int(chapter_no), d)
                 if ch_fp:
                     return str(ch_fp)
     except Exception:

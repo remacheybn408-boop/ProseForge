@@ -989,9 +989,6 @@ def word_count_gate(content, chapter_no, chapter_type="normal", genre=None):
         return "ideal", wc, _eff_min
 
     if rules['best_max'] < wc <= rules['max']:
-        # 偏长但不超过上限 — 检查是否水文
-        if chapter_type in ("normal", "relationship", "investigation") and wc > rules['max']:
-            print(f"  [WARN] 普通章超过3300 — 检查是否有水文")
         print(f"  [OK] 正常通过 (偏长)")
         return True, wc, _eff_min
 
@@ -1481,6 +1478,205 @@ def _extract_world_state(content):
     return "。".join(changed[:3])
 
 
+# ═══════════════════════════════════════════════════
+# v0.7.2: Story Arc — enhanced extraction
+# ═══════════════════════════════════════════════════
+
+_PHYSICAL_STATE_KEYWORDS = {
+    "轻伤": ["擦伤", "扭到", "磕到", "划破", "皮外伤", "淤青", "小伤"],
+    "中伤": ["骨折", "流血", "伤口", "打伤", "内伤", "脱臼", "吐血", "咳血", "断骨"],
+    "重伤": ["濒死", "昏迷", "大出血", "经脉尽断", "丹田破裂", "五脏俱裂", "奄奄一息"],
+    "中毒": ["中毒", "毒发", "毒性", "解毒", "麻", "毒气"],
+    "疾病": ["发烧", "生病", "感染", "过敏", "晕倒", "晕眩", "虚弱", "发冷", "咳嗽"],
+    "恢复": ["痊愈", "恢复", "好了", "没事", "疗伤", "养伤", "愈合", "康复"],
+    "健康": ["完好", "无恙", "平安", "精神", "活动自如"],
+}
+
+
+def _extract_character_physical_states(content, char_names):
+    """Extract physical state per character from chapter text.
+
+    Searches a window after each character's last mention for physical state keywords.
+    Returns dict {character_name: state_label}.
+    """
+    states = {}
+    for name in char_names:
+        if name not in content:
+            continue
+        last_pos = content.rfind(name)
+        if last_pos < 0:
+            continue
+        window = content[last_pos:last_pos + 100]
+        for state_label, keywords in _PHYSICAL_STATE_KEYWORDS.items():
+            for kw in keywords:
+                if kw in window:
+                    states[name] = state_label
+                    break
+            if name in states:
+                break
+    return states
+
+
+_DECISION_MARKERS = [
+    r"(决定|决定了|决定要|做出.{1,6}决定)",
+    r"(选择了|选择.{1,10}选择)",
+    r"(最终.{1,10}(还是|决定|选择))",
+    r"(从今以后|从此|今后.{1,6}(不再|要|不会|必须))",
+    r"(下定.{1,6}决心|下了.{1,6}决心)",
+]
+
+
+def _extract_key_decisions(content, char_names):
+    """Find key decisions made by characters in this chapter.
+
+    Searches for decision-marker patterns near character names.
+    Returns list of {character, decision, context} dicts.
+    """
+    decisions = []
+    for name in char_names:
+        if name not in content:
+            continue
+        for pos in [m.start() for m in re.finditer(re.escape(name), content)]:
+            window_start = max(0, pos - 20)
+            window_end = min(len(content), pos + 80)
+            window = content[window_start:window_end]
+            for marker_pat in _DECISION_MARKERS:
+                m = re.search(marker_pat, window)
+                if m:
+                    decisions.append({
+                        "character": name,
+                        "decision": m.group(1),
+                        "context": window.strip()[:120],
+                    })
+                    break
+    return decisions[:10]
+
+
+def _extract_emotional_states_enhanced(content, char_names):
+    """Extract emotional states with intensity and transition detection.
+
+    Returns dict {character_name: {state, intensity, transitions_from}}.
+    Intensity: 1 (mild) to 5 (extreme) based on presence of intensifiers.
+    """
+    # Intensity intensifiers
+    _INTENSIFIERS = {
+        5: ["极度", "透顶", "到了极点", "无法承受", "崩溃"],
+        4: ["非常", "极为", "无比", "深深", "浓烈", "剧烈"],
+        3: ["十分", "很", "相当", "明显", "显然"],
+        2: ["有些", "有点", "几分", "微微", "略微", "一丝"],
+        1: ["稍", "略带", "浅淡", "隐约"],
+    }
+    states = {}
+    for name in char_names:
+        if name not in content:
+            continue
+        last_pos = content.rfind(name)
+        if last_pos < 0:
+            continue
+        window = content[last_pos:last_pos + 80]
+        best_emotion = None
+        best_intensity = 1
+        for ew in _EMOTION_WORDS:
+            if ew in window:
+                best_emotion = ew
+                # Check surrounding intensifiers
+                ew_pos = window.find(ew)
+                nearby = window[max(0, ew_pos - 15):ew_pos + len(ew) + 15]
+                for level, words in _INTENSIFIERS.items():
+                    if any(w in nearby for w in words):
+                        best_intensity = max(best_intensity, level)
+                break
+        if best_emotion:
+            states[name] = {
+                "state": best_emotion,
+                "intensity": best_intensity,
+            }
+    return states
+
+
+def _extract_active_relationships(content, char_names):
+    """Find which characters interact in this chapter."""
+    rels = []
+    for i, n1 in enumerate(char_names):
+        for n2 in char_names[i + 1:]:
+            # Find if both names appear within 200 chars of each other
+            pos1 = [m.start() for m in re.finditer(re.escape(n1), content)]
+            pos2_set = set(m.start() for m in re.finditer(re.escape(n2), content))
+            for p1 in pos1:
+                for p2 in pos2_set:
+                    if abs(p1 - p2) <= 200:
+                        rels.append(f"{n1}-{n2}")
+                        break
+                if f"{n1}-{n2}" in rels:
+                    break
+    return rels[:20]
+
+
+def _upsert_arc_character_states(nid, chapter_no, char_names, phys_states,
+                                  emotions_enh, key_decisions, active_rels):
+    """Populate arc_character_states table for each character in this chapter."""
+    conn = connect()
+    cur = conn.cursor()
+    cur.execute("""CREATE TABLE IF NOT EXISTS arc_character_states (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        novel_id INTEGER NOT NULL REFERENCES novels(id),
+        character_id INTEGER NOT NULL REFERENCES characters(id),
+        chapter_no INTEGER NOT NULL,
+        physical_state TEXT DEFAULT '',
+        emotional_state TEXT DEFAULT '',
+        arc_progress TEXT DEFAULT '',
+        key_decisions TEXT DEFAULT '[]',
+        active_relationships TEXT DEFAULT '[]',
+        UNIQUE(novel_id, character_id, chapter_no)
+    )""")
+    conn.commit()
+
+    for name in char_names:
+        cur.execute("SELECT id FROM characters WHERE novel_id=? AND name=?", (nid, name))
+        row = cur.fetchone()
+        if not row:
+            continue
+        cid = row[0]
+        phys = phys_states.get(name, "")
+        emo_data = emotions_enh.get(name, {})
+        emo_json = json.dumps(emo_data, ensure_ascii=False) if emo_data else "{}"
+        char_decisions = [d for d in key_decisions if d["character"] == name]
+        decisions_json = json.dumps(char_decisions, ensure_ascii=False)
+        # Build relationship list for this character
+        char_rels = [r for r in active_rels if name in r]
+        rels_json = json.dumps(char_rels, ensure_ascii=False)
+        # Build arc_progress from combined signals
+        arc_parts = []
+        if phys:
+            arc_parts.append(f"身体:{phys}")
+        if emo_data:
+            arc_parts.append(f"情绪:{emo_data.get('state','')}")
+        if char_decisions:
+            arc_parts.append(f"决定:{len(char_decisions)}项")
+        arc_progress = " | ".join(arc_parts)
+
+        cur.execute("""SELECT id FROM arc_character_states
+                       WHERE novel_id=? AND character_id=? AND chapter_no=?""",
+                    (nid, cid, chapter_no))
+        existing = cur.fetchone()
+        if existing:
+            cur.execute("""UPDATE arc_character_states SET
+                physical_state=?, emotional_state=?, arc_progress=?,
+                key_decisions=?, active_relationships=?
+                WHERE novel_id=? AND character_id=? AND chapter_no=?""",
+                        (phys, emo_json, arc_progress, decisions_json, rels_json,
+                         nid, cid, chapter_no))
+        else:
+            cur.execute("""INSERT INTO arc_character_states
+                (novel_id, character_id, chapter_no, physical_state, emotional_state,
+                 arc_progress, key_decisions, active_relationships)
+                VALUES(?,?,?,?,?,?,?,?)""",
+                        (nid, cid, chapter_no, phys, emo_json, arc_progress,
+                         decisions_json, rels_json))
+    conn.commit()
+    conn.close()
+
+
 def generate_chapter_context(chapter_no, title, content, wc, nid, ch_id, char_names=None):
     """Generate structured chapter_context row and INSERT into chapter_contexts table."""
     conn = connect()
@@ -1497,6 +1693,12 @@ def generate_chapter_context(chapter_no, title, content, wc, nid, ch_id, char_na
     threads = _extract_unresolved_threads(content)
     emotions = _extract_emotional_states(content, char_names)
     world = _extract_world_state(content)
+
+    # v0.7.2: Enhanced extraction for Story Arc
+    phys_states = _extract_character_physical_states(content, char_names)
+    emotions_enh = _extract_emotional_states_enhanced(content, char_names)
+    key_decisions = _extract_key_decisions(content, char_names)
+    active_rels = _extract_active_relationships(content, char_names)
 
     # Reuse chapter_brief data
     ending_state = ""
@@ -1566,7 +1768,11 @@ def generate_chapter_context(chapter_no, title, content, wc, nid, ch_id, char_na
     conn.commit()
     conn.close()
 
-    print(f"  [OK] chapter_context: {len(char_locs)}人物位置, {len(items)}物品, {len(threads)}悬念")
+    # v0.7.2: Populate arc_character_states for each character
+    _upsert_arc_character_states(nid, chapter_no, char_names, phys_states,
+                                  emotions_enh, key_decisions, active_rels)
+
+    print(f"  [OK] chapter_context: {len(char_locs)}人物位置, {len(items)}物品, {len(threads)}悬念, {len(phys_states)}身体状态")
     return {
         "chapter_no": chapter_no,
         "character_locations": char_locs,

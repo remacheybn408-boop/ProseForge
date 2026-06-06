@@ -50,6 +50,12 @@ GUARD_LEVELS = {
     "voice_pack_guard": 2,
     "meme_pack_guard": 2,
     "mental_state_guard": 2,
+    # 新增 v0.7.2
+    "emotional_impact_guard": 2,
+    "opening_hook_guard": 2,
+    "sensory_detail_guard": 2,
+    "pacing_variation_guard": 2,
+    "pov_consistency_guard": 2,
 }
 
 LEVEL2_CANNOT_FAIL = {k for k, v in GUARD_LEVELS.items() if v == 2}
@@ -58,6 +64,7 @@ MODE_GUARDS = {
     "draft": [
         "continuity_evidence_guard", "canon_evidence_guard",
         "hallucination_guard", "padding_guard",
+        "opening_hook_guard",
     ],
     "standard": [
         "continuity_evidence_guard", "canon_evidence_guard",
@@ -68,6 +75,9 @@ MODE_GUARDS = {
         "dialogue_naturalness_guard",
         "reader_pull_guard", "voice_pack_guard", "meme_pack_guard",
         "mental_state_guard",
+        "opening_hook_guard",
+        "sensory_detail_guard",
+        "pacing_variation_guard",
     ],
     "submission": [
         "continuity_evidence_guard", "canon_evidence_guard",
@@ -81,6 +91,11 @@ MODE_GUARDS = {
         "style_variation_guard", "compliance_selfcheck_guard",
         "reader_pull_guard", "voice_pack_guard", "meme_pack_guard",
         "mental_state_guard",
+        "emotional_impact_guard",
+        "opening_hook_guard",
+        "sensory_detail_guard",
+        "pacing_variation_guard",
+        "pov_consistency_guard",
     ],
 }
 
@@ -108,6 +123,12 @@ GUARD_RUNNERS = {
     "voice_pack_guard": ("src.guards.voice_pack_guard", "run_voice_pack_check"),
     "meme_pack_guard": ("src.guards.meme_pack_guard", "run_meme_pack_check"),
     "mental_state_guard": ("src.guards.human_texture.mental_state_guard", "run_mental_state_check"),
+    # 新增 v0.7.2
+    "emotional_impact_guard": ("src.guards.emotional_impact_guard", "run_emotional_impact_check"),
+    "opening_hook_guard": ("src.guards.opening_hook_guard", "run_opening_hook_check"),
+    "sensory_detail_guard": ("src.guards.sensory_detail_guard", "run_sensory_detail_check"),
+    "pacing_variation_guard": ("src.guards.pacing_variation_guard", "run_pacing_variation_check"),
+    "pov_consistency_guard": ("src.guards.pov_consistency_guard", "run_pov_consistency_check"),
 }
 
 

@@ -43,6 +43,12 @@ GUARD_LEVELS = {
     "scene_causality_guard": 2,
     "dialogue_naturalness_guard": 2,
     "style_variation_guard": 2,
+    # 新增 v0.7.2
+    "emotional_impact_guard": 2,
+    "opening_hook_guard": 2,
+    "sensory_detail_guard": 2,
+    "pacing_variation_guard": 2,
+    "pov_consistency_guard": 2,
     # Level 3: 合规风险层 (可 BLOCK)
     "compliance_selfcheck_guard": 3,
 }
@@ -52,6 +58,7 @@ MODE_GUARDS = {
     "draft": [
         "continuity_evidence_guard", "canon_evidence_guard",
         "hallucination_guard", "padding_guard",
+        "opening_hook_guard",  # 新增: 开篇基础检查
     ],
     "standard": [
         "continuity_evidence_guard", "canon_evidence_guard",
@@ -60,6 +67,10 @@ MODE_GUARDS = {
         "show_dont_tell_guard", "character_voice_guard",
         "concrete_anchor_guard", "scene_causality_guard",
         "dialogue_naturalness_guard",
+        # 新增 v0.7.2
+        "opening_hook_guard",
+        "sensory_detail_guard",
+        "pacing_variation_guard",
     ],
     "submission": [
         "continuity_evidence_guard", "canon_evidence_guard",
@@ -71,6 +82,12 @@ MODE_GUARDS = {
         "editor_revision_guard", "concrete_anchor_guard",
         "scene_causality_guard", "dialogue_naturalness_guard",
         "style_variation_guard", "compliance_selfcheck_guard",
+        # 新增 v0.7.2（全量）
+        "emotional_impact_guard",
+        "opening_hook_guard",
+        "sensory_detail_guard",
+        "pacing_variation_guard",
+        "pov_consistency_guard",
     ],
 }
 
@@ -148,6 +165,12 @@ GUARD_RUNNERS = {
     "dialogue_naturalness_guard": ("dialogue_naturalness_guard", "run_dialogue_naturalness_check"),
     "style_variation_guard": ("style_variation_guard", "build_report"),
     "compliance_selfcheck_guard": ("compliance_selfcheck_guard", "run_compliance_selfcheck"),
+    # 新增 v0.7.2
+    "emotional_impact_guard": ("emotional_impact_guard", "run_emotional_impact_check"),
+    "opening_hook_guard": ("opening_hook_guard", "run_opening_hook_check"),
+    "sensory_detail_guard": ("sensory_detail_guard", "run_sensory_detail_check"),
+    "pacing_variation_guard": ("pacing_variation_guard", "run_pacing_variation_check"),
+    "pov_consistency_guard": ("pov_consistency_guard", "run_pov_consistency_check"),
 }
 
 

@@ -48,7 +48,8 @@ def build_commit(project_root: Path, chapter_no: int, chapter_title: str = "",
 def save_commit(project_root: Path, chapter_no: int, commit: dict):
     """Save a chapter commit and update memory files."""
     story = _resolve_story(project_root)
-    (story / "commits").mkdir(exist_ok=True)
+    story.mkdir(parents=True, exist_ok=True)
+    (story / "commits").mkdir(parents=True, exist_ok=True)
     fp = story / "commits" / f"chapter_{chapter_no:03d}_commit.json"
     fp.write_text(json.dumps(commit, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -64,7 +65,10 @@ def save_commit(project_root: Path, chapter_no: int, commit: dict):
 
 def update_event_ledger(project_root: Path, chapter_no: int, events: list):
     """Append events to event_ledger.jsonl."""
-    ledger = _resolve_story(project_root) / "events" / "event_ledger.jsonl"
+    story = _resolve_story(project_root)
+    events_dir = story / "events"
+    events_dir.mkdir(parents=True, exist_ok=True)
+    ledger = events_dir / "event_ledger.jsonl"
     lines = []
     for evt in events:
         entry = {"chapter": chapter_no, "event": str(evt), "timestamp": datetime.now().isoformat()}
@@ -75,7 +79,9 @@ def update_event_ledger(project_root: Path, chapter_no: int, events: list):
 
 def update_memory_from_commit(project_root: Path, commit: dict):
     """Update memory files based on commit data."""
-    memory = _resolve_story(project_root) / "memory"
+    story = _resolve_story(project_root)
+    memory = story / "memory"
+    memory.mkdir(parents=True, exist_ok=True)
 
     # Update promises
     promises_file = memory / "promises.json"

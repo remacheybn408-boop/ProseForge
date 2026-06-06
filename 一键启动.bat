@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title Novel Forge - 小说引擎 v0.7.1
+title Novel Forge - 小说引擎 v0.7.2
 cd /d "%~dp0"
 
 :check_python

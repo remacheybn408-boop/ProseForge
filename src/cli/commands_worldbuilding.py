@@ -13,23 +13,8 @@ import sys
 import json
 import sqlite3
 from datetime import datetime
-from src.cli.shared import PROJECT_ROOT, _get_active_db_path, _get_default_slug, _get_outline_manager
-
-
-def _get_novel_id(cur):
-    slug = _get_default_slug()
-    cur.execute("SELECT id FROM novels WHERE slug=?", (slug,))
-    row = cur.fetchone()
-    return row[0] if row else None
-
-
-def _find_by_title(cur, nid, title):
-    cur.execute("SELECT * FROM worldbuilding WHERE novel_id=? AND title=?", (nid, title))
-    row = cur.fetchone()
-    if row:
-        return row
-    cur.execute("SELECT * FROM worldbuilding WHERE novel_id=? AND title LIKE ?", (nid, f"%{title}%"))
-    return cur.fetchone()
+from src.cli.shared import (PROJECT_ROOT, _get_active_db_path, _get_default_slug,
+    _get_outline_manager, _get_novel_id, _find_by_title)
 
 
 def _get_outline_content():
@@ -129,7 +114,7 @@ def _wb_show(title):
         print("  当前小说未在数据库注册")
         conn.close()
         return
-    row = _find_by_title(cur, nid, title)
+    row = _find_by_title(cur, "worldbuilding", nid, title)
     conn.close()
     if not row:
         print(f'  未找到世界观条目「{title}」')
@@ -219,7 +204,7 @@ def _wb_edit(title, field, value):
         print("  当前小说未在数据库注册")
         conn.close()
         return
-    row = _find_by_title(cur, nid, title)
+    row = _find_by_title(cur, "worldbuilding", nid, title)
     if not row:
         print(f'  未找到世界观条目「{title}」')
         conn.close()
@@ -257,7 +242,7 @@ def _wb_delete(title):
         print("  当前小说未在数据库注册")
         conn.close()
         return
-    row = _find_by_title(cur, nid, title)
+    row = _find_by_title(cur, "worldbuilding", nid, title)
     if not row:
         print(f'  未找到世界观条目「{title}」')
         conn.close()

@@ -12,14 +12,8 @@ import sys
 import json
 import sqlite3
 from datetime import datetime
-from src.cli.shared import PROJECT_ROOT, _get_active_db_path, _get_default_slug
-
-
-def _get_novel_id(cur):
-    slug = _get_default_slug()
-    cur.execute("SELECT id FROM novels WHERE slug=?", (slug,))
-    row = cur.fetchone()
-    return row[0] if row else None
+from src.cli.shared import (PROJECT_ROOT, _get_active_db_path, _get_default_slug,
+    _get_novel_id)
 
 
 def _status_label(status):
@@ -36,7 +30,14 @@ def _get_max_chapter(cur, nid):
 # ── subcommand handlers ──
 
 
-def _pr_list(status_filter="open"):
+def _record_promise_alignment(nid, cur, promise_id, chapter_no, alignment_type, notes=""):
+    """Record promise alignment in arc_alignments table."""
+    cur.execute(
+        "INSERT OR IGNORE INTO arc_alignments "
+        "(novel_id, promise_id, chapter_no, alignment_type, notes) "
+        "VALUES (?,?,?,?,?)",
+        (nid, promise_id, chapter_no, alignment_type, notes),
+    )
     db = _get_active_db_path()
     if not db or not db.exists():
         print("[ERROR] 未找到活跃数据库")
@@ -108,6 +109,10 @@ def _pr_add(description, chapter=None, importance=3):
     )
     conn.commit()
     rowid = cur.lastrowid
+    if chapter:
+        _record_promise_alignment(nid, cur, rowid, chapter, "setup",
+                                  f"承诺「{title}」于第{chapter}章提出")
+        conn.commit()
     conn.close()
     _sync_story_promises(title, description, chapter)
     print(f"  [OK] 已添加读者承诺 #{rowid}「{title}」")
@@ -153,6 +158,8 @@ def _pr_fulfill(pid, chapter_no):
         "UPDATE reader_promises SET status='fulfilled', payoff_chapter=?, updated_at=datetime('now') WHERE id=?",
         (chapter_no, pid),
     )
+    _record_promise_alignment(nid, cur, pid, chapter_no, "fulfillment",
+                              f"承诺「{row['promise_title']}」于第{chapter_no}章兑现")
     conn.commit()
     conn.close()
     _update_story_promise_resolved(row["promise_title"])

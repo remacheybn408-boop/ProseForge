@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """src/cli/commands_core.py — Core CLI commands (report/guards/check/wc/init/genre/style) v0.7.0"""
 
-from src.cli.shared import (PROJECT_ROOT, SCRIPTS_DIR, _load_project_config, _cfg_path,
+from src.cli.shared import (PROJECT_ROOT, SCRIPTS_DIR, _load_project_config,
     _get_default_slug, _get_novels_root, _get_outline_dir, _resolve_post_context,
     find_chapter_file,
     _resolve_chapter_path, _story_exists, _story_missing_msg, _get_workspace_dir,
@@ -149,9 +149,7 @@ def cmd_wc(file_path: str = None):
             novels_root = resolve_path(PROJECT_ROOT, cfg_data.get("novels_root", "./novels"))
             ch_dir = Path(_resolve_chapter_path(slug))
             fp = find_chapter_file(chapter_no, ch_dir)
-            if fp:
-                return 0
-            else:
+            if not fp:
                 print(f"[ERROR] Chapter {chapter_no} not found in {ch_dir}")
                 return 1
         except Exception as e:

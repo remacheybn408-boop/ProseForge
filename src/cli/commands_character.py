@@ -27,7 +27,7 @@ from src.guards.human_texture.voice_diversity_guard import (
     get_focus_state, set_focus_state, FOCUS_STATE_CHOICES,
     set_relation, delete_relation, list_relations, get_relations_for,
     export_char_card, import_char_card,
-    VOICE_CARD_FIELDS, PERSONALITY_FIELDS, BEHAVIOR_FIELDS, PERSONALITY_CHOICES,
+    VOICE_CARD_FIELDS, PERSONALITY_FIELDS, BEHAVIOR_FIELDS, STORY_FIELDS, PERSONALITY_CHOICES,
     DB_CHAR_FIELDS, DB_CHAR_FIELD_NAMES_EXT,
     MENTAL_STATE_CATEGORIES,
 )
@@ -49,6 +49,7 @@ def _new_empty_card(name: str) -> dict:
         "voice": {k: "" for k in VOICE_CARD_FIELDS},
         "personality": {k: "" for k in PERSONALITY_FIELDS},
         "behavior": {k: ([] if k == "habits" else "") for k in BEHAVIOR_FIELDS},
+        "story": {k: "" for k in STORY_FIELDS},
     }
 
 
@@ -307,6 +308,10 @@ def _char_show(name: str):
     behavior = card.get("behavior", {})
     has_behavior = any(behavior.get(f) for f in BEHAVIOR_FIELDS if behavior.get(f))
 
+    # ── 叙事层 ──
+    story = card.get("story", {})
+    has_story = any(story.get(f) for f in STORY_FIELDS if story.get(f))
+
     # ── 精神状态（从独立文件读取）──
     mental = get_mental_state(PROJECT_ROOT, name)
     has_mental = bool(mental and any(v is not None for v in mental.values()))
@@ -324,6 +329,9 @@ def _char_show(name: str):
     mot_v = db_row.get("motivation", "") if db_row else ""
     has_arc = bool(arc_v or mot_v)
 
+    # ── 叙事层 ──
+    has_story = any(story.get(f) for f in STORY_FIELDS if story.get(f))
+
     # ── 元数据 ──
     tags_v = db_row.get("tags", "") if db_row else ""
     has_meta = bool(alias_v or tags_v)
@@ -340,6 +348,8 @@ def _char_show(name: str):
         sections.append("mental_state")
     if has_voice:
         sections.append("voice")
+    if has_story:
+        sections.append("story")
     if has_rel:
         sections.append("relationship")
     if has_arc:
@@ -393,6 +403,23 @@ def _char_show(name: str):
                 elif val:
                     print(f"  │  {f}: {val}")
 
+        elif sec == "story":
+            story = card.get("story", {})
+            print(f"{prefix}【叙事层】")
+            has_story = False
+            for f in STORY_FIELDS:
+                val = story.get(f, "")
+                if val:
+                    has_story = True
+                    label = {"motivation": "核心动机", "fatal_flaw": "致命缺陷",
+                             "secret": "秘密", "trauma": "关键创伤",
+                             "goal_short": "短期目标", "goal_long": "长期目标",
+                             "ability": "特长", "weakness": "短板",
+                             "arc_intended": "预定弧线", "arc_current": "弧线当前"}.get(f, f)
+                    print(f"  │  {label}: {val}")
+            if not has_story:
+                print(f"  │  (未设置)")
+
         elif sec == "mental_state":
             print(f"{prefix}【精神状态】")
             for cat in MENTAL_STATE_CATEGORIES:
@@ -412,6 +439,20 @@ def _char_show(name: str):
                 val = voice.get(f, "")
                 if val:
                     print(f"  │  {f}: {_render_field(f, val)}")
+
+        elif sec == "story":
+            print(f"{prefix}【叙事层】")
+            labels = {"motivation": "核心动机", "fatal_flaw": "致命缺陷",
+                      "secret": "秘密", "trauma": "关键创伤",
+                      "goal_short": "短期目标", "goal_long": "长期目标",
+                      "ability": "特长", "weakness": "短板",
+                      "arc_intended": "预定弧线", "arc_current": "弧线当前"}
+            for f in STORY_FIELDS:
+                val = story.get(f, "")
+                if val:
+                    label = labels.get(f, f)
+                    val_str = val[:60] + "..." if len(val) > 60 else val
+                    print(f"  │  {label}: {val_str}")
 
         elif sec == "relationship":
             print(f"{prefix}【关系】")
@@ -502,7 +543,8 @@ def _char_edit(name: str, field: str, value: str):
         found = False
         for group_name, group_fields in [("voice", VOICE_CARD_FIELDS),
                                           ("personality", PERSONALITY_FIELDS),
-                                          ("behavior", BEHAVIOR_FIELDS)]:
+                                          ("behavior", BEHAVIOR_FIELDS),
+                                          ("story", STORY_FIELDS)]:
             if sub_field in group_fields:
                 if sub_field == "habits":
                     card[group_name][sub_field] = [v.strip() for v in value.split(",") if v.strip()]
@@ -1239,6 +1281,7 @@ def cmd_character(args):
             print("  声纹字段:", " ".join(VOICE_CARD_FIELDS))
             print("  性格字段:", " ".join(PERSONALITY_FIELDS))
             print("  做事字段:", " ".join(BEHAVIOR_FIELDS))
+            print("  叙事字段:", " ".join(STORY_FIELDS))
             print()
             print("  示例: python novel.py character edit 韩烈 core 沉稳")
             print("        python novel.py character edit 韩烈 habits 咬嘴唇,搓手指")

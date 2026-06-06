@@ -1,9 +1,9 @@
-# Novel Forge — 小说引擎 v0.7.1
+# Novel Forge — 小说引擎 v0.7.2
 
 [![Test](https://github.com/remacheybn408-boop/Novel-Forge/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/remacheybn408-boop/Novel-Forge/actions/workflows/test.yml)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT%20OR%20GPL--3.0-green)
-![Version](https://img.shields.io/badge/version-v0.7.1-orange)
+![Version](https://img.shields.io/badge/version-v0.7.2-orange)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
 轻量小说工程化写作流水线——专注长篇小说的连续性、角色口吻一致性、AI 腔检测、防幻觉、写前任务卡和写后质量报告。
@@ -27,6 +27,27 @@
 | 11 | **Genre/Style Pack 预设** | 10 种 genre + 9 种 style 写作预设，`novel.py genre|style` 查看 |
 | 12 | **MCP 中文菜单桥接层** | 10 个安全 MCP 工具，AI 客户端通过中文直接操作引擎（`novel_menu`/`novel_status`/`novel_agents_review`/`novel_export_txt` 等），零命令、零路径暴露 |
 | 13 | **角色精神状态系统** | 角色卡第四层：15 类精神状况（PTSD/抑郁/焦虑等），severity 0-5 + 诱因 + 触发词 + 章节追踪，`character mental` CLI 管理，大纲中自动扫描推荐 |
+
+---
+
+## v0.7.2 新增能力
+
+| # | 能力 | 说明 |
+|---|------|------|
+| 1 | **Guard 扩展至 27 个** | 新增 5 个 Guard：情感渲染力、开篇吸引力、感官描写浓度、节奏变化、视角一致性。覆盖从"有没有AI腔"到"读起来好不好看"的全维度 |
+| 2 | **角色叙事层 (10 字段)** | 角色卡新增第5维度：动机、致命缺陷、秘密、关键创伤、短期/长期目标、特长、短板、预定弧线、弧线当前。旧卡自动补齐 |
+| 3 | **Story Arc 三合一架构** | 规划 Context + Promise + Plot Threads 合并为统一故事弧线追踪系统，实现跨章跨卷的状态/物品/情绪/承诺对齐检测（见 `plans/story-arc-merge-plan.md`） |
+| 4 | **都市言情 30 章 Demo 小说** | 内置完整 30 章都市言情小说「城与光之间」(71,710 汉字)，含 28 张角色卡、全流程 pipeline 验证 |
+| 5 | **`.story/` 自动创建** | 修复 story commit 时目录缺失的 `[WinError 3]` 路径问题 |
+
+---
+
+## 规划中 (Roadmap)
+
+| 版本 | 功能 | 说明 |
+|------|------|------|
+| v0.7.4 | **Guard 建议自动改稿** | revise 命令接入 Guard 输出，自动执行建议修改并生成 diff |
+| v0.7.5 | **RAG 全文检索 + 综合质量评分** | 当前 FTS5 基础上升级语义搜索；同时聚合 Guard 评分、Agent 陪审团审稿分、Human Texture 质量分、故事链健康度、角色弧线完整度、承诺兑现率、情节线完结率，输出单章/全本综合质量看板 |
 
 ---
 
@@ -54,7 +75,7 @@ python novel.py demo
 
 # 日常写作
 python novel.py pre 1             # 写前任务卡
-python novel.py post 1            # 入库 + 22 Guard 门禁
+python novel.py post 1            # 入库 + 27 Guard 门禁
 python novel.py agents review 1 --mode full  # 20 Agent 审稿
 
 # 角色管理 (v0.7.1)
@@ -98,7 +119,7 @@ pre（写前任务卡）      ← 读取上章结尾 + SQLite 上下文
     ↓
 写作（按任务卡生成正文）
     ↓
-post（22 Guard 门禁） ← 幻觉 / 连续性 / AI腔 / 口吻 / 标点等
+post（27 Guard 门禁） ← 幻觉 / 连续性 / AI腔 / 口吻 / 开篇 / 感官 / 节奏 / 情感 / 视角等
     ↓
 agents review（可选）  ← 20 Agent + Chief Editor 审稿
     ↓
@@ -115,7 +136,7 @@ ingest to SQLite       ← 入库 + 切片 + FTS + 摘要
 
 | 体系 | 数量 | 触发方式 | 职责 |
 |------|------|---------|------|
-| **Guard 门禁** | 22 个精确规则 | post 自动运行 | 拦截硬性错误：幻觉、连续性断裂、AI 腔、破折号超标 |
+| **Guard 门禁** | 27 个精确规则 | post 自动运行 | 拦截硬性错误：幻觉、连续性断裂、AI 腔、破折号超标 |
 | **Agent 陪审团** | 20 个自然度 Agent | 手动 `agents review` | 评估软性质量：动作自然度、潜台词、情绪递进、场景落地、节奏呼吸 |
 | **发布前陪审团** | 20 个配置 Agent | 发布前审稿 | 风险分级、主编汇总、must_fix / should_fix / keep 分类 |
 
@@ -214,7 +235,7 @@ src/
 │   ├── commands_outline.py      ← 大纲管理
 │   ├── commands_menu.py         ← 菜单/帮助
 │   └── commands_status.py       ← 状态诊断
-├── guards/                      ← 22 个门禁规则模块
+├── guards/                      ← 27 个门禁规则模块
 ├── task_card/                   ← 写前任务卡
 ├── voice/                       ← Voice Pack 加载器
 └── report/                      ← HTML 报告生成

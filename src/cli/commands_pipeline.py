@@ -1,7 +1,7 @@
 """src/cli/commands_pipeline.py — Pipeline commands (pre/post/review/export) v0.7.0"""
 
 from src.cli.shared import (PROJECT_ROOT, SCRIPTS_DIR, _load_project_config,
-    _cfg_path, _get_default_slug, _get_novels_root, _resolve_post_context,
+    _get_default_slug, _get_novels_root, _resolve_post_context,
     _resolve_chapter_path, _story_exists, find_chapter_file,
     _get_workspace_dir, _get_active_db_path, _check_outline_gate)
 import json
@@ -185,7 +185,12 @@ def cmd_revise(chapter_no: str = None, mode: str = "controlled",
         return 1
     chapters_dir, db_path, resolved_slug, title = ctx
     slug = slug or resolved_slug
-    ch = int(chapter_no)
+    try:
+        ch = int(chapter_no)
+    except ValueError:
+        print(f"  ❌ 无效章节号: '{chapter_no}' (必须为数字)")
+        print(f"  用法: python novel.py revise <chapter_no> [--mode controlled|suggest] [--approve]")
+        return 1
 
     # Find chapter file
     ch_dir = Path(chapters_dir)
@@ -224,6 +229,9 @@ def cmd_revise(chapter_no: str = None, mode: str = "controlled",
         result = run_controlled_mode(str(ch_path), str(report_path), str(out_dir), config)
 
         if result["status"] == "OK":
+            if "outputs" not in result or not result["outputs"]:
+                print(f"\n✅ 无需修订 — {result.get('message', '没有高置信度改稿任务')}")
+                return 0
             print(f"\n✅ 修订完成")
             print(f"  修订稿: {result['outputs']['revised_draft']}")
             print(f"  差异报告: {result['outputs']['diff_report']}")

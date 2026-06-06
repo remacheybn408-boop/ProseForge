@@ -223,6 +223,7 @@ def _create_slot_structure(slot_dir: Path):
                     relationship TEXT DEFAULT '',
                     arc TEXT DEFAULT '',
                     status TEXT DEFAULT 'active',
+                    focus_state TEXT DEFAULT '活跃',
                     tags TEXT DEFAULT ''
                 );
 
@@ -804,6 +805,10 @@ def _db_use(slot_id):
     if not registry_file.exists():
         print("  workspace/ 未初始化。运行 python novel.py db init")
         return 1
+
+    # 数字简写: "1" → "slot_001"
+    if slot_id.isdigit():
+        slot_id = f"slot_{int(slot_id):03d}"
 
     registry = _json.loads(registry_file.read_text(encoding="utf-8"))
 

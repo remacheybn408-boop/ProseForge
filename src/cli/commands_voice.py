@@ -35,7 +35,7 @@ def _resolve_chapter_path(chapter_no: str) -> str | None:
         # Try chapters dir
         ch_dir = slot_dir / "chapters"
         if ch_dir.exists():
-            ch_fp = find_chapter_file(chapter_no, ch_dir)
+            ch_fp = find_chapter_file(int(chapter_no), ch_dir)
             if ch_fp:
                 return str(ch_fp)
         # Try novels_root
@@ -49,7 +49,7 @@ def _resolve_chapter_path(chapter_no: str) -> str | None:
             slug = pj.get("title") or pj.get("name", "")
         if slug:
             ch_dir = Path(_rcp(slug))
-            ch_fp = find_chapter_file(chapter_no, ch_dir)
+            ch_fp = find_chapter_file(int(chapter_no), ch_dir)
             if ch_fp:
                 return str(ch_fp)
     except Exception:

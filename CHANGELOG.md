@@ -1,3 +1,18 @@
+## v0.7.2 — Guard 扩展 + 角色叙事层 (2026-06-06)
+
+### Added
+- **Guard 新增 5 个** — 情感渲染力、开篇吸引力、感官描写浓度、节奏变化、视角一致性（总数 22→27）
+  - 三种模式同步更新：draft(5)/standard(18)/submission(26)
+  - 每个 Guard 含独立 scores 字典，支持按维度评分
+- **角色叙事层 (10 字段)** — 角色卡新增第5维度：动机、致命缺陷、秘密、关键创伤、短期/长期目标、特长、短板、预定弧线、弧线当前
+  - `_ensure_nested` 自动升级旧卡，缺失分组自动补齐
+  - `character edit` 和 `character show` 完整支持新字段显示与编辑
+- **Story Arc 规划** — Context + Promise + Plot Threads 合并方案，见 `plans/story-arc-merge-plan.md`
+- **都市言情 30 章 Demo** — 内置「城与光之间」(71,710 汉字)，28 张角色卡，全 pipeline 验证
+
+### Fixed
+- **`.story/` 自动创建** — `commit_builder.py` 三个函数加 `mkdir(parents=True)`，story commit 不再报 `[WinError 3]`
+
 ## v0.7.1 - 角色精神状态系统 (2026-06-04)
 
 ### Added

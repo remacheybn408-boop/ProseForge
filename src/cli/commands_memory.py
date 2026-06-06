@@ -1,7 +1,7 @@
 """src/cli/commands_memory.py — Memory/query/learn/RAG commands v0.7.0"""
 
 from src.cli.shared import (PROJECT_ROOT, SCRIPTS_DIR, _load_project_config,
-    _cfg_path, _get_default_slug, _get_novels_root, _resolve_post_context,
+    _get_default_slug, _get_novels_root, _resolve_post_context,
     _story_exists, _story_missing_msg, _get_workspace_dir, _get_active_db_path,
     _get_outline_manager, _check_outline_gate, _get_story_dir)
 import sys

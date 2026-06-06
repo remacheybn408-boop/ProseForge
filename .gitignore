@@ -57,3 +57,10 @@ api/
 requirements-api.txt
 requirements-rag.txt
 一键启动.bat
+# Local data
+demo/
+outlines/
+plans/
+database/
+architecture.html
+count_chars.py

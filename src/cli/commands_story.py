@@ -1,7 +1,7 @@
 """src/cli/commands_story.py — Story contract commands v0.7.0"""
 
 from src.cli.shared import (PROJECT_ROOT, SCRIPTS_DIR, _load_project_config,
-    _cfg_path, _get_default_slug, _get_novels_root, _resolve_post_context,
+    _get_default_slug, _get_novels_root, _resolve_post_context,
     _resolve_chapter_path, _story_exists, _story_missing_msg, _get_workspace_dir,
     find_chapter_file,
     _get_active_db_path, _get_outline_manager, _check_outline_gate, _get_story_dir)
@@ -157,6 +157,10 @@ def cmd_story(args):
         print()
         return 0 if status == "OK" else (1 if status == "FAIL" else 0)
 
+    elif action == "arc":
+        from src.cli.commands_arc import cmd_arc
+        return cmd_arc(args)
+
     else:
-        print("Usage: python novel.py story {init|contract|commit|health}")
+        print("Usage: python novel.py story {init|contract|commit|health|arc}")
         return 1

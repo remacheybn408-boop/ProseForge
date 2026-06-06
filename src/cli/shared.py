@@ -45,8 +45,22 @@ def _resolve_db_to_active_slot(cfg: dict) -> None:
         pass
 
 
-def _cfg_path(key: str, default: str) -> Path:
-    cfg = _load_project_config()
+def _get_novel_id(cur):
+    """Get novel_id from active slot's novels table. Returns None if not found."""
+    slug = _get_default_slug()
+    cur.execute("SELECT id FROM novels WHERE slug=?", (slug,))
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+def _find_by_title(cur, table: str, nid: int, title: str):
+    """Find row by exact title match, fallback to LIKE. Returns sqlite3.Row or None."""
+    cur.execute(f"SELECT * FROM {table} WHERE novel_id=? AND title=?", (nid, title))
+    row = cur.fetchone()
+    if row:
+        return row
+    cur.execute(f"SELECT * FROM {table} WHERE novel_id=? AND title LIKE ?", (nid, f"%{title}%"))
+    return cur.fetchone()
 
 def _get_default_slug(cfg_path=None):
     """Resolve novel slug: active slot DB → config fallback."""
@@ -62,7 +76,7 @@ def _get_default_slug(cfg_path=None):
                 if slot_db.exists():
                     import sqlite3 as _s
                     conn = _s.connect(str(slot_db))
-                    row = conn.execute("SELECT slug FROM novels LIMIT 1").fetchone()
+                    row = conn.execute("SELECT slug FROM novels ORDER BY id DESC LIMIT 1").fetchone()
                     conn.close()
                     if row and row[0]:
                         return row[0]

@@ -14,29 +14,8 @@ import sys
 import json
 import sqlite3
 from datetime import datetime
-from src.cli.shared import PROJECT_ROOT, _get_active_db_path, _get_default_slug
-
-
-def _get_novel_id(cur):
-    slug = _get_default_slug()
-    cur.execute("SELECT id FROM novels WHERE slug=?", (slug,))
-    row = cur.fetchone()
-    return row[0] if row else None
-
-
-def _find_by_title(cur, nid, title):
-    cur.execute(
-        "SELECT * FROM plot_threads WHERE novel_id=? AND title=?",
-        (nid, title),
-    )
-    row = cur.fetchone()
-    if row:
-        return row
-    cur.execute(
-        "SELECT * FROM plot_threads WHERE novel_id=? AND title LIKE ?",
-        (nid, f"%{title}%"),
-    )
-    return cur.fetchone()
+from src.cli.shared import (PROJECT_ROOT, _get_active_db_path, _get_default_slug,
+    _get_novel_id, _find_by_title)
 
 
 def _status_label(status):
@@ -50,6 +29,16 @@ def _thread_type_label(t):
 
 
 # ── subcommand handlers ──
+
+
+def _record_thread_alignment(nid, cur, thread_id, chapter_no, alignment_type, notes=""):
+    """Record plot thread alignment in arc_alignments table."""
+    cur.execute(
+        "INSERT OR IGNORE INTO arc_alignments "
+        "(novel_id, thread_id, chapter_no, alignment_type, notes) "
+        "VALUES (?,?,?,?,?)",
+        (nid, thread_id, chapter_no, alignment_type, notes),
+    )
 
 
 def _pt_list():
@@ -106,7 +95,7 @@ def _pt_show(title):
         print("  当前小说未在数据库注册")
         conn.close()
         return
-    row = _find_by_title(cur, nid, title)
+    row = _find_by_title(cur, "plot_threads", nid, title)
     if not row:
         print(f'  未找到情节线索「{title}」')
         conn.close()
@@ -218,7 +207,7 @@ def _pt_edit(title, field, value):
         print("  当前小说未在数据库注册")
         conn.close()
         return
-    row = _find_by_title(cur, nid, title)
+    row = _find_by_title(cur, "plot_threads", nid, title)
     if not row:
         print(f'  未找到情节线索「{title}」')
         conn.close()
@@ -256,7 +245,7 @@ def _pt_close(title, chapter=None):
         print("  当前小说未在数据库注册")
         conn.close()
         return
-    row = _find_by_title(cur, nid, title)
+    row = _find_by_title(cur, "plot_threads", nid, title)
     if not row:
         print(f'  未找到情节线索「{title}」')
         conn.close()
@@ -275,6 +264,8 @@ def _pt_close(title, chapter=None):
             "UPDATE plot_threads SET status='resolved' WHERE id=?",
             (row["id"],),
         )
+    _record_thread_alignment(nid, cur, row["id"], chapter or 0, "resolution",
+                             f"线索「{row['title']}」已完结" + (f" (第{chapter}章)" if chapter else ""))
     conn.commit()
     conn.close()
     msg = f'  [OK] 已完结线索「{row["title"]}」'
@@ -304,7 +295,7 @@ def _pt_advance(chapter_no, title):
         print("  当前小说未在数据库注册")
         conn.close()
         return
-    row = _find_by_title(cur, nid, title)
+    row = _find_by_title(cur, "plot_threads", nid, title)
     if not row:
         print(f'  未找到情节线索「{title}」')
         conn.close()
@@ -324,6 +315,8 @@ def _pt_advance(chapter_no, title):
         f"UPDATE plot_threads SET {', '.join(updates)} WHERE id=?",
         (*params,),
     )
+    _record_thread_alignment(nid, cur, row["id"], chapter_no, "progress",
+                             f"线索「{row['title']}」在第{chapter_no}章推进")
     conn.commit()
     conn.close()
     print(f'  [OK] 第{chapter_no}章推进了线索「{row["title"]}」')

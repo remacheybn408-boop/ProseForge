@@ -41,6 +41,20 @@ BEHAVIOR_FIELDS = [
     "habits",            # 习惯动作: list[str]
 ]
 
+# ── 叙事层维度定义（新增 v0.7.2）──
+STORY_FIELDS = [
+    "motivation",        # 核心动机: 角色行为的根本驱动力
+    "fatal_flaw",        # 致命缺陷: 导致最大失败的性格弱点
+    "secret",            # 秘密: 角色隐藏的关键信息
+    "trauma",            # 关键创伤: 塑造角色的过去事件
+    "goal_short",        # 短期目标: 当前章节驱动行动的目标
+    "goal_long",         # 长期目标: 贯穿全书的终极目标
+    "ability",           # 特长/能力
+    "weakness",          # 不擅长/短板
+    "arc_intended",      # 预定弧线: 角色从头到尾的成长轨迹
+    "arc_current",       # 弧线当前状态: 已经经历了什么变化
+]
+
 # ── 精神状态维度（从独立模块重新导出）──
 from .mental_state_crud import MENTAL_STATE_CATEGORIES
 
@@ -184,9 +198,18 @@ def _upgrade_flat_card(name: str, card: dict) -> dict:
 
 
 def _ensure_nested(card: dict, name: str = "") -> dict:
-    """确保角色卡为嵌套格式，扁平卡自动升级."""
+    """确保角色卡为嵌套格式，扁平卡自动升级，缺少的分组自动补齐."""
     if _is_flat_card(card):
-        return _upgrade_flat_card(name or card.get("name", ""), card)
+        card = _upgrade_flat_card(name or card.get("name", ""), card)
+    # 自动补齐缺少的分组
+    if "story" not in card:
+        card["story"] = {k: "" for k in STORY_FIELDS}
+    if "voice" not in card:
+        card["voice"] = {k: "" for k in VOICE_CARD_FIELDS}
+    if "personality" not in card:
+        card["personality"] = {k: "" for k in PERSONALITY_FIELDS}
+    if "behavior" not in card:
+        card["behavior"] = {k: ([] if k == "habits" else "") for k in BEHAVIOR_FIELDS}
     return card
 
 

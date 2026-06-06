@@ -1,7 +1,7 @@
 """src/cli/commands_agents.py — Agent review board commands v0.7.0"""
 
 from src.cli.shared import (PROJECT_ROOT, SCRIPTS_DIR, _load_project_config,
-    _cfg_path, _get_default_slug, _get_novels_root, _resolve_post_context,
+    _get_default_slug, _get_novels_root, _resolve_post_context,
     find_chapter_file)
 import sys
 import json

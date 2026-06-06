@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-novel.py — CLI entry point v0.7.1
+novel.py — CLI entry point v0.7.2
 
 Thin CLI parser. All command implementations live in src/cli/.
 """
@@ -38,6 +38,7 @@ from src.cli.commands_context import cmd_context
 from src.cli.commands_worldbuilding import cmd_worldbuilding
 from src.cli.commands_plot_threads import cmd_plot_threads
 from src.cli.commands_promises import cmd_promises
+from src.cli.commands_arc import cmd_arc
 
 
 # ── CLI Parser ──────────────────────────────────────────────
@@ -189,6 +190,21 @@ def main():
     p_story_sub_commit = p_story_sub.add_parser("commit", help="Generate chapter commit")
     p_story_sub_commit.add_argument("chapter_no", nargs="?", default="1")
     p_story_sub.add_parser("health", help="Check story chain health")
+    # story arc — cross-chapter continuity tracking
+    p_story_arc = p_story_sub.add_parser("arc", help="Story arc continuity tracking")
+    p_arc_sub = p_story_arc.add_subparsers(dest="arc_action")
+    p_arc_check = p_arc_sub.add_parser("check", help="Run full arc break detection")
+    p_arc_check.add_argument("--min", dest="min_chapter", type=int, default=1, help="Start chapter")
+    p_arc_check.add_argument("--max", dest="max_chapter", type=int, default=None, help="End chapter")
+    p_arc_check.add_argument("--type", dest="check_type", help="Check types: physical,emotional,item,promise,thread")
+    p_arc_show = p_arc_sub.add_parser("show", help="Show arc state for a chapter")
+    p_arc_show.add_argument("chapter_no", help="Chapter number")
+    p_arc_char = p_arc_sub.add_parser("character", help="Show character arc timeline")
+    p_arc_char.add_argument("character_name", help="Character name")
+    p_arc_item = p_arc_sub.add_parser("item", help="Track item lifecycle")
+    p_arc_item.add_argument("item_name", help="Item name")
+    p_arc_sub.add_parser("timeline", help="Show combined arc timeline")
+    p_arc_sub.add_parser("report", help="Generate arc health report")
 
     # query / learn / board
     p_query = sub.add_parser("query", help="Query project memory")

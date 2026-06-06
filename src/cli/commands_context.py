@@ -22,12 +22,19 @@ def _connect():
     conn.row_factory = sqlite3.Row
     conn.execute("""CREATE TABLE IF NOT EXISTS chapter_contexts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        novel_id INTEGER NOT NULL,
+        novel_id INTEGER NOT NULL REFERENCES novels(id),
+        chapter_id INTEGER NOT NULL REFERENCES chapters(id),
         chapter_no INTEGER NOT NULL,
         character_locations TEXT DEFAULT '{}',
-        active_items TEXT DEFAULT '{}',
-        unresolved_threads TEXT DEFAULT '{}',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        active_items TEXT DEFAULT '[]',
+        unresolved_threads TEXT DEFAULT '[]',
+        emotional_states TEXT DEFAULT '{}',
+        world_state TEXT DEFAULT '',
+        ending_state TEXT DEFAULT '',
+        hooks_for_next TEXT DEFAULT '',
+        raw_summary TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now')),
+        UNIQUE(novel_id, chapter_id)
     )""")
     return conn
 
