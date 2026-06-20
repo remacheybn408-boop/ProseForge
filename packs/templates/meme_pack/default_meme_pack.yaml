@@ -1,0 +1,96 @@
+# default_meme_pack.yaml — 通用梗语言包模板
+# novel-pipeline-write-engine v0.5.0
+# 用于创建新梗包时的参考模板，包含所有可选字段
+
+pack_id: default_meme_pack
+name: 通用梗语言包模板
+display_name: 通用梗包模板
+version: "0.5.0"
+type: meme_pack
+description: >
+  通用梗语言包模板。包含所有可用字段及默认值。
+  新建梗包时复制此文件并修改。
+
+# === 梗分类 ===
+category: general                    # forbidden | comedy | satire | situational | cultural | general
+subcategory: ""                      # 子分类
+
+# === 适用角色 ===
+allowed_roles: []                    # 空白表示不限制
+forbidden_roles:                     # 禁止使用此梗包的角色
+  - 长老
+  - 老祖
+
+# === 触发条件 ===
+trigger:
+  scenes: []                         # 触发场景类型
+  required_context: []               # 需要的上下文
+  forbidden_contexts:                # 禁止使用的上下文
+    - 生死离别
+    - 重大牺牲
+    - 告白/情感高潮
+
+# === 严重度限制 ===
+severity_limit:
+  max_scene_seriousness: medium      # 允许的最大场景严重度：low | medium | high
+  must_not_undermine_tension: true   # 不能破坏紧张感
+
+# === 频率控制 ===
+frequency:
+  max_per_chapter: 3                 # 每章最大使用次数
+  max_per_1000_chars: 1              # 每千字最大使用次数
+  cooldown_chapters: 0               # 章节冷却（0=无冷却）
+  cooldown_paragraphs: 5             # 段落间最小间隔
+  overuse_warning_threshold: 3       # 超用警告阈值
+
+# === 梗列表 ===
+memes:
+  # 每个梗有自己的 ID 和属性
+  - meme_id: example_meme_1
+    text: "示例梗文本"
+    type: situational                # wordplay | situational | callback | parody | absurd
+    tone: light                      # light | sarcastic | absurd | warm
+    severity: low                    # low | medium | high（对场景严肃度的影响）
+    context_required:                # 需要什么上下文才能触发
+      - 轻松日常场景
+    context_forbidden:               # 禁止触发此梗的上下文
+      - 战斗场景
+      - 谈判场景
+    frequency: medium                # 该梗自身的频率等级：low | medium | high
+    variants:                        # 变体
+      - "变体1"
+      - "变体2"
+    note: ""                         # 备注
+
+# === 禁用术语 ===
+banned_terms: []                     # 全局禁用的术语/梗
+
+# === 滥用风险 ===
+misuse_risk:
+  - 过度使用会导致角色形象崩塌
+  - 在严肃场景中使用会破坏阅读体验
+
+# === 使用策略 ===
+usage_policy:
+  default_level: light               # 默认使用级别：none | light | medium | heavy
+  can_override: true                 # 角色可否覆盖
+  require_character_binding: true    # 是否需要角色绑定才能使用
+
+# === 示例 ===
+examples:
+  good:                              # 好的使用示例
+    - context: "日常场景中的轻松对话"
+      text: "好梗示例文本"
+      reason: "自然融入，不违和"
+  bad:                               # 坏的使用示例
+    - context: "生死决战后"
+      text: "坏梗示例文本"
+      reason: "破坏紧张感"
+
+# === 元数据 ===
+metadata:
+  author: novel-pipeline-write-engine
+  created: "2024-01-01"
+  updated: "2024-01-01"
+  tags: []
+  notes: 通用模板，实际使用时请根据梗包特点修改。

@@ -1,0 +1,48 @@
+{
+  "_comment": "Demo Novel — 25 章完整标题骨架示例",
+  "_usage": "python scripts/import_outline_skeleton.py --config config.json --input examples/demo_novel/outline_skeleton.json",
+  "novel_outline": {
+    "slug": "demo_novel",
+    "title": "示例小说",
+    "genre": "玄幻",
+    "total_chapters_target": 250
+  },
+  "volume_plans": [
+    {
+      "volume_no": 1,
+      "planned_title": "初入宗门",
+      "volume_goal": "主角从凡人变成杂役弟子，建立底层生存线，完成第一次修为突破",
+      "opening_state": "主角是偏远山村少年，对修炼一无所知",
+      "ending_target": "主角通过入门考核，在宗门大比中崭露头角",
+      "must_complete": "入门考核场景 + 第一次引气入体 + 宗门大比初战",
+      "suggested_chapters": 25
+    }
+  ],
+  "chapter_plans": [
+    {"volume_no":1,"chapter_no":1,"planned_title":"山村的清晨","chapter_goal":"建立主角出身和家庭背景，埋下修炼契机","conflict_point":"主角与父亲对未来的分歧","ending_hook_direction":"仙人路过山村——悬念"},
+    {"volume_no":1,"chapter_no":2,"planned_title":"仙人的测试","chapter_goal":"主角第一次接触修炼世界，展现潜质","conflict_point":"入门测试的淘汰压力与不公平","ending_hook_direction":"主角意外通过测试——转折"},
+    {"volume_no":1,"chapter_no":3,"planned_title":"离开家乡","chapter_goal":"主角告别家人，踏上修炼之路","conflict_point":"母亲的不舍与父亲的沉默——两种爱的表达","ending_hook_direction":"马车驶向未知——期待"},
+    {"volume_no":1,"chapter_no":4,"planned_title":"宗门初见","chapter_goal":"展示修真宗门的宏大与阶级","conflict_point":"天才云集带来的压迫感","ending_hook_direction":"被分配到最差的杂役房——落差"},
+    {"volume_no":1,"chapter_no":5,"planned_title":"杂役院","chapter_goal":"建立底层杂役的日常与生存法则","conflict_point":"管事故意分配超量重活","ending_hook_direction":"主角深夜仍在劈柴——韧性"},
+    {"volume_no":1,"chapter_no":6,"planned_title":"第一个朋友","chapter_goal":"引入第一个配角，建立友情线","conflict_point":"朋友被欺负，主角被迫站队","ending_hook_direction":"主角出手相助——冲突升级"},
+    {"volume_no":1,"chapter_no":7,"planned_title":"管事的手段","chapter_goal":"反派第一次系统性压制主角","conflict_point":"被诬陷偷窃灵料","ending_hook_direction":"在众人面前被搜身——屈辱"},
+    {"volume_no":1,"chapter_no":8,"planned_title":"深夜的发现","chapter_goal":"主角意外发现修炼的秘密","conflict_point":"偷学功法的风险与渴望","ending_hook_direction":"月光下第一次引气入体——突破"},
+    {"volume_no":1,"chapter_no":9,"planned_title":"灵料坊","chapter_goal":"换工作场景，展示宗门产业链","conflict_point":"新环境的鄙视链和老手的刁难","ending_hook_direction":"被老手故意教错手法——陷阱"},
+    {"volume_no":1,"chapter_no":10,"planned_title":"误打误撞","chapter_goal":"主角因祸得福，展现悟性","conflict_point":"错误手法反而炼制出高品质灵料","ending_hook_direction":"执事注意到这个杂役——转机"},
+    {"volume_no":1,"chapter_no":11,"planned_title":"执事的试探","chapter_goal":"上级对主角产生兴趣并暗中考察","conflict_point":"执事的考验——是机会还是陷阱","ending_hook_direction":"执事说'明天来找我'——悬念"},
+    {"volume_no":1,"chapter_no":12,"planned_title":"暗流","chapter_goal":"揭示宗门内部权力暗线","conflict_point":"主角无意听到不该听的对话","ending_hook_direction":"被警告'不该问的别问'——危险"},
+    {"volume_no":1,"chapter_no":13,"planned_title":"三月考核","chapter_goal":"第一次正式考核，检验成长","conflict_point":"被安排到最差的位置和条件","ending_hook_direction":"考核结果出乎所有人预料——反转"},
+    {"volume_no":1,"chapter_no":14,"planned_title":"管事的下场","chapter_goal":"清算之前的冤屈，正义得到伸张","conflict_point":"管事的最后反扑与垂死挣扎","ending_hook_direction":"管事被逐出宗门——正义"},
+    {"volume_no":1,"chapter_no":15,"planned_title":"新的身份","chapter_goal":"主角从杂役升为外门弟子","conflict_point":"身份转变带来的阻力和嫉妒","ending_hook_direction":"拿到外门弟子令牌——升级"},
+    {"volume_no":1,"chapter_no":16,"planned_title":"外门的规则","chapter_goal":"展示外门弟子的生存法则和竞争","conflict_point":"师兄对修炼资源的垄断","ending_hook_direction":"发现外门比杂役院更险恶——对比"},
+    {"volume_no":1,"chapter_no":17,"planned_title":"藏经阁","chapter_goal":"主角获取功法，拓展修炼视野","conflict_point":"功法等级限制和选择困难","ending_hook_direction":"找到一本无人问津的残卷——伏笔"},
+    {"volume_no":1,"chapter_no":18,"planned_title":"残卷的秘密","chapter_goal":"残卷并非废品，蕴含传承","conflict_point":"修炼残卷的未知风险","ending_hook_direction":"残卷中藏有前辈留音——传承"},
+    {"volume_no":1,"chapter_no":19,"planned_title":"突破","chapter_goal":"主角修为突破第一个大境界","conflict_point":"突破时的异象引来各方注意","ending_hook_direction":"长老说'此子不可留'——危机"},
+    {"volume_no":1,"chapter_no":20,"planned_title":"长老的逼问","chapter_goal":"上级审问主角，信息博弈","conflict_point":"必须隐瞒残卷的真正来历","ending_hook_direction":"长老暂时放过——缓刑"},
+    {"volume_no":1,"chapter_no":21,"planned_title":"备战","chapter_goal":"为宗门大比做最后准备","conflict_point":"修炼资源严重不足","ending_hook_direction":"决定冒险进禁地采药——铤而走险"},
+    {"volume_no":1,"chapter_no":22,"planned_title":"禁地","chapter_goal":"禁地探险，获取机缘","conflict_point":"禁地的未知危险与禁制","ending_hook_direction":"发现前人遗骸和遗物——重大发现"},
+    {"volume_no":1,"chapter_no":23,"planned_title":"遗物的力量","chapter_goal":"消化禁地收获，实力再次提升","conflict_point":"遗物引起的觊觎和跟踪","ending_hook_direction":"有人跟踪主角——危险逼近"},
+    {"volume_no":1,"chapter_no":24,"planned_title":"大比前夜","chapter_goal":"渲染大战前的气氛与各方博弈","conflict_point":"各方势力最后的拉拢与威胁","ending_hook_direction":"擂台已经搭好——期待"},
+    {"volume_no":1,"chapter_no":25,"planned_title":"第一卷终：初鸣","chapter_goal":"大比开幕，第一卷高潮收尾","conflict_point":"第一战面对远超自己的强敌","ending_hook_direction":"主角走上擂台——第一卷完"}
+  ]
+}

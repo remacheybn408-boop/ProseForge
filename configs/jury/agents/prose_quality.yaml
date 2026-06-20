@@ -1,0 +1,30 @@
+name: 文笔质量审查
+agent_id: prose_quality
+description: 检查文字表达的质量，包括句式多样性、词汇丰富度、描写生动度。
+category: style
+risk_level: low
+default_enabled: true
+weight: 0.8
+check_rules:
+- id: PRS-001
+  name: 句式多样性
+  description: 检查段落内句式是否单一。连续使用同一句型（全是'他XX了'）应标记。
+  severity: warning
+  check_type: single_chapter
+- id: PRS-002
+  name: 词汇重复
+  description: 检查高频词汇在短距离内是否过度重复。同一词在100字内出现3次以上建议替换。
+  severity: info
+  check_type: single_chapter
+- id: PRS-003
+  name: 描写生动度
+  description: 检查是否有具体的感官描写（视觉/听觉/触觉/嗅觉/味觉）。纯叙述缺乏感官细节的段落应标记。
+  severity: warning
+  check_type: single_chapter
+- id: PRS-004
+  name: 段落长度
+  description: 检查是否有超长段落（>500字无分段）。超长段落降低可读性，建议合理分段。
+  severity: info
+  check_type: single_chapter
+filters:
+  min_chapter_words: 500

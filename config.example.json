@@ -1,0 +1,105 @@
+{
+  "app": {
+    "name": "Novel Forge - 小说引擎",
+    "version": "0.9.0",
+    "mode": "local"
+  },
+  "paths": {
+    "db_path": "./data/novel_memory.db",
+    "novels_root": "./novels",
+    "outline_dir": "大纲",
+    "exports_root": "./exports",
+    "reports_root": "./exports/reports",
+    "outputs_root": "./outputs",
+    "tmp_root": "./tmp"
+  },
+  "novel": {
+    "default_slug": "demo_novel",
+    "default_title": "Demo Novel",
+    "volume_dir_template": "第{volume_no:02d}卷",
+    "chapter_filename_template": "第{chapter_no}章_{chapter_title}.txt"
+  },
+  "gates": {
+    "short_chapter_reason_required": true
+  },
+  "report": {
+    "write_json": true,
+    "write_html": true
+  },
+  "db_path": "./data/novel_memory.db",
+  "novels_root": "./novels",
+  "exports_root": "./exports",
+  "reports_root": "./exports/reports",
+  "outputs_root": "./outputs",
+  "tmp_root": "./tmp",
+  "default_novel_slug": "demo_novel",
+  "default_novel_title": "Demo Novel",
+  "default_genre": "xianxia",
+  "default_style": "webnovel",
+  "allow_short_chapter": true,
+  "word_count": {
+    "normal": {
+      "min": 1300,
+      "best_min": 1900,
+      "best_max": 2800,
+      "max": 3300
+    },
+    "relationship": {
+      "min": 1300,
+      "best_min": 1900,
+      "best_max": 2800,
+      "max": 3300
+    },
+    "investigation": {
+      "min": 1300,
+      "best_min": 1900,
+      "best_max": 2800,
+      "max": 3300
+    },
+    "experiment": {
+      "min": 1300,
+      "best_min": 1900,
+      "best_max": 3200,
+      "max": 4200
+    },
+    "conflict": {
+      "min": 1300,
+      "best_min": 1900,
+      "best_max": 3300,
+      "max": 4200
+    },
+    "key": {
+      "min": 1300,
+      "best_min": 1900,
+      "best_max": 3300,
+      "max": 4200
+    },
+    "climax": {
+      "min": 1300,
+      "best_min": 2300,
+      "best_max": 3800,
+      "max": 5500
+    },
+    "volume_finale": {
+      "min": 1300,
+      "best_min": 2300,
+      "best_max": 4200,
+      "max": 5500
+    },
+    "authorized_short": {
+      "min": 300,
+      "best_min": 500,
+      "best_max": 900,
+      "max": 1000
+    },
+    "fragment": {
+      "min": 300,
+      "best_min": 500,
+      "best_max": 900,
+      "max": 1000
+    }
+  },
+  "scene_quality": {
+    "min_effective_scenes": 1
+  }
+}

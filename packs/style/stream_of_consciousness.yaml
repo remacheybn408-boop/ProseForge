@@ -1,0 +1,36 @@
+style_id: stream_of_consciousness
+name: 意识流
+description: 侧重人物内心流动、记忆、感知和非线性意识的写作风格。
+narrative_features:
+  - 内心活动优先于外部事件
+  - 时间可以非线性跳跃
+  - 记忆和感知交织
+  - 感官联想驱动叙述
+language_features:
+  - 句子可以碎片化
+  - 大量感官描写
+  - 内心独白为主导
+  - 意象重复作为结构线索
+rhythm_features:
+  - 节奏随内心波动
+  - 回忆段落可缓慢
+  - 紧张时刻碎片化加速
+allowed_patterns:
+  - 内心跳跃
+  - 时间碎片
+  - 感官联想
+  - 非线性叙述
+  - 意象重复
+forbidden_patterns:
+  - 完全无法理解
+  - 只有碎片没有情绪线
+  - 意象堆砌无意义
+  - 借意识流掩盖无剧情
+agent_focus:
+  - 内心流动是否有情绪线
+  - 碎片是否可追踪
+  - 意象是否有意义
+review_questions:
+  - 本章内心流动是否能被读者追踪？
+  - 碎片之间是否有内在关联？
+  - 意象重复是否有结构功能？

@@ -1,0 +1,107 @@
+[
+  {
+    "character_name": "老矿头",
+    "identity": "灵矿底层老人",
+    "voice_type": "市井经验派",
+    "region_flavor": "轻北方口语",
+    "dialect_level": 2,
+    "wenyan_level": 0,
+    "sentence_length": "短句为主",
+    "speech_rhythm": "慢，有停顿，爱先看现象再说话",
+    "favorite_words": ["甭", "娃子", "这活儿", "不对劲", "听风"],
+    "forbidden_words": ["因此", "显然", "本质上", "命运", "大道"],
+    "emotion_style": "嘴硬心软，不直接表达关心",
+    "action_habits": ["磕烟袋", "摸矿壁", "听风", "眯眼看石缝"],
+    "misunderstanding_triggers": ["看见宗门标记就以为对方是戒律堂的人"],
+    "cost_pattern": "愿意替年轻人挡一次小祸，但嘴上不承认",
+    "sample_lines": [
+      "娃子，甭往前凑。",
+      "这风不对，是从底下返上来的。",
+      "矿洞不骗人，脚底下才骗人。"
+    ]
+  },
+  {
+    "character_name": "周砚",
+    "identity": "主角 / 杂役弟子 / 前世家子弟",
+    "voice_type": "内敛观察型",
+    "region_flavor": "无明显地域",
+    "dialect_level": 0,
+    "wenyan_level": 1,
+    "sentence_length": "中短句，判断和观察后用较完整句式",
+    "speech_rhythm": "先观察，后判断，再说话；不急于表态",
+    "favorite_words": ["回头再看", "不急", "先看看", "不对"],
+    "forbidden_words": ["命运", "大道", "觉醒", "天命", "注定"],
+    "emotion_style": "表面平静，内心敏锐；用动作而非言语表达情绪",
+    "action_habits": ["拇指摩挲玉牌", "先站定观察三秒再开口", "说话前有一个微小停顿"],
+    "misunderstanding_triggers": ["被人误以为是普通杂役", "被高阶修士俯视时不辩解"],
+    "cost_pattern": "每次验证或突破都伴随细微但真实的代价",
+    "sample_lines": [
+      "不急，先把这面墙看完。",
+      "不对。不是灵力不够，是频率不对。",
+      "你说完了？那我再测一次。"
+    ]
+  },
+  {
+    "character_name": "沈师姐",
+    "identity": "内门弟子 / 主角的试探者",
+    "voice_type": "冷面试探型",
+    "region_flavor": "无地域",
+    "dialect_level": 0,
+    "wenyan_level": 2,
+    "sentence_length": "短句，问句多，很少解释",
+    "speech_rhythm": "快，问完不等回答，自己已经判断完",
+    "favorite_words": ["不对", "你试试", "再看", "继续"],
+    "forbidden_words": ["好像", "也许", "可能", "大概", "或许"],
+    "emotion_style": "用测试代替质问，用沉默代替批评",
+    "action_habits": ["用剑尖轻点地面", "侧头不说破", "收剑即走"],
+    "misunderstanding_triggers": ["以为主角在藏拙", "以为主角对她有企图"],
+    "cost_pattern": "开价清晰，不赊账，借就是借给就是给",
+    "sample_lines": [
+      "你刚才用的，不是本门术法。",
+      "再试。这次别收着力。",
+      "行了。明天辰时，老地方。"
+    ]
+  },
+  {
+    "character_name": "管事",
+    "identity": "灵矿管事 / 中层管理者",
+    "voice_type": "公事公办型",
+    "region_flavor": "轻南方口语",
+    "dialect_level": 1,
+    "wenyan_level": 1,
+    "sentence_length": "中等，通知式句式",
+    "speech_rhythm": "稳，不紧不慢，字字落实",
+    "favorite_words": ["按规矩", "上头说了", "别让我难做", "你自己看着办"],
+    "forbidden_words": ["创新", "突破", "改革", "不一样"],
+    "emotion_style": "不流露个人情绪，一切按规矩办",
+    "action_habits": ["翻账簿", "盖章前停一下", "抬头看一眼再低头"],
+    "misunderstanding_triggers": ["以为上面有什么新意图，先观察再表态"],
+    "cost_pattern": "不合规不批，合规走流程；人情只在不违规的缝隙里",
+    "sample_lines": [
+      "按规矩，你得先填单子。",
+      "上头说了，这条矿道暂时不能动。",
+      "你自己看着办，别让我难做。"
+    ]
+  },
+  {
+    "character_name": "林师兄",
+    "identity": "外门老弟子 / 消息灵通者",
+    "voice_type": "话多信息型",
+    "region_flavor": "轻南方口语",
+    "dialect_level": 1,
+    "wenyan_level": 0,
+    "sentence_length": "长句，信息密度高",
+    "speech_rhythm": "快，边说边观察对方反应",
+    "favorite_words": ["你不知道吧", "我听说", "据说", "有人看见"],
+    "forbidden_words": ["实际上", "本质上", "关键", "核心"],
+    "emotion_style": "用信息交换信任，不说谎但选择性说",
+    "action_habits": ["凑近说话", "左右看看再开口", "拍肩膀"],
+    "misunderstanding_triggers": ["以为别人也和他一样消息灵通"],
+    "cost_pattern": "消息换消息，不白给",
+    "sample_lines": [
+      "你不知道吧，三号矿道昨天出事了。",
+      "我听说戒律堂来了人，具体是谁还不清楚。",
+      "有人看见沈师姐昨晚从矿道出来。"
+    ]
+  }
+]

@@ -1,0 +1,8 @@
+name: hermes-forgen-engine
+version: 0.3.0
+description: "HermesForgeN 引擎 — 2 个工具覆盖全流水线：nf_pipeline（写/审/改/卷）+ nf_project（建/管/导）"
+author: "HermesForgeN Team"
+provides_tools:
+  - nf_pipeline
+  - nf_project
+enabled: true

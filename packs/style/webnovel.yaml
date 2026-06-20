@@ -1,0 +1,36 @@
+style_id: webnovel
+name: 网络小说
+description: 面向连载阅读的创作风格，强调强节奏、爽点、钩子和读者追读。
+narrative_features:
+  - 强节奏，每章有推进
+  - 明确的冲突与解决循环
+  - 爽点落地到具体事件
+  - 大量对话推动剧情
+language_features:
+  - 语言通俗直白
+  - 对话占比高
+  - 描写简洁
+  - 少用长难句
+rhythm_features:
+  - 开篇快速入戏
+  - 每章结尾留钩子
+  - 冲突解决后短暂喘息
+allowed_patterns:
+  - 快节奏推进
+  - 章尾悬念
+  - 升级循环
+  - 打脸爽点
+forbidden_patterns:
+  - 水文充字数
+  - 设定解释过量
+  - 节奏忽快忽慢
+  - 钩子不兑现
+agent_focus:
+  - 每章是否有实质推进
+  - 结尾是否有钩子
+  - 爽点是否落地
+  - 是否有水文
+review_questions:
+  - 本章结束读者是否有翻页冲动？
+  - 爽点是否有具体事件支撑？
+  - 是否有大段无推进的描写？

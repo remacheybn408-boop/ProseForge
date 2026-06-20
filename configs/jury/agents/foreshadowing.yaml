@@ -1,0 +1,30 @@
+name: 伏笔管理审查
+agent_id: foreshadowing
+description: 检查伏笔的铺设和回收，追踪未完成的线索。防止伏笔过多不回收或关键伏笔遗漏。
+category: plot
+risk_level: medium
+default_enabled: true
+weight: 0.9
+check_rules:
+- id: FRS-001
+  name: 伏笔铺设
+  description: 检查本章是否铺设了新伏笔，以及铺设方式是否自然。埋在对话/细节中优于直接叙述。
+  severity: info
+  check_type: single_chapter
+- id: FRS-002
+  name: 伏笔回收
+  description: 检查本章是否回收了前期伏笔。长期不回收的伏笔（超过10章）应评估是否遗忘。
+  severity: warning
+  check_type: cross_chapter
+- id: FRS-003
+  name: 伏笔密度
+  description: 检查伏笔密度是否合理。单章超过5个新伏笔可能导致后续回收困难。
+  severity: info
+  check_type: single_chapter
+- id: FRS-004
+  name: 伏笔质量
+  description: 检查伏笔是否有信息量。仅仅是'他总觉得不安'类的模糊伏笔缺乏实际意义。
+  severity: warning
+  check_type: single_chapter
+filters:
+  min_chapter_words: 500

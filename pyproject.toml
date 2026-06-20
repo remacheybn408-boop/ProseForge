@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=64.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proseforge"
+version = "0.9.0"
+description = "AI-powered long-form novel engineering pipeline"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+rag = [
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+]
+
+[project.urls]
+Repository = "https://github.com/remacheybn408-boop/ProseForge"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "--strict-markers -ra"
+markers = [
+    "xfail_known: known failure tracked in AGENTS.md (use with reason=)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:google.protobuf.*",
+]

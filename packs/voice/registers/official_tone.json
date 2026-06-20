@@ -1,0 +1,41 @@
+{
+  "pack_id": "official_tone",
+  "name": "官腔",
+  "type": "register",
+  "description": "戒律堂、执事堂等官方人员口吻。",
+  "markers": [
+    "按规矩",
+    "宗门律令",
+    "以下犯上",
+    "执事堂",
+    "灰纸",
+    "官文",
+    "不得",
+    "不准",
+    "限时"
+  ],
+  "soft_markers": [
+    "考核",
+    "登记",
+    "记名",
+    "罚",
+    "扣"
+  ],
+  "danger_markers": [],
+  "allowed_contexts": [
+    "执事",
+    "执事堂人员",
+    "戒律堂人员"
+  ],
+  "forbidden_contexts": [
+    "理工主角",
+    "周不器",
+    "旁白"
+  ],
+  "overuse_warning_threshold": 4,
+  "max_density_per_1000_chars": 5,
+  "sample_lines": [
+    "按规矩，以下犯上者罚工三日。",
+    "执事堂的灰纸下来了。"
+  ]
+}

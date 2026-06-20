@@ -1,0 +1,31 @@
+{
+  "name": "hermes-forgen-codex",
+  "version": "0.1.0",
+  "description": "Codex plugin wrapper for the HermesForgeN novel workflow.",
+  "author": {
+    "name": "HermesForgeN Team"
+  },
+  "repository": "https://github.com/bijinfeng/novel-pipeline-write-engine",
+  "keywords": [
+    "novel",
+    "writing",
+    "workflow",
+    "codex"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "HermesForgeN Codex",
+    "shortDescription": "Two-entry Codex wrapper for Novel Forge.",
+    "longDescription": "Adds two focused Codex workflow entries that map to the Novel Forge pipeline and project-management flows without introducing MCP.",
+    "developerName": "HermesForgeN Team",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use nf_pipeline to prepare or review a chapter.",
+      "Use nf_project to manage slots, outlines, and exports."
+    ]
+  }
+}

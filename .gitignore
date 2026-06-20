@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Project
+hermes-plugin/hermes-forgen-engine/__pycache__/
+
+# Config with secrets
+config/license_server.json
+
+# Local privacy — NOT to be pushed to GitHub
+CLAUDE.md
+database/
+workspace/
+exports/context_*.txt
+tmp/
+configs/scc_menu.json
+
+# Pipeline runtime output — local artifacts
+exports/pipeline_state/
+exports/reports/
+exports/chapter_briefs/
+exports/run_reports/
+src/.story/commits/
+
+
+src/.story/memory/
+
+
+# Local agent reviews
+reports/
+AGENTS.md
