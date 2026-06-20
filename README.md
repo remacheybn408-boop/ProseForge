@@ -14,6 +14,89 @@
 
 ---
 
+## 安装
+
+### 前置要求
+
+- Python 3.10+
+- [uv](https://docs.astral.sh/uv/)（推荐，比 pip 快；也可以用 pip）
+- Git
+
+### 1. 克隆仓库
+
+```bash
+git clone https://github.com/remacheybn408-boop/ProseForge.git
+cd ProseForge
+```
+
+### 2. 安装核心依赖
+
+```bash
+# 用 uv（推荐）
+uv pip install -e .
+
+# 或者用 pip
+# pip install -e .
+
+# 可选：RAG 检索依赖（chromadb + sentence-transformers）
+uv pip install -e ".[rag]"
+
+# 安装测试工具
+uv pip install pytest
+```
+
+### 3. 配置路径
+
+```bash
+cp config.example.json config.json
+```
+
+编辑 `config.json`，将 `project_root` 等路径改为你的实际路径：
+
+```json
+{
+  "project_root": "C:/Users/<你的用户名>/ProseForge",
+  "novel_dir": "C:/Users/<你的用户名>/novels",
+  "database_path": "C:/Users/<你的用户名>/ProseForge/database/hermes_memory.db",
+  "default_novel_slug": "my_novel",
+  "default_novel_name": "我的小说"
+}
+```
+
+> 路径使用正斜杠 `/`，pathlib 自动处理跨平台。
+
+### 4. 注册插件（按你的 Agent 选择）
+
+ProseForge 提供三个插件表面，选一个即可：
+
+**Hermes Agent**（推荐）：
+
+```bash
+# 把插件链接到 Hermes 的 profiles/<profile>/plugins/ 下
+# 或在 Hermes 配置中启用 plugin/hermes-forgen-engine
+# 插件源码: plugin/proseforge-Hermes/
+# 注册后可用工具: nf_pipeline, nf_project
+```
+
+**Codex**：
+将 `plugin/proseforge-codex/` 链接到 Codex 的插件目录。
+提供两个入口：`nf_pipeline`（写/审/改/卷）、`nf_project`（建/管/导）。
+
+**Claude**：
+将 `plugin/proseforge-claude/` 放入 Claude 的 projects 目录。
+提供 SKILL.md 引导 Claude 调用对应工作流。
+
+### 5. 验证安装
+
+```bash
+uv pip install pytest
+python -m pytest tests/ -x -q
+```
+
+预期输出：全部测试通过（~350+ 项）。
+
+---
+
 ## 这个项目解决什么问题
 
 长篇小说一旦进入几十章以后，最常见的问题不是没灵感，而是失控：
@@ -356,33 +439,6 @@ ProseForge/
 
 ---
 
-## 快速开始
-
-下面的命令默认都在仓库根目录执行：
-
-```bash
-git clone https://github.com/bijinfeng/novel-pipeline-write-engine.git
-cd novel-pipeline-write-engine
-python -m pip install -e .
-python -m pip install pytest
-python -m pytest
-```
-
-如果你需要可选的 retrieval 依赖：
-
-```bash
-python -m pip install -e ".[rag]"
-```
-
-如果你准备长期本地使用，建议复制：
-
-```text
-config.example.json -> config.json
-```
-
-再按自己的路径做配置。
-
----
 
 ## 相关文档
 
