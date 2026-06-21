@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "Novel Forge - 小说引擎",
-    "version": "0.9.0",
+    "version": "0.8.0",
     "mode": "local"
   },
   "paths": {

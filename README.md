@@ -1,7 +1,7 @@
 # ProseForge
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://python.org)
-![Version](https://img.shields.io/badge/version-v0.9.0-orange)
+![Version](https://img.shields.io/badge/version-v0.8.0-orange)
 ![Surfaces](https://img.shields.io/badge/surfaces-Hermes%20%7C%20Codex%20%7C%20Claude-brightgreen)
 ![License](https://img.shields.io/badge/license-AGPL%203.0-blue)
 
@@ -455,7 +455,7 @@ ProseForge/
 
 ## 当前状态
 
-- Core version: `v0.9.0`
+- Core version: `v0.8.0`
 - Python requirement: `>=3.10`
 - Optional extra: `rag`
 - Repository: `https://github.com/bijinfeng/novel-pipeline-write-engine`
