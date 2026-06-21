@@ -356,63 +356,53 @@ def run_pre(
         print(f"  [OK] {label}({len(rows)}): " + ", ".join(str(dict(r)) for r in rows[:5]))
         log_entries.append(f"{label}{len(rows)}条")
 
-    # ── 世界观关键词提醒 ──
+    # ── 世界观语义提醒 ──
+    scan_text = ""
+    if ch_plan:
+        # ch_plan 是 sqlite3.Row，不是 dict — 不能用 .get()
+        scan_text += (ch_plan["chapter_goal"] or "") + " "
+        scan_text += (ch_plan["main_event"] or "") + " "
+        scan_text += (ch_plan["conflict_point"] or "") + " "
+        scan_text += (ch_plan["must_include"] or "") + " "
     try:
-        from src.outline.similarity import _extract_world_keywords
-        scan_text = ""
-        if ch_plan:
-            # ch_plan 是 sqlite3.Row，不是 dict — 不能用 .get()
-            scan_text += (ch_plan["chapter_goal"] or "") + " "
-            scan_text += (ch_plan["main_event"] or "") + " "
-            scan_text += (ch_plan["conflict_point"] or "") + " "
-            scan_text += (ch_plan["must_include"] or "") + " "
-        try:
-            outline_manager = getattr(app, "outline_manager", None)
-            outline = outline_manager.current_outline() if outline_manager else None
-            if outline:
-                outline_content = outline.get("content", "")
-                for pat in [f"第{chapter_no}章", f"第{chapter_no:02d}章"]:
-                    idx = outline_content.find(pat)
-                    if idx >= 0:
-                        scan_text += outline_content[idx:idx + 500] + " "
-                        break
-                else:
-                    scan_text += outline_content[:1000] + " "
-        except (OSError, TypeError, ValueError, AttributeError) as e:
-            print(f"  [WARN] outline context load failed: {e}")
-        if scan_text.strip():
-            chapter_keywords = _extract_world_keywords(scan_text)
-            if chapter_keywords:
-                cur.execute(
-                    "SELECT title, content, category, importance FROM worldbuilding WHERE novel_id=?",
-                    (nid,),
-                )
-                all_wb = cur.fetchall()
-                seen = set()
-                matches = []
-                for wb in all_wb:
-                    wb_title = wb["title"]
-                    if wb_title in seen:
-                        continue
-                    for kw in chapter_keywords:
-                        if kw in wb_title or wb_title in kw:
-                            matches.append(wb)
-                            seen.add(wb_title)
-                            break
-                if matches:
-                    print(f"\n  🌍 世界观提醒 (匹配 {len(matches)} 条):")
-                    for wb in matches[:8]:
-                        imp = wb["importance"] or 3
-                        imp_bar = "\u2605" * imp + "\u2606" * (5 - imp)
-                        content_preview = ""
-                        if wb["content"]:
-                            c = wb["content"]
-                            content_preview = (c[:80] + "...") if len(c) > 80 else c
-                        print(f"    [{imp_bar}] {wb['title']:<16s} [{wb['category'] or '—'}]")
-                        if content_preview:
-                            print(f"          {content_preview}")
-    except (ImportError, sqlite3.Error, TypeError, ValueError) as e:
-        print(f"  [WARN] world keyword reminder failed: {e}")
+        outline_manager = getattr(app, "outline_manager", None)
+        outline = outline_manager.current_outline() if outline_manager else None
+        if outline:
+            outline_content = outline.get("content", "")
+            for pat in [f"第{chapter_no}章", f"第{chapter_no:02d}章"]:
+                idx = outline_content.find(pat)
+                if idx >= 0:
+                    scan_text += outline_content[idx:idx + 500] + " "
+                    break
+            else:
+                scan_text += outline_content[:1000] + " "
+    except (OSError, TypeError, ValueError, AttributeError) as e:
+        print(f"  [WARN] outline context load failed: {e}")
+    if scan_text.strip():
+        from src.rag import HAS_VECTOR_DEPS, index_worldbuilding, search_worldbuilding
+
+        if not HAS_VECTOR_DEPS:
+            print("[WARN] 世界观提醒已跳过：未安装向量依赖。请执行 pip install -e .[rag]")
+        else:
+            index_worldbuilding(app.cfg)
+            wb_result = search_worldbuilding(
+                scan_text,
+                novel_id=nid,
+                top_k=8,
+                config=app.cfg,
+            )
+            if wb_result.get("status") == "ok" and wb_result.get("results"):
+                matches = wb_result["results"]
+                print(f"\n  🌍 世界观提醒 (匹配 {len(matches)} 条):")
+                for wb in matches[:8]:
+                    imp = int(wb.get("importance") or 3)
+                    imp_bar = "\u2605" * imp + "\u2606" * (5 - imp)
+                    content_preview = wb.get("content_preview", "") or ""
+                    if len(content_preview) > 80:
+                        content_preview = content_preview[:80] + "..."
+                    print(f"    [{imp_bar}] {wb['title']:<16s} [{wb.get('category') or '—'}]")
+                    if content_preview:
+                        print(f"          {content_preview}")
 
     # ── 情节线索提醒 ──
     try:

@@ -41,6 +41,8 @@ uv pip install -e .
 # 可选：RAG 检索依赖（chromadb + sentence-transformers）
 uv pip install -e ".[rag]"
 
+# 安装后，pre.py 的世界观提醒自动使用语义检索替代关键词子串匹配。
+
 # 安装测试工具
 uv pip install pytest
 ```

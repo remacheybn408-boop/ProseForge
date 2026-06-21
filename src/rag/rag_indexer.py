@@ -1,76 +1,176 @@
 #!/usr/bin/env python3
-"""
-rag_indexer.py — RAG 索引导入器
+"""Vector index management for RAG collections."""
 
-将数据库中已有的章节分块导入向量存储 (chromadb)。
-支持增量索引 (跳过已存在文档) 和全量重建。
-
-用法:
-  python -m src.rag.rag_indexer --db-path ./data/novel_memory.db --rebuild
-"""
+from __future__ import annotations
 
 import sqlite3
-import sys
 from pathlib import Path
 
-from .rag_config import load_rag_config, get_db_path
-from .vector_retriever import VectorRetriever, HAS_VECTOR_DEPS
+from .rag_config import get_db_path, load_rag_config
+from .vector_retriever import HAS_VECTOR_DEPS, VectorRetriever
+
+WORLD_BUILDING_COLLECTION = "novel_worldbuilding"
+
+
+def _get_vector_config(config: dict) -> dict:
+    vec_cfg = config.get("rag", {}).get("vector", {})
+    return {
+        "persist_dir": vec_cfg.get("persist_dir", "./data/rag_vector_store"),
+        "collection_name": vec_cfg.get("collection_name", "novel_chunks"),
+        "embedding_model": vec_cfg.get(
+            "embedding_model",
+            "paraphrase-multilingual-MiniLM-L12-v2",
+        ),
+    }
+
+
+def _query_rows(db_path: str, sql: str) -> list[dict]:
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        cur = conn.cursor()
+        cur.execute(sql)
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
 
 
 def _get_all_chunks(db_path: str) -> list[dict]:
-    """
-    从数据库读取所有分块及所属章节元数据。
-
-    Returns:
-        list[dict]: [{id, chunk_no, content, chapter_id, chapter_no, title}]
-    """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute("""
+    return _query_rows(
+        db_path,
+        """
         SELECT cc.id, cc.chunk_no, cc.content, cc.chapter_id,
                ch.chapter_no, ch.title
         FROM chapter_chunks cc
         JOIN chapters ch ON ch.id = cc.chapter_id
         ORDER BY ch.chapter_no, cc.chunk_no
-    """)
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+        """,
+    )
 
 
-def index_all(config: dict = None, rebuild: bool = False) -> dict:
-    """
-    将所有章节分块导入向量存储。
+def _get_all_worldbuilding(db_path: str) -> list[dict]:
+    return _query_rows(
+        db_path,
+        """
+        SELECT id, novel_id, title, content, category, importance
+        FROM worldbuilding
+        ORDER BY novel_id, importance DESC, id
+        """,
+    )
 
-    Args:
-        config: RAG 配置字典 (可选)
-        rebuild: 是否清空重建 (默认增量)
 
-    Returns:
-        dict: {"status": "ok"|"error"|"unavailable",
-               "total": int, "indexed": int, "skipped": int, ...}
-    """
-    if not config:
-        config = load_rag_config()
+def _unavailable_result(error: str) -> dict:
+    return {
+        "status": "unavailable",
+        "error": error,
+        "total": 0,
+        "indexed": 0,
+        "skipped": 0,
+    }
 
-    if not HAS_VECTOR_DEPS:
+
+def _reset_collection(retriever: VectorRetriever, collection_name: str) -> None:
+    try:
+        retriever._client.delete_collection(collection_name)
+    except Exception:
+        pass
+    retriever._collection = retriever._client.get_or_create_collection(name=collection_name)
+
+
+def _existing_ids(retriever: VectorRetriever) -> set[str]:
+    try:
+        return set(retriever._collection.get()["ids"])
+    except Exception:
+        return set()
+
+
+def _index_rows(
+    retriever: VectorRetriever,
+    rows: list[dict],
+    build_record,
+    collection_name: str,
+    rebuild: bool = False,
+) -> dict:
+    if not rows:
         return {
-            "status": "unavailable",
-            "error": "chromadb / sentence-transformers 未安装，无法建立向量索引",
+            "status": "ok",
             "total": 0,
             "indexed": 0,
             "skipped": 0,
+            "message": "没有找到可索引的数据",
         }
 
+    if rebuild:
+        try:
+            _reset_collection(retriever, collection_name)
+        except Exception as exc:
+            return {
+                "status": "error",
+                "error": f"重建集合失败: {exc}",
+                "total": len(rows),
+                "indexed": 0,
+                "skipped": 0,
+            }
+
+    existing_ids = set() if rebuild else _existing_ids(retriever)
+    batch_size = 64
+    indexed = 0
+    skipped = 0
+    errors: list[str] = []
+
+    for start in range(0, len(rows), batch_size):
+        batch = rows[start : start + batch_size]
+        ids: list[str] = []
+        documents: list[str] = []
+        metadatas: list[dict] = []
+
+        for row in batch:
+            record = build_record(row)
+            doc_id = record["id"]
+            if doc_id in existing_ids:
+                skipped += 1
+                continue
+
+            ids.append(doc_id)
+            documents.append(record["document"])
+            metadatas.append(record["metadata"])
+
+        if not ids:
+            continue
+
+        try:
+            embeddings = retriever._model.encode(documents).tolist()
+            retriever._collection.add(
+                ids=ids,
+                documents=documents,
+                embeddings=embeddings,
+                metadatas=metadatas,
+            )
+            indexed += len(ids)
+        except Exception as exc:
+            errors.append(f"批次 {start // batch_size}: {exc}")
+
+    result = {
+        "status": "ok" if not errors else "partial",
+        "total": len(rows),
+        "indexed": indexed,
+        "skipped": skipped,
+    }
+    if errors:
+        result["errors"] = errors[:10]
+    return result
+
+
+def index_all(config: dict | None = None, rebuild: bool = False) -> dict:
+    """Index all chapter chunks into the default vector collection."""
+    config = config or load_rag_config()
+
+    if not HAS_VECTOR_DEPS:
+        return _unavailable_result(
+            "chromadb / sentence-transformers 未安装，无法建立向量索引",
+        )
+
     db_path = get_db_path(config)
-    vec_cfg = config.get("rag", {}).get("vector", {})
-
-    persist_dir = vec_cfg.get("persist_dir", "./data/rag_vector_store")
-    collection_name = vec_cfg.get("collection_name", "novel_chunks")
-    embedding_model = vec_cfg.get("embedding_model", "paraphrase-multilingual-MiniLM-L12-v2")
-
-    # 检查数据库
     if not Path(db_path).exists():
         return {
             "status": "error",
@@ -80,135 +180,106 @@ def index_all(config: dict = None, rebuild: bool = False) -> dict:
             "skipped": 0,
         }
 
-    # 初始化向量检索器
+    vec_cfg = _get_vector_config(config)
     retriever = VectorRetriever(
-        persist_dir=persist_dir,
-        collection_name=collection_name,
-        embedding_model=embedding_model,
+        persist_dir=vec_cfg["persist_dir"],
+        collection_name=vec_cfg["collection_name"],
+        embedding_model=vec_cfg["embedding_model"],
     )
-
     if not retriever.available:
+        return _unavailable_result(
+            f"VectorRetriever 初始化失败: {getattr(retriever, '_init_error', 'unknown')}",
+        )
+
+    def build_record(chunk: dict) -> dict:
         return {
-            "status": "unavailable",
-            "error": f"VectorRetriever 初始化失败: {getattr(retriever, '_init_error', 'unknown')}",
-            "total": 0,
-            "indexed": 0,
-            "skipped": 0,
-        }
-
-    # 读取分块
-    chunks = _get_all_chunks(db_path)
-    if not chunks:
-        return {
-            "status": "ok",
-            "total": 0,
-            "indexed": 0,
-            "skipped": 0,
-            "message": "没有找到任何章节分块",
-        }
-
-    # 如果重建，删除集合并重建
-    if rebuild:
-        try:
-            retriever._client.delete_collection(collection_name)
-            retriever._collection = retriever._client.get_or_create_collection(
-                name=collection_name,
-            )
-        except Exception as e:
-            return {
-                "status": "error",
-                "error": f"重建集合失败: {e}",
-                "total": len(chunks),
-                "indexed": 0,
-                "skipped": 0,
-            }
-
-    # 获取已存在的 ID 集合 (增量检查)
-    existing_ids = set()
-    if not rebuild:
-        try:
-            all_ids = retriever._collection.get()["ids"]
-            existing_ids = set(all_ids)
-        except Exception:
-            pass  # 集合为空
-
-    # 分批处理 (每批 64 条，避免 OOM)
-    batch_size = 64
-    total = len(chunks)
-    indexed = 0
-    skipped = 0
-    errors = []
-
-    for i in range(0, total, batch_size):
-        batch = chunks[i : i + batch_size]
-        ids = []
-        documents = []
-        metadatas = []
-
-        for chunk in batch:
-            doc_id = str(chunk["id"])
-            if doc_id in existing_ids:
-                skipped += 1
-                continue
-
-            ids.append(doc_id)
-            documents.append(chunk["content"])
-            metadatas.append({
+            "id": str(chunk["id"]),
+            "document": chunk["content"],
+            "metadata": {
                 "chapter_id": str(chunk["chapter_id"]),
                 "chapter_no": str(chunk["chapter_no"]),
                 "chunk_no": str(chunk["chunk_no"]),
                 "title": chunk["title"],
-            })
+            },
+        }
 
-        if not ids:
-            continue  # 整批都跳过
-
-        try:
-            # 生成 embedding 并写入
-            embeddings = retriever._model.encode(documents).tolist()
-            retriever._collection.add(
-                ids=ids,
-                documents=documents,
-                embeddings=embeddings,
-                metadatas=metadatas,
-            )
-            indexed += len(ids)
-        except Exception as e:
-            errors.append(f"批次 {i//batch_size}: {e}")
-
-    result = {
-        "status": "ok" if not errors else "partial",
-        "total": total,
-        "indexed": indexed,
-        "skipped": skipped,
-    }
-    if errors:
-        result["errors"] = errors[:10]  # 最多保留10条错误
-
-    return result
+    return _index_rows(
+        retriever,
+        _get_all_chunks(db_path),
+        build_record,
+        collection_name=vec_cfg["collection_name"],
+        rebuild=rebuild,
+    )
 
 
-def index_status(config: dict = None) -> dict:
-    """查询向量索引状态。"""
-    if not config:
-        config = load_rag_config()
+def index_worldbuilding(config: dict | None = None, rebuild: bool = False) -> dict:
+    """Index all worldbuilding rows into the shared worldbuilding collection."""
+    config = config or load_rag_config()
+
+    if not HAS_VECTOR_DEPS:
+        return _unavailable_result(
+            "chromadb / sentence-transformers 未安装，无法建立向量索引",
+        )
+
+    db_path = get_db_path(config)
+    if not Path(db_path).exists():
+        return {
+            "status": "error",
+            "error": f"数据库不存在: {db_path}",
+            "total": 0,
+            "indexed": 0,
+            "skipped": 0,
+        }
+
+    vec_cfg = _get_vector_config(config)
+    retriever = VectorRetriever(
+        persist_dir=vec_cfg["persist_dir"],
+        collection_name=WORLD_BUILDING_COLLECTION,
+        embedding_model=vec_cfg["embedding_model"],
+    )
+    if not retriever.available:
+        return _unavailable_result(
+            f"VectorRetriever 初始化失败: {getattr(retriever, '_init_error', 'unknown')}",
+        )
+
+    def build_record(world: dict) -> dict:
+        content = world.get("content") or ""
+        return {
+            "id": str(world["id"]),
+            "document": f"{world['title']}\n{content}",
+            "metadata": {
+                "novel_id": str(world["novel_id"]),
+                "title": world["title"],
+                "category": world.get("category") or "",
+                "importance": int(world.get("importance") or 3),
+                "content_preview": content[:300],
+            },
+        }
+
+    return _index_rows(
+        retriever,
+        _get_all_worldbuilding(db_path),
+        build_record,
+        collection_name=WORLD_BUILDING_COLLECTION,
+        rebuild=rebuild,
+    )
+
+
+def index_status(config: dict | None = None) -> dict:
+    """Return the status of the default chapter-chunk vector collection."""
+    config = config or load_rag_config()
 
     if not HAS_VECTOR_DEPS:
         return {"status": "unavailable", "error": "向量依赖未安装"}
 
-    vec_cfg = config.get("rag", {}).get("vector", {})
+    vec_cfg = _get_vector_config(config)
     retriever = VectorRetriever(
-        persist_dir=vec_cfg.get("persist_dir", "./data/rag_vector_store"),
-        collection_name=vec_cfg.get("collection_name", "novel_chunks"),
+        persist_dir=vec_cfg["persist_dir"],
+        collection_name=vec_cfg["collection_name"],
+        embedding_model=vec_cfg["embedding_model"],
     )
     count = retriever.count()
     return {
         "status": count["status"],
         "vector_count": count.get("count", 0),
     }
-
-
-# ============================================================
-# CLI
-# ============================================================
-
