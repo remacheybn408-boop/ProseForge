@@ -1,8 +1,0 @@
-# jury.light.yaml — 轻量评审团的别名
-# 直接引用 jury.default.yaml
-
-# 此文件是 jury.default.yaml 的别名
-# 所有配置与 default 完全一致
-# 保留此文件是为了 CLI 的 --mode light 参数兼容性
-
-inherit: jury.default.yaml

@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 from src.db.init_db import find_migrations, find_schema, init_db
-from src.report.html_report_builder import get_db_path as get_html_db_path, load_config as load_html_config
 from src.utils.config_utils import load_default_config, load_json_config
 
 
@@ -41,13 +40,6 @@ def test_init_db_applies_real_migrations(tmp_path: Path, project_root: Path):
         assert {name for name, _ in migrations}.issubset(applied)
     finally:
         conn.close()
-
-
-def test_html_report_builder_resolves_config_relative_db_path(tmp_path: Path, project_root: Path):
-    config_path = tmp_path / "config.json"
-    config_path.write_text('{"db_path":"./data/custom.db"}', encoding="utf-8")
-    cfg = load_html_config(str(config_path))
-    assert get_html_db_path(cfg).endswith(str(Path("data") / "custom.db"))
 
 
 def test_nf_pipeline_cli_no_longer_accepts_rewrite(project_root: Path):

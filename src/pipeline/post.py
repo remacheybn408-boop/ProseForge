@@ -288,7 +288,7 @@ def run_post(
         genre=selected_genre,
     )
     try:
-        from src.utils.voice_profile_loader import load_voice_context
+        from src.agents.character import load_voice_context
         voice_context = load_voice_context(cfg, app.novel_slug)
         if voice_context["enabled"]:
             extra_context = build_guard_context(

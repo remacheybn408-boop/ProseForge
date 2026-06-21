@@ -13,6 +13,7 @@ from version import get_version
 from src.pipeline._base import (
     App, now, connect, _get_novel_id, ensure_tables,
     _count_chinese, _resolve_slot_db_path, load_config,
+    load_characters,
 )
 from src.pipeline.ingest import generate_chapter_brief
 

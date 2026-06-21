@@ -4,7 +4,7 @@
 from version import get_version
 
 from .base_agent import BaseAgent
-from .character import CharacterAgent
+from .character import CharacterAgent, load_voice_context
 from .chief_editor_agent import ChiefEditor
 from .continuity import ContinuityAgent
 from .detail import DetailAgent
@@ -19,6 +19,7 @@ __all__ = [
     "BaseAgent",
     "ContinuityAgent",
     "CharacterAgent",
+    "load_voice_context",
     "ProseAgent",
     "PlotAgent",
     "ReaderAgent",

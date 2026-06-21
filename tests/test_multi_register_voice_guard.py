@@ -2,7 +2,7 @@
 import sys, os, json
 
 from src.guards.character_voice_guard import run_character_voice_check
-from src.utils.voice_profile_loader import _load_packs_from_files
+from src.agents.character import _load_packs_from_files
 
 LQ = "\u201c"
 RQ = "\u201d"

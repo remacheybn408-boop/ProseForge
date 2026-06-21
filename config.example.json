@@ -26,12 +26,6 @@
     "write_json": true,
     "write_html": true
   },
-  "db_path": "./data/novel_memory.db",
-  "novels_root": "./novels",
-  "exports_root": "./exports",
-  "reports_root": "./exports/reports",
-  "outputs_root": "./outputs",
-  "tmp_root": "./tmp",
   "default_novel_slug": "demo_novel",
   "default_novel_title": "Demo Novel",
   "default_genre": "xianxia",

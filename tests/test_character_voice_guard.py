@@ -7,7 +7,7 @@ from src.guards.character_voice_guard import (
     run_character_voice_check,
     _match_pack_markers,
 )
-from src.utils.voice_profile_loader import _load_packs_from_files
+from src.agents.character import _load_packs_from_files
 
 
 def _packs():
