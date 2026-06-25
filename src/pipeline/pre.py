@@ -270,6 +270,191 @@ def _pre_load_genre_preset_texture(app, genre, prev_ch, project_root):
     return genre_preset, prev_texture
 
 
+def _pre_load_characters(cur, nid, log_entries):
+    """读取人物表并打印；返回 chars 行列表。"""
+    cur.execute("SELECT name, role, identity FROM characters WHERE novel_id=?", (nid,))
+    chars = cur.fetchall()
+    print(f"\n  [OK] 人物({len(chars)}): " + ", ".join(f"[{c['role']}]{c['name']}" for c in chars))
+    log_entries.append(f"人物{len(chars)}人")
+    return chars
+
+
+def _pre_load_voice_mental(app, log_entries):
+    """加载声纹卡与角色心理状态并打印；返回 (char_cards, mental_states)。"""
+    char_cards = {}
+    voice_dir = app.workspace_root / app.active_slot / "voice_cards" / "default"
+    if app.active_slot and voice_dir.exists():
+        for card_file in sorted(voice_dir.glob("*.json")):
+            card = _load_json_dict(card_file, f"voice card load failed ({card_file.name})", log_entries)
+            if card:
+                name = card.get("name", "")
+                if name:
+                    char_cards[name] = card
+
+    mental_states = {}
+    if app.active_slot:
+        slot_root = app.workspace_root / app.active_slot
+        # 优先新目录，向后兼容旧目录
+        for dir_name in ("character_psychology", "mental_states"):
+            ps_dir = slot_root / dir_name / "default"
+            if not ps_dir.exists():
+                continue
+            for ps_file in sorted(ps_dir.glob("*.json")):
+                data = _load_json_dict(ps_file, f"mental state load failed ({ps_file.name})", log_entries)
+                if data:
+                    name = data.get("name", "")
+                    if name and name not in mental_states:
+                        mental_states[name] = {k: v for k, v in data.items() if k != "name"}
+    if char_cards:
+        print(f"\n  [OK] 声纹卡({len(char_cards)}): " + ", ".join(char_cards.keys()))
+    if mental_states:
+        print(f"  [OK] 精神状态({len(mental_states)}): " + ", ".join(mental_states.keys()))
+    return char_cards, mental_states
+
+
+def _pre_print_overview(cur, nid, log_entries):
+    """打印世界观/伏笔/写作规则/读者承诺概览。"""
+    for label, sql, params in [
+        ("世界观", "SELECT title,importance FROM worldbuilding WHERE novel_id=? ORDER BY importance DESC", (nid,)),
+        ("伏笔", "SELECT title,status,importance FROM plot_threads WHERE novel_id=? ORDER BY status,importance DESC", (nid,)),
+        ("写作规则", "SELECT title,rule_type FROM writing_rules WHERE novel_id=? AND status='active' ORDER BY importance DESC", (nid,)),
+        ("读者承诺", "SELECT promise_title,status,reader_emotion FROM reader_promises WHERE novel_id=? AND status='open' ORDER BY importance DESC", (nid,)),
+    ]:
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        print(f"  [OK] {label}({len(rows)}): " + ", ".join(str(dict(r)) for r in rows[:5]))
+        log_entries.append(f"{label}{len(rows)}条")
+
+
+def _pre_worldbuilding_reminder(nid, app, chapter_no, ch_plan):
+    """基于章节计划+大纲做世界观语义检索提醒（缺向量依赖时优雅跳过）。"""
+    scan_text = ""
+    if ch_plan:
+        # ch_plan 是 sqlite3.Row，不是 dict — 不能用 .get()
+        scan_text += (ch_plan["chapter_goal"] or "") + " "
+        scan_text += (ch_plan["main_event"] or "") + " "
+        scan_text += (ch_plan["conflict_point"] or "") + " "
+        scan_text += (ch_plan["must_include"] or "") + " "
+    try:
+        outline_manager = getattr(app, "outline_manager", None)
+        outline = outline_manager.current_outline() if outline_manager else None
+        if outline:
+            outline_content = outline.get("content", "")
+            for pat in [f"第{chapter_no}章", f"第{chapter_no:02d}章"]:
+                idx = outline_content.find(pat)
+                if idx >= 0:
+                    scan_text += outline_content[idx:idx + 500] + " "
+                    break
+            else:
+                scan_text += outline_content[:1000] + " "
+    except (OSError, TypeError, ValueError, AttributeError) as e:
+        log_optional_failure("pre: outline context load", e)
+    if scan_text.strip():
+        from src.rag import HAS_VECTOR_DEPS, index_worldbuilding, search_worldbuilding
+
+        if not HAS_VECTOR_DEPS:
+            print("[WARN] 世界观提醒已跳过：未安装向量依赖。请执行 pip install -e .[rag]")
+        else:
+            index_worldbuilding(app.cfg)
+            wb_result = search_worldbuilding(
+                scan_text,
+                novel_id=nid,
+                top_k=8,
+                config=app.cfg,
+            )
+            if wb_result.get("status") == "ok" and wb_result.get("results"):
+                matches = wb_result["results"]
+                print(f"\n  🌍 世界观提醒 (匹配 {len(matches)} 条):")
+                for wb in matches[:8]:
+                    imp = int(wb.get("importance") or 3)
+                    imp_bar = "★" * imp + "☆" * (5 - imp)
+                    content_preview = wb.get("content_preview", "") or ""
+                    if len(content_preview) > 80:
+                        content_preview = content_preview[:80] + "..."
+                    print(f"    [{imp_bar}] {wb['title']:<16s} [{wb.get('category') or '—'}]")
+                    if content_preview:
+                        print(f"          {content_preview}")
+
+
+def _pre_plot_thread_reminder(cur, nid, ch_plan):
+    """打印活跃情节线索提醒。"""
+    try:
+        _thread_labels = {"伏笔": "伏笔", "主线": "主线", "支线": "支线", "感情线": "感情线", "成长线": "成长线"}
+        cur.execute(
+            "SELECT title, thread_type, status, importance, introduced_chapter, content "
+            "FROM plot_threads WHERE novel_id=? AND status IN ('open','active') "
+            "ORDER BY importance DESC",
+            (nid,),
+        )
+        open_threads = cur.fetchall()
+        if open_threads:
+            planned_titles = set()
+            if ch_plan and ch_plan.get("plot_threads_to_advance"):
+                for t in open_threads:
+                    if t["title"] in (ch_plan["plot_threads_to_advance"] or ""):
+                        planned_titles.add(t["title"])
+            print(f"\n  \U0001f9f5 活跃情节线索 ({len(open_threads)} 条):")
+            for t in open_threads[:5]:
+                imp = t["importance"] or 3
+                imp_bar = "★" * imp + "☆" * (5 - imp)
+                marker = " ▶ 本章计划推进" if t["title"] in planned_titles else ""
+                intro = f" 第{t['introduced_chapter']}章引入" if t["introduced_chapter"] else ""
+                ttype = _thread_labels.get(t["thread_type"], t["thread_type"])
+                content_preview = ""
+                if t["content"]:
+                    c = t["content"]
+                    content_preview = (c[:60] + "...") if len(c) > 60 else c
+                print(f"    [{imp_bar}] {t['title']:<18s} [{ttype:6s}]{marker}{intro}")
+                if content_preview:
+                    print(f"          {content_preview}")
+    except sqlite3.Error as e:
+        log_optional_failure("pre: plot thread reminder", e)
+
+
+def _pre_reader_promise_reminder(cur, nid, open_promises):
+    """打印待兑现读者承诺；返回（可能被 DB 覆盖的）open_promises，查询失败保留原值。"""
+    try:
+        cur.execute(
+            "SELECT promise_title, introduced_chapter, importance "
+            "FROM reader_promises WHERE novel_id=? AND status='open' ORDER BY importance DESC",
+            (nid,),
+        )
+        open_promises = cur.fetchall()
+        if open_promises:
+            print(f"\n  📝 待兑现读者承诺 ({len(open_promises)} 条):")
+            for p in open_promises[:3]:
+                imp = p["importance"] or 3
+                imp_bar = "★" * imp + "☆" * (5 - imp)
+                intro = f" 第{p['introduced_chapter']}章提出" if p["introduced_chapter"] else ""
+                print(f"    [{imp_bar}] {p['promise_title']}{intro}")
+    except sqlite3.Error as e:
+        log_optional_failure("pre: reader promise reminder", e)
+    return open_promises
+
+
+def _pre_write_context_pack(app, chapter_no, vol, ch_plan):
+    """写出 context_pack 文本文件并打印；返回 pack_path。"""
+    app.exports_root.mkdir(parents=True, exist_ok=True)
+    pack_path = app.exports_root / f"context_ch{chapter_no}_{datetime.now().strftime('%H%M%S')}.txt"
+    skeleton_info = ""
+    if ch_plan:
+        skeleton_info = (
+            f"=== 标题骨架 ===\n"
+            f"卷: 第{app.volume_no}卷《{vol['planned_title'] if vol else '?'}》\n"
+            f"章: 第{chapter_no}章《{ch_plan['planned_title']}》\n"
+            f"目标: {ch_plan['chapter_goal']}\n"
+            f"冲突: {ch_plan['conflict_point']}\n"
+            f"钩子: {ch_plan['ending_hook_direction']}\n"
+        )
+    pack_path.write_text(
+        f"写作上下文包-第{chapter_no}章\n{'='*40}\n"
+        f"目标字数: {app.wc_default['best_min']}-{app.wc_default['best_max']} | "
+        f"下限: {app.wc_default['min']}\n"
+        f"{skeleton_info}\n", encoding='utf-8')
+    print(f"  [OK] context_pack: {pack_path}")
+    return pack_path
+
+
 def run_pre(
     chapter_no,
     chapter_type="normal",
@@ -346,175 +531,28 @@ def run_pre(
             print(f"    第{ch}章: {cs['short_summary'][:100] if cs else '(无摘要)'}")
 
         # 人物
-        cur.execute("SELECT name, role, identity FROM characters WHERE novel_id=?", (nid,))
-        chars = cur.fetchall()
-        print(f"\n  [OK] 人物({len(chars)}): " + ", ".join(f"[{c['role']}]{c['name']}" for c in chars))
-        log_entries.append(f"人物{len(chars)}人")
+        chars = _pre_load_characters(cur, nid, log_entries)
 
         if genre:
             print(f"  [OK] 题材: {genre}")
 
-        # ── 加载声纹卡 ──
-        char_cards = {}
-        voice_dir = app.workspace_root / app.active_slot / "voice_cards" / "default"
-        if app.active_slot and voice_dir.exists():
-            for card_file in sorted(voice_dir.glob("*.json")):
-                card = _load_json_dict(card_file, f"voice card load failed ({card_file.name})", log_entries)
-                if card:
-                    name = card.get("name", "")
-                    if name:
-                        char_cards[name] = card
+        # ── 加载声纹卡 + 角色心理状态 ──
+        char_cards, mental_states = _pre_load_voice_mental(app, log_entries)
 
-        # ── 加载角色心理状态 ──
-        mental_states = {}
-        if app.active_slot:
-            slot_root = app.workspace_root / app.active_slot
-            # 优先新目录，向后兼容旧目录
-            for dir_name in ("character_psychology", "mental_states"):
-                ps_dir = slot_root / dir_name / "default"
-                if not ps_dir.exists():
-                    continue
-                for ps_file in sorted(ps_dir.glob("*.json")):
-                    data = _load_json_dict(ps_file, f"mental state load failed ({ps_file.name})", log_entries)
-                    if data:
-                        name = data.get("name", "")
-                        if name and name not in mental_states:
-                            mental_states[name] = {k: v for k, v in data.items() if k != "name"}
-        if char_cards:
-            print(f"\n  [OK] 声纹卡({len(char_cards)}): " + ", ".join(char_cards.keys()))
-        if mental_states:
-            print(f"  [OK] 精神状态({len(mental_states)}): " + ", ".join(mental_states.keys()))
-
-        # 世界观/伏笔/规则
-        for label, sql, params in [
-            ("世界观", "SELECT title,importance FROM worldbuilding WHERE novel_id=? ORDER BY importance DESC", (nid,)),
-            ("伏笔", "SELECT title,status,importance FROM plot_threads WHERE novel_id=? ORDER BY status,importance DESC", (nid,)),
-            ("写作规则", "SELECT title,rule_type FROM writing_rules WHERE novel_id=? AND status='active' ORDER BY importance DESC", (nid,)),
-            ("读者承诺", "SELECT promise_title,status,reader_emotion FROM reader_promises WHERE novel_id=? AND status='open' ORDER BY importance DESC", (nid,)),
-        ]:
-            cur.execute(sql, params)
-            rows = cur.fetchall()
-            print(f"  [OK] {label}({len(rows)}): " + ", ".join(str(dict(r)) for r in rows[:5]))
-            log_entries.append(f"{label}{len(rows)}条")
+        # 世界观/伏笔/规则概览
+        _pre_print_overview(cur, nid, log_entries)
 
         # ── 世界观语义提醒 ──
-        scan_text = ""
-        if ch_plan:
-            # ch_plan 是 sqlite3.Row，不是 dict — 不能用 .get()
-            scan_text += (ch_plan["chapter_goal"] or "") + " "
-            scan_text += (ch_plan["main_event"] or "") + " "
-            scan_text += (ch_plan["conflict_point"] or "") + " "
-            scan_text += (ch_plan["must_include"] or "") + " "
-        try:
-            outline_manager = getattr(app, "outline_manager", None)
-            outline = outline_manager.current_outline() if outline_manager else None
-            if outline:
-                outline_content = outline.get("content", "")
-                for pat in [f"第{chapter_no}章", f"第{chapter_no:02d}章"]:
-                    idx = outline_content.find(pat)
-                    if idx >= 0:
-                        scan_text += outline_content[idx:idx + 500] + " "
-                        break
-                else:
-                    scan_text += outline_content[:1000] + " "
-        except (OSError, TypeError, ValueError, AttributeError) as e:
-            log_optional_failure("pre: outline context load", e)
-        if scan_text.strip():
-            from src.rag import HAS_VECTOR_DEPS, index_worldbuilding, search_worldbuilding
-
-            if not HAS_VECTOR_DEPS:
-                print("[WARN] 世界观提醒已跳过：未安装向量依赖。请执行 pip install -e .[rag]")
-            else:
-                index_worldbuilding(app.cfg)
-                wb_result = search_worldbuilding(
-                    scan_text,
-                    novel_id=nid,
-                    top_k=8,
-                    config=app.cfg,
-                )
-                if wb_result.get("status") == "ok" and wb_result.get("results"):
-                    matches = wb_result["results"]
-                    print(f"\n  🌍 世界观提醒 (匹配 {len(matches)} 条):")
-                    for wb in matches[:8]:
-                        imp = int(wb.get("importance") or 3)
-                        imp_bar = "\u2605" * imp + "\u2606" * (5 - imp)
-                        content_preview = wb.get("content_preview", "") or ""
-                        if len(content_preview) > 80:
-                            content_preview = content_preview[:80] + "..."
-                        print(f"    [{imp_bar}] {wb['title']:<16s} [{wb.get('category') or '—'}]")
-                        if content_preview:
-                            print(f"          {content_preview}")
+        _pre_worldbuilding_reminder(nid, app, chapter_no, ch_plan)
 
         # ── 情节线索提醒 ──
-        try:
-            _thread_labels = {"伏笔": "伏笔", "主线": "主线", "支线": "支线", "感情线": "感情线", "成长线": "成长线"}
-            cur.execute(
-                "SELECT title, thread_type, status, importance, introduced_chapter, content "
-                "FROM plot_threads WHERE novel_id=? AND status IN ('open','active') "
-                "ORDER BY importance DESC",
-                (nid,),
-            )
-            open_threads = cur.fetchall()
-            if open_threads:
-                planned_titles = set()
-                if ch_plan and ch_plan.get("plot_threads_to_advance"):
-                    for t in open_threads:
-                        if t["title"] in (ch_plan["plot_threads_to_advance"] or ""):
-                            planned_titles.add(t["title"])
-                print(f"\n  \U0001f9f5 活跃情节线索 ({len(open_threads)} 条):")
-                for t in open_threads[:5]:
-                    imp = t["importance"] or 3
-                    imp_bar = "\u2605" * imp + "\u2606" * (5 - imp)
-                    marker = " ▶ 本章计划推进" if t["title"] in planned_titles else ""
-                    intro = f" 第{t['introduced_chapter']}章引入" if t["introduced_chapter"] else ""
-                    ttype = _thread_labels.get(t["thread_type"], t["thread_type"])
-                    content_preview = ""
-                    if t["content"]:
-                        c = t["content"]
-                        content_preview = (c[:60] + "...") if len(c) > 60 else c
-                    print(f"    [{imp_bar}] {t['title']:<18s} [{ttype:6s}]{marker}{intro}")
-                    if content_preview:
-                        print(f"          {content_preview}")
-        except sqlite3.Error as e:
-            log_optional_failure("pre: plot thread reminder", e)
+        _pre_plot_thread_reminder(cur, nid, ch_plan)
 
         # ── 读者承诺提醒 ──
-        try:
-            cur.execute(
-                "SELECT promise_title, introduced_chapter, importance "
-                "FROM reader_promises WHERE novel_id=? AND status='open' ORDER BY importance DESC",
-                (nid,),
-            )
-            open_promises = cur.fetchall()
-            if open_promises:
-                print(f"\n  📝 待兑现读者承诺 ({len(open_promises)} 条):")
-                for p in open_promises[:3]:
-                    imp = p["importance"] or 3
-                    imp_bar = "\u2605" * imp + "\u2606" * (5 - imp)
-                    intro = f" 第{p['introduced_chapter']}章提出" if p["introduced_chapter"] else ""
-                    print(f"    [{imp_bar}] {p['promise_title']}{intro}")
-        except sqlite3.Error as e:
-            log_optional_failure("pre: reader promise reminder", e)
+        open_promises = _pre_reader_promise_reminder(cur, nid, open_promises)
 
         # context_pack (包含标题骨架)
-        app.exports_root.mkdir(parents=True, exist_ok=True)
-        pack_path = app.exports_root / f"context_ch{chapter_no}_{datetime.now().strftime('%H%M%S')}.txt"
-        skeleton_info = ""
-        if ch_plan:
-            skeleton_info = (
-                f"=== 标题骨架 ===\n"
-                f"卷: 第{app.volume_no}卷《{vol['planned_title'] if vol else '?'}》\n"
-                f"章: 第{chapter_no}章《{ch_plan['planned_title']}》\n"
-                f"目标: {ch_plan['chapter_goal']}\n"
-                f"冲突: {ch_plan['conflict_point']}\n"
-                f"钩子: {ch_plan['ending_hook_direction']}\n"
-            )
-        pack_path.write_text(
-            f"写作上下文包-第{chapter_no}章\n{'='*40}\n"
-            f"目标字数: {app.wc_default['best_min']}-{app.wc_default['best_max']} | "
-            f"下限: {app.wc_default['min']}\n"
-            f"{skeleton_info}\n", encoding='utf-8')
-        print(f"  [OK] context_pack: {pack_path}")
+        pack_path = _pre_write_context_pack(app, chapter_no, vol, ch_plan)
 
         # ── 上下文注入：读取前3章 chapter_contexts ──
         context_injection = _build_context_injection(cur, nid, chapter_no, max_chapters=3)
