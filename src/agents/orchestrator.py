@@ -115,6 +115,8 @@ class AgentOrchestrator:
             "chapter": chapter_no,
             "mode": mode,
             "overall_score": overall_score,
+            # overall_score 是"问题分"：越高问题越多、质量越差。消费方据此判断方向。
+            "score_direction": "lower_is_better",
             "status": overall_status,
             "agents": agent_results,
             "chief_editor": chief_result,

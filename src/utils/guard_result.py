@@ -84,6 +84,7 @@ class GuardSummary:
     blocked_by: list[str] = field(default_factory=list)
     fts_health: dict = field(default_factory=dict)
     title_diff: Optional[str] = None
+    crashed_guards: list[str] = field(default_factory=list)  # 崩溃→降级 WARN 的 guard（fail-open 显式记账）
     version: str = field(default_factory=get_version)  # 实例化时求值，而非 import 期
 
     def compute(self):
@@ -101,6 +102,9 @@ class GuardSummary:
 
         self.executed_guards = [r.guard for r in self.results]
         self.blocked_by = [r.guard for r in self.results if r.status == "FAIL"]
+        # fail-open 记账：guard 崩溃被降级为 WARN（run_single_guard），这里显式收集，
+        # 避免"门禁悄悄不设防"只埋在 stdout / 单条 finding 里。
+        self.crashed_guards = [r.guard for r in self.results if r.error]
 
         if self.fail_count > 0:
             self.overall_status = "FAIL"
@@ -133,6 +137,7 @@ class GuardSummary:
             "executed_guards": self.executed_guards,
             "skipped_guards": self.skipped_guards,
             "blocked_by": self.blocked_by,
+            "crashed_guards": self.crashed_guards,
             "fts_health": self.fts_health,
             "title_diff": self.title_diff,
             "version": self.version,
@@ -157,6 +162,7 @@ class GuardSummary:
         summary.executed_guards = data.get("executed_guards", [])
         summary.skipped_guards = data.get("skipped_guards", [])
         summary.blocked_by = data.get("blocked_by", [])
+        summary.crashed_guards = data.get("crashed_guards", [])
         summary.fts_health = data.get("fts_health", {})
         summary.title_diff = data.get("title_diff")
         summary.version = data.get("version", get_version())

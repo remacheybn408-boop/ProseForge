@@ -362,6 +362,7 @@ def run_orchestrated(content: str, chapter_no: int, mode: str = "standard",
         "executed_guards": summary.executed_guards,
         "skipped_guards": summary.skipped_guards,
         "blocked_by": summary.blocked_by,
+        "crashed_guards": summary.crashed_guards,
         "warning_count": summary.warn_count,
         "fail_count": summary.fail_count,
         "final_status": ("BLOCKED" if summary.overall_status == "FAIL"

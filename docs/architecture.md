@@ -269,3 +269,8 @@ FTS5 全文检索覆盖 chapter/character/world/plot/chunk 等。
 4. **版本不可覆盖**：`chapter_versions` 快照永不物理删除
 5. **无 Web UI / API Server / MCP**：走 headless engine + CLI 路线
 6. **src/ 标准结构**：所有代码放 `src/` 下
+7. **两套相反的失败哲学（刻意为之）**：
+   - **守卫系统 = fail-open**：单个守卫崩溃 → `run_single_guard` 捕获并降级为 `WARN`（`guard_registry.py`），L2 聚合器任何 FAIL 也强制降为 WARN。理由：质量门禁不应因一个守卫的 bug 就阻断整条流水线、把作者卡死。代价是"守卫悄悄不设防"——为此 `GuardSummary.crashed_guards` 显式记账，post 输出会打印 `[WARN] N guard(s) 崩溃→降级 WARN`，让失防可见。真正能 BLOCK 的只有 L1 与 L3 合规。
+   - **审读 Agent = fail-closed**：某个 Agent 崩溃 → `orchestrator.py` 给它 `status=FAIL, score=100`（问题分，越高越差），从而把 `overall_status` 推成 FAIL。理由：审读是"建议性复查"，宁可显式报红引起注意，也不要把崩溃悄悄当通过。
+   - 两者方向相反是有意的：门禁卡 ingest（要稳，故 fail-open），审读只给建议（要醒目，故 fail-closed）。调用方据此理解为何同样"崩溃"在两处结局不同。
+   - **分数方向**：审读 `overall_score` 是**问题分，越低越好**（`base_agent`: higher = more issues），报告里带 `score_direction: "lower_is_better"` 显式标注，避免误读成"越高越好"。

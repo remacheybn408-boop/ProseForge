@@ -317,6 +317,8 @@ def run_post(
             orch_path = ce_reports_dir / f"chapter_{chapter_no:03d}_orchestrator_report.json"
             orch_path.write_text(json.dumps(orch_report, ensure_ascii=False, indent=2), encoding="utf-8")
             print(f"  [OK] orchestrator ({orchestrator_mode}): {len(orch_report.get('executed_guards', []))} guards, {orch_report.get('warning_count', 0)} warnings")
+            if orch_report.get("crashed_guards"):
+                print(f"  [WARN] {len(orch_report['crashed_guards'])} guard(s) 崩溃→降级 WARN (fail-open，未设防): {orch_report['crashed_guards']}")
             if orch_report.get("blocked_by"):
                 print(f"  [BLOCK] compliance: {orch_report['blocked_by']}")
             if orch_report.get("fail_count", 0) > 0:
@@ -466,7 +468,8 @@ def run_post(
         if _full:
             _score = _full.get("overall_score", "?")
             _status = _full.get("status", "?")
-            print(f"  [REVIEW] full mode: score {_score}, status {_status}")
+            # score 是"问题分"：越高越差（base_agent: higher = more issues）
+            print(f"  [REVIEW] full mode: issue-score {_score}/100 (越低越好), status {_status}")
             _ce = _full.get("chief_editor", {})
             if isinstance(_ce, dict):
                 _summary = _ce.get("suggestion", "")

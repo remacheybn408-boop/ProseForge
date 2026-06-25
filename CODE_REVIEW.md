@@ -169,11 +169,11 @@ except Exception:
 | **High #2** FTS rowid 契约 | **✅ 已修复（本批）** | `ingest.py` 改用真实 `chapter_chunks.id`（`cur.lastrowid`）作 FTS rowid，重灌走外部内容 `'delete'` 命令；RAG 分块富化与 rebuild churn 一并修复。 |
 | **High #3** pre 连接生命周期 | **真实** | `pre.py:89` 开写连接，无包裹 `try/finally`，~700 行后才 commit/close。 |
 | **High #4** registry 非原子写 | **✅ 已修复（本批）** | `write_json_atomic` 下沉到 `src/utils/json_io.py`，`registry.save` + slot 4 处 JSON 写改原子写。 |
-| **Med #5** 分数方向反 | **真实** | `base_agent.py:46`「higher = more issues」；`orchestrator.py:113` 取均值，`post.py` 直接打印。 |
-| **Med #6** 去重交叉确认失效 | **真实** | `report_deduplicator.py:162` `len(sources)>=2 or avg_conf>0.7`；v0.8.0 后子检测身份丢失使 sources≈1。 |
-| **Med #7** 静默吞错 | **真实** | `voice_diversity_guard.py` 19 处 `except Exception`；叠加 fail-open + L2 永不 FAIL。 |
+| **Med #5** 分数方向反 | **✅ 已修复** | 输出显式标注"问题分/越低越好"：`post.py` 打印 `issue-score`，orchestrator 报告加 `score_direction: lower_is_better`（不反转数值，避免动消费方）。 |
+| **Med #6** 去重交叉确认失效 | **⃝ 实测已满足** | 复核发现现行代码 `_adapt_legacy_dict:147` 已把子检测名写入 `source_guard` 并直达去重（`run_orchestrated` 用 `get_warnings()`）；实测两子检测合并、`reported_by` 为 2 个来源。报告结论已过时；加回归测试 `test_dedup_counts_distinct_subcheck_sources` 锁定。 |
+| **Med #7** 静默吞错 | **✅ 已修复（记账）** | `GuardSummary.crashed_guards` 显式收集崩溃降级的 guard，save/load 往返，post 打印 `[WARN] N guard(s) 崩溃→降级 WARN`。fail-open 保留为设计，但失防现在可见。 |
 | **Med #8** conn3 泄漏 | **✅ 已修复** | `post.py` 改用 `with closing(connect_sqlite(...))`。 |
-| **Med #9** 两套失败哲学相反 | **真实** | guards fail-open vs `orchestrator` 崩溃→FAIL/score=100 fail-closed，无文档区分。 |
+| **Med #9** 两套失败哲学相反 | **✅ 已修复（文档）** | `docs/architecture.md` 设计决策 #7 明确 guards fail-open vs agents fail-closed 的取向、原因与分数方向。 |
 | **Med #10** 超长函数 | **真实** | `run_pre`~750 / `run_post`~400 行。 |
 | **Low #11** `== False` | **✅ 已修复** | `post.py` 改 `is False`；误导变量 `candidates`→`chapter_file`。 |
 | **Low #12** 死代码 | **✅ 已修复** | 删除 human_texture 块里被丢弃的 `_pipeline_genre` 重算。 |
