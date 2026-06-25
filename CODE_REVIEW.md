@@ -174,13 +174,14 @@ except Exception:
 | **Med #7** 静默吞错 | **✅ 已修复（记账）** | `GuardSummary.crashed_guards` 显式收集崩溃降级的 guard，save/load 往返，post 打印 `[WARN] N guard(s) 崩溃→降级 WARN`。fail-open 保留为设计，但失防现在可见。 |
 | **Med #8** conn3 泄漏 | **✅ 已修复** | `post.py` 改用 `with closing(connect_sqlite(...))`。 |
 | **Med #9** 两套失败哲学相反 | **✅ 已修复（文档）** | `docs/architecture.md` 设计决策 #7 明确 guards fail-open vs agents fail-closed 的取向、原因与分数方向。 |
-| **Med #10** 超长函数 | **真实** | `run_pre`~750 / `run_post`~400 行。 |
+| **Med #10** 超长函数 | **真实（待办）** | `run_pre`~750 / `run_post`~400 行。大重构，留作单独专注会话分步拆分（#3 连接 try/finally 随之解决）。 |
 | **Low #11** `== False` | **✅ 已修复** | `post.py` 改 `is False`；误导变量 `candidates`→`chapter_file`。 |
 | **Low #12** 死代码 | **✅ 已修复** | 删除 human_texture 块里被丢弃的 `_pipeline_genre` 重算。 |
 | **Low #13** 非确定 glob | **✅ 已修复** | `_find_chapter_file` 改 `sorted(glob(...))[0]`。 |
 | **Low #14** dataclass 默认 | **✅ 已修复** | `GuardSummary.version` 改 `field(default_factory=get_version)`。 |
 | **Low #15** 弃用/初始化键 | **✅ 已修复** | 删除未用的 `create_slot_auto`/`get_next_slot_id`；`is_initialized` 不再依赖 `version` 键。 |
 | **Low #17** 标题正则 | **真实但被缓解** | `ingest.py:61` 下划线正则多半 None，但 `:68` 有正文 `# 第N章 标题` 兜底，标题未必退化到 stem。 |
-| **#16 / #18 / #19** | **接受报告结论** | 与所读代码一致，低优，未逐字节复验。 |
+| **Low #18** 两条删除路径 | **✅ 已修复** | `delete_slot` 默认改走回收站（`delete_slot_safe`），仅 `force=True` 永久硬删；统一入口、消除误删风险。 |
+| **#16 / #19** | **接受报告结论** | 与所读代码一致，低优，未逐字节复验。 |
 
 **净结论**：除 P0 已失效外，其余 High/Medium/Low 均在现行代码中成立。本轮不改代码，留待后续按报告「建议处理顺序」分批修复。

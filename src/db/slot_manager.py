@@ -258,11 +258,19 @@ class SlotManager:
         self.registry.set_active_slot(candidate)
         return candidate
 
-    def delete_slot(self, slot_id: str) -> Dict:
+    def delete_slot(self, slot_id: str, force: bool = False) -> Dict:
         """
-        Delete a slot (directory + registry entry).
+        Delete a slot. 默认走回收站（delete_slot_safe），避免误删——可从
+        workspace/_trash/ 恢复。仅当 force=True 时才永久硬删（rmtree，不可恢复）。
+
         Protected: won't delete the active slot.
+
+        #18: 统一删除入口。历史上 delete_slot(硬删) 与 delete_slot_safe(回收站) 并存、
+        硬删绕过回收站存在误删风险；现在 delete_slot 默认即安全删除，硬删须显式 force。
         """
+        if not force:
+            return self.delete_slot_safe(slot_id, confirm=True)
+
         result = {"status": "ok", "message": ""}
 
         active = self.registry.get_active_slot()
@@ -274,11 +282,11 @@ class SlotManager:
         # Remove from registry
         removed = self.registry.remove_slot(slot_id)
 
-        # Remove directory
+        # Hard delete directory (force=True，不可恢复)
         slot_dir = self.get_slot_dir(slot_id)
         if slot_dir.exists():
             shutil.rmtree(slot_dir)
-            result["message"] = f"Slot {slot_id} 已删除（目录和注册表）"
+            result["message"] = f"Slot {slot_id} 已永久删除（force，目录和注册表）"
             result["removed_dir"] = True
         else:
             result["message"] = f"Slot {slot_id} 已从注册表移除（目录不存在）"
