@@ -10,11 +10,50 @@ import sys
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT_ENV = "PROSEFORGE_PROJECT_ROOT"
 
 
-def _ensure_repo_import() -> None:
-    root = str(REPO_ROOT)
+def _looks_like_project_root(path: Path) -> bool:
+    return (
+        (path / "src").is_dir()
+        and (path / "database" / "schema.sql").is_file()
+        and (path / "pyproject.toml").is_file()
+    )
+
+
+def _candidate_roots() -> list[Path]:
+    starts = [Path.cwd(), Path(__file__).resolve().parent]
+    candidates: list[Path] = []
+    seen: set[Path] = set()
+    for start in starts:
+        for path in (start, *start.parents):
+            resolved = path.resolve()
+            if resolved not in seen:
+                seen.add(resolved)
+                candidates.append(resolved)
+    return candidates
+
+
+def _discover_project_root(explicit: str | None = None) -> Path:
+    explicit = explicit or os.environ.get(PROJECT_ROOT_ENV)
+    if explicit:
+        root = Path(explicit).expanduser().resolve()
+        if _looks_like_project_root(root):
+            return root
+        raise RuntimeError(f"--project-root does not look like a ProseForge repo: {root}")
+
+    for root in _candidate_roots():
+        if _looks_like_project_root(root):
+            return root
+
+    raise RuntimeError(
+        "cannot locate ProseForge project root; run from the repo root, "
+        f"pass --project-root, or set {PROJECT_ROOT_ENV}"
+    )
+
+
+def _ensure_repo_import(project_root: Path) -> None:
+    root = str(project_root)
     if root not in sys.path:
         sys.path.insert(0, root)
     os.chdir(root)
@@ -30,20 +69,24 @@ def _require_args(args: argparse.Namespace, fields: list[str]) -> None:
         raise ValueError(f"missing required arguments for action '{args.action}': {joined}")
 
 
-def _project_status() -> dict:
-    registry_path = REPO_ROOT / "workspace" / "registry.json"
+def _project_root(args: argparse.Namespace) -> Path:
+    return _discover_project_root(args.project_root)
+
+
+def _project_status(project_root: Path) -> dict:
+    registry_path = project_root / "workspace" / "registry.json"
     if not registry_path.exists():
         return {
             "status": "noop",
             "message": "workspace is not initialized",
-            "workspace": str(REPO_ROOT / "workspace"),
+            "workspace": str(project_root / "workspace"),
         }
 
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
     active_slot = registry.get("active_slot", "")
     slots: dict[str, dict] = {}
     if active_slot:
-        project_path = REPO_ROOT / "workspace" / active_slot / "project.json"
+        project_path = project_root / "workspace" / active_slot / "project.json"
         if project_path.exists():
             project = json.loads(project_path.read_text(encoding="utf-8"))
             slots[active_slot] = {
@@ -55,14 +98,15 @@ def _project_status() -> dict:
 
 
 def _run_project(args: argparse.Namespace) -> object:
-    _ensure_repo_import()
+    project_root = _project_root(args)
+    _ensure_repo_import(project_root)
 
     if args.action == "init":
         from src.db.slot_manager import SlotManager
 
-        manager = SlotManager(REPO_ROOT)
+        manager = SlotManager(project_root)
         result = manager.init_workspace()
-        result["workspace"] = str(REPO_ROOT / "workspace")
+        result["workspace"] = str(project_root / "workspace")
         return result
 
     if args.action == "create":
@@ -73,7 +117,7 @@ def _run_project(args: argparse.Namespace) -> object:
         _require_args(args, ["title"])
         from src.db.slot_manager import SlotManager
 
-        manager = SlotManager(REPO_ROOT)
+        manager = SlotManager(project_root)
         result = manager.create_slot(slot_id, ensure_registry=True, name=args.title, description=args.title)
         return {
             "status": "ok",
@@ -85,17 +129,17 @@ def _run_project(args: argparse.Namespace) -> object:
     if args.action == "list":
         from src.db.registry import Registry
 
-        registry = Registry(REPO_ROOT)
+        registry = Registry(project_root)
         return {"status": "ok", "slots": registry.list_slots()}
 
     if args.action == "status":
-        return _project_status()
+        return _project_status(project_root)
 
     if args.action == "outline":
         _require_args(args, ["sub_action"])
         from src.outline.outline_manager import OutlineManager
 
-        manager = OutlineManager(REPO_ROOT)
+        manager = OutlineManager(project_root)
         if args.sub_action == "add":
             _require_args(args, ["file_path"])
             file_path = Path(args.file_path)
@@ -142,6 +186,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sub-action", dest="sub_action", choices=["add", "list", "switch"])
     parser.add_argument("--file-path", dest="file_path")
     parser.add_argument("--outline-id", dest="outline_id")
+    parser.add_argument("--project-root")
     return parser
 
 

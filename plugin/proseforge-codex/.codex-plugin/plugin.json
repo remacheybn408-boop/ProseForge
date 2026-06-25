@@ -5,7 +5,7 @@
   "author": {
     "name": "HermesForgeN Team"
   },
-  "repository": "https://github.com/bijinfeng/novel-pipeline-write-engine",
+  "repository": "https://github.com/remacheybn408-boop/ProseForge",
   "keywords": [
     "novel",
     "writing",
@@ -18,14 +18,17 @@
     "shortDescription": "Two-entry Codex wrapper for Novel Forge.",
     "longDescription": "Adds two focused Codex workflow entries that map to the Novel Forge pipeline and project-management flows without introducing MCP.",
     "developerName": "HermesForgeN Team",
+    "websiteURL": "https://github.com/remacheybn408-boop/ProseForge",
+    "privacyPolicyURL": "https://github.com/remacheybn408-boop/ProseForge/blob/main/plugin/proseforge-codex/docs/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/remacheybn408-boop/ProseForge/blob/main/plugin/proseforge-codex/docs/TERMS.md",
     "category": "Developer Tools",
     "capabilities": [
       "Interactive",
       "Write"
     ],
     "defaultPrompt": [
-      "Use nf_pipeline to prepare or review a chapter.",
-      "Use nf_project to manage slots, outlines, and exports."
+      "Use nf-pipeline to prepare or review a chapter.",
+      "Use nf-project to manage slots, outlines, and exports."
     ]
   }
 }

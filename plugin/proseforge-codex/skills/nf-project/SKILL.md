@@ -1,6 +1,6 @@
 ---
 name: nf-project
-description: Run the local Novel Forge project wrapper for workspace, slot, outline, and export workflows without MCP.
+description: Use when managing ProseForge workspace, slot, outline, status, and export workflows without MCP.
 ---
 
 # nf_project
@@ -18,7 +18,7 @@ workspace and the task maps to one of these actions:
 This plugin does not expose MCP tools. Instead, call the local wrapper script:
 
 ```powershell
-python plugin/proseforge-codex/scripts/nf_project.py --action <action> ...
+python <plugin-root>/scripts/nf_project.py --action <action> ...
 ```
 
 ## Action mapping
@@ -41,14 +41,15 @@ python plugin/proseforge-codex/scripts/nf_project.py --action <action> ...
 - `--slug` for `export`
 - `--format txt|md` for `export`
 - `--output <path>` for `export`
+- `--project-root <repo-root>` or `PROSEFORGE_PROJECT_ROOT=<repo-root>` when running outside the repository
 
 ## Examples
 
 ```powershell
-python plugin/proseforge-codex/scripts/nf_project.py --action init
-python plugin/proseforge-codex/scripts/nf_project.py --action create --slot-name gwdz --title "诡雾灯盏"
-python plugin/proseforge-codex/scripts/nf_project.py --action outline --sub-action add --file-path examples/demo_novel/outline_skeleton.json
-python plugin/proseforge-codex/scripts/nf_project.py --action export --slug demo_novel --format txt
+python <plugin-root>/scripts/nf_project.py --action init
+python <plugin-root>/scripts/nf_project.py --action create --slot-name gwdz --title "诡雾灯盏"
+python <plugin-root>/scripts/nf_project.py --action outline --sub-action add --file-path examples/demo_novel/outline_skeleton.json
+python <plugin-root>/scripts/nf_project.py --action export --slug demo_novel --format txt
 ```
 
 Prefer these two wrapper scripts over ad hoc shell commands so the Codex-side

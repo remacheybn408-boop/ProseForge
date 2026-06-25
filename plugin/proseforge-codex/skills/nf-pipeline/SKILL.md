@@ -1,6 +1,6 @@
 ---
 name: nf-pipeline
-description: Run the local Novel Forge pipeline wrapper for chapter and volume workflows without MCP.
+description: Use when running ProseForge chapter or volume pipeline actions such as pre, post, review, batch, volume, rewrite, or accept without MCP.
 ---
 
 # nf_pipeline
@@ -19,7 +19,7 @@ Codex and the task maps to one of these actions:
 This plugin does not expose MCP tools. Instead, call the local wrapper script:
 
 ```powershell
-python plugin/proseforge-codex/scripts/nf_pipeline.py --action <action> ...
+python <plugin-root>/scripts/nf_pipeline.py --action <action> ...
 ```
 
 ## Action mapping
@@ -46,14 +46,15 @@ python plugin/proseforge-codex/scripts/nf_pipeline.py --action <action> ...
 
 - `--chapter-type normal|key|climax`
 - `--mode light|full` for `review` — light 跑 3 个 agent（continuity/prose/plot），full 跑 6 个（额外加 character/reader/detail）；两者审稿阈值相同，区别只在覆盖范围
-- `--project-root <path>` and `--config-path <path>` when the repo/config is not the default location
+- `--project-root <repo-root>` or `PROSEFORGE_PROJECT_ROOT=<repo-root>` when running outside the repository
+- `--config-path <path>` when the config is not the default location
 
 ## Examples
 
 ```powershell
-python plugin/proseforge-codex/scripts/nf_pipeline.py --action pre --slug demo_novel --title "Demo Novel" --vol-no 1 --chapter-no 3
-python plugin/proseforge-codex/scripts/nf_pipeline.py --action review --slug demo_novel --vol-no 1 --chapter-no 3 --mode full
-python plugin/proseforge-codex/scripts/nf_pipeline.py --action batch --slug demo_novel --title "Demo Novel" --vol-no 1 --from-ch 1 --to-ch 5
+python <plugin-root>/scripts/nf_pipeline.py --action pre --slug demo_novel --title "Demo Novel" --vol-no 1 --chapter-no 3
+python <plugin-root>/scripts/nf_pipeline.py --action review --slug demo_novel --vol-no 1 --chapter-no 3 --mode full
+python <plugin-root>/scripts/nf_pipeline.py --action batch --slug demo_novel --title "Demo Novel" --vol-no 1 --from-ch 1 --to-ch 5
 ```
 
 Print the returned JSON back to the user in summarized form instead of pasting

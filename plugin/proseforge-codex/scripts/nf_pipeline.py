@@ -5,13 +5,65 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.append(str(REPO_ROOT))
+PROJECT_ROOT_ENV = "PROSEFORGE_PROJECT_ROOT"
+
+
+def _looks_like_project_root(path: Path) -> bool:
+    return (
+        (path / "src").is_dir()
+        and (path / "database" / "schema.sql").is_file()
+        and (path / "pyproject.toml").is_file()
+    )
+
+
+def _argv_project_root(argv: list[str]) -> str | None:
+    for index, arg in enumerate(argv):
+        if arg == "--project-root" and index + 1 < len(argv):
+            return argv[index + 1]
+        if arg.startswith("--project-root="):
+            return arg.split("=", 1)[1]
+    return None
+
+
+def _candidate_roots() -> list[Path]:
+    starts = [Path.cwd(), Path(__file__).resolve().parent]
+    candidates: list[Path] = []
+    seen: set[Path] = set()
+    for start in starts:
+        for path in (start, *start.parents):
+            resolved = path.resolve()
+            if resolved not in seen:
+                seen.add(resolved)
+                candidates.append(resolved)
+    return candidates
+
+
+def _discover_project_root() -> Path:
+    explicit = _argv_project_root(sys.argv[1:]) or os.environ.get(PROJECT_ROOT_ENV)
+    if explicit:
+        root = Path(explicit).expanduser().resolve()
+        if _looks_like_project_root(root):
+            return root
+        raise RuntimeError(f"--project-root does not look like a ProseForge repo: {root}")
+
+    for root in _candidate_roots():
+        if _looks_like_project_root(root):
+            return root
+
+    raise RuntimeError(
+        "cannot locate ProseForge project root; run from the repo root, "
+        f"pass --project-root, or set {PROJECT_ROOT_ENV}"
+    )
+
+
+DEFAULT_PROJECT_ROOT = _discover_project_root()
+if str(DEFAULT_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(DEFAULT_PROJECT_ROOT))
 
 from src.agents.orchestrator import run_agent_review
 from src.pipeline._base import _find_chapter_file, _strip_selfcheck
@@ -31,7 +83,7 @@ def _require_args(args: argparse.Namespace, fields: list[str]) -> None:
 
 
 def _project_root(args: argparse.Namespace) -> Path:
-    return Path(args.project_root).resolve() if args.project_root else REPO_ROOT
+    return Path(args.project_root).expanduser().resolve() if args.project_root else DEFAULT_PROJECT_ROOT
 
 
 def _review_candidate_dirs(project_root: Path, vol_no: int, slug: str, config_path: str | None) -> list[Path]:
@@ -105,7 +157,13 @@ def _run_pipeline(args: argparse.Namespace) -> object:
 
     if args.action == "review":
         _require_args(args, ["slug", "vol_no", "chapter_no"])
-        content, chapter_path = _load_review_content(project_root, args.slug, args.vol_no, args.chapter_no, args.config_path)
+        content, chapter_path = _load_review_content(
+            project_root,
+            args.slug,
+            args.vol_no,
+            args.chapter_no,
+            args.config_path,
+        )
         result = run_agent_review(content, chapter_no=args.chapter_no, mode=args.mode)
         if isinstance(result, dict):
             result.setdefault("chapter_file", str(chapter_path))
@@ -170,7 +228,8 @@ def _exit_code(payload: object) -> int:
         for item in payload:
             if isinstance(item, dict) and item.get("status") == "error":
                 return 1
-            if isinstance(item, dict) and isinstance(item.get("result"), dict) and item["result"].get("status") == "error":
+            result = item.get("result") if isinstance(item, dict) else None
+            if isinstance(result, dict) and result.get("status") == "error":
                 return 1
     return 0
 
