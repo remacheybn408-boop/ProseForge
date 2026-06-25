@@ -126,7 +126,20 @@ def _count_chinese(text: str) -> int:
 
 
 def ensure_tables(app_inst: App | PipelineContext | None = None):
+    """流水线入口自愈：把活跃槽 novel.db 补齐到当前完整 schema。
+
+    所有入口（pre/post/volume/ingest）都先调它。schema.sql 在场时走全 schema 幂等补齐
+    （快路径：表齐则零成本；遗留库缺表才补一次）；schema.sql 缺失时退回内联建最小集兜底。
+    """
     ctx = _require_context(app_inst)
+
+    from src.db.init_db import ensure_db_schema, find_schema
+
+    if find_schema(ctx.project_root) is not None:
+        ensure_db_schema(ctx.db_path, ctx.project_root)
+        return
+
+    # 兜底：没有权威 schema.sql 时，至少建起这两张流水线必需的表。
     conn = connect_sqlite(ctx.db_path)
     cur = conn.cursor()
     cur.execute(

@@ -12,7 +12,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List
 
-from src.db.init_db import find_migrations, find_schema, init_db
+from src.db.init_db import ensure_db_schema, find_migrations, find_schema, init_db
 from src.db.registry import Registry
 from src.db._conn import connect_sqlite
 
@@ -64,6 +64,15 @@ class SlotManager:
             conn.commit()
         finally:
             conn.close()
+
+    def ensure_slot_schema(self, slot_id: str) -> bool:
+        """幂等地把一个已存在 slot 的 novel.db 补齐到当前完整 schema。
+
+        用旧 schema 建的遗留库（缺 writing_rules 等表）调用本方法即可补齐，
+        只加缺失的表、不动既有数据。库不存在时返回 False。复用 init_db 家族。
+        """
+        db_path = self.get_slot_db_path(slot_id)
+        return ensure_db_schema(db_path, self.project_root)
 
     def migrate_slot_fts(self, slot_id: str) -> bool:
         """Ensure a slot's novel.db has FTS5 tables (idempotent migration, v0.6.5-clean3)."""
