@@ -1,0 +1,12 @@
+{
+  "name": "proseforge-engine",
+  "version": "0.8.0",
+  "description": "ProseForge AI长篇小说工程系统 — 写作流水线(nf_pipeline) + 项目管理(nf_project)",
+  "author": "ProseForge Team",
+  "repository": "https://github.com/remacheybn408-boop/ProseForge",
+  "license": "AGPL-3.0",
+  "provides_tools": ["nf_pipeline", "nf_project"],
+  "enabled": true,
+  "type": "plugin",
+  "entry": "__init__.py"
+}

@@ -53,19 +53,22 @@ uv pip install pytest
 cp config.example.json config.json
 ```
 
-编辑 `config.json`，将 `project_root` 等路径改为你的实际路径：
+编辑 `config.json`（结构见 `config.example.json`），按需调整 `paths`：
 
 ```json
 {
-  "project_root": "C:/Users/<你的用户名>/ProseForge",
-  "novel_dir": "C:/Users/<你的用户名>/novels",
-  "database_path": "C:/Users/<你的用户名>/ProseForge/database/hermes_memory.db",
-  "default_novel_slug": "my_novel",
-  "default_novel_name": "我的小说"
+  "app": { "name": "Novel Forge - 小说引擎", "version": "0.8.0", "mode": "local" },
+  "paths": {
+    "db_path": "./data/novel_memory.db",
+    "novels_root": "./novels",
+    "exports_root": "./exports",
+    "outputs_root": "./outputs"
+  },
+  "novel": { "default_slug": "demo_novel", "default_title": "Demo Novel" }
 }
 ```
 
-> 路径使用正斜杠 `/`，pathlib 自动处理跨平台。
+> `db_path` 是默认回退路径；实际写作用槽位库 `workspace/<slot>/novel.db`。路径用正斜杠 `/`，pathlib 自动跨平台。
 
 ### 4. 注册插件（按你的 Agent 选择）
 
@@ -74,9 +77,8 @@ ProseForge 提供三个插件表面，选一个即可：
 **Hermes Agent**（推荐）：
 
 ```bash
-# 把插件链接到 Hermes 的 profiles/<profile>/plugins/ 下
-# 或在 Hermes 配置中启用 plugin/hermes-forgen-engine
-# 插件源码: plugin/proseforge-Hermes/
+# 把插件源码 plugin/proseforge-Hermes/ 链接到 Hermes 的 profiles/<profile>/plugins/ 下
+# 在 Hermes 配置中启用该插件（注册的 toolset 名为 hermes-forgen-engine）
 # 注册后可用工具: nf_pipeline, nf_project
 ```
 
@@ -184,7 +186,7 @@ Hermes / Codex / Claude
 | 入口 | 作用 | 典型动作 |
 | --- | --- | --- |
 | `nf_project` | 管项目和工作区 | `init` / `create` / `list` / `status` / `outline` / `export` |
-| `nf_pipeline` | 管章节流水线 | `pre` / `post` / `review` / `batch` / `volume` |
+| `nf_pipeline` | 管章节流水线 | `pre` / `post` / `review` / `batch` / `volume` / `rewrite` / `accept` |
 
 它们是用户最应该记住的两个名字。
 
@@ -239,7 +241,7 @@ Hermes / Codex / Claude
 
 ### 5. 改写层
 
-当前版本没有独立的改写模块。`rewrite` 已从 `nf_pipeline` 下线，改写动作由 `review` 输出的 findings 驱动——后续可由人工或外部 Agent 基于 review 报告改稿。原则不变：改稿是增量产物，不覆盖原稿。
+改写以 `nf_pipeline` 的 `rewrite` + `accept` 两个 action 接回流水线，**内核不调 LLM**：`rewrite` 读 post 的去重报告产「改写卡」，Agent 据卡只改问题段写 `chapter_NNN_revised.txt`，`accept` 出 diff 并在 `--ingest` 时入库。原则不变：改稿是增量产物，只向 `chapter_versions` 追加快照，不覆盖原稿。详见 [REVISION_LOOP.md](docs/REVISION_LOOP.md)。
 
 ### 6. 存储层
 

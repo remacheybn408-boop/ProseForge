@@ -2,9 +2,14 @@
 
 版本: v0.3.1 Quality Guard Patch
 
+> ⚠️ **v0.8.0 更新**：生产运行时的权威入口是**进程内** `src/guards/guard_registry.py::run_standard_guards`，
+> 返回 `GuardResult` / `GuardSummary`（定义见 `src/utils/guard_result.py`，字段为 `guard/status/findings/metrics/report_path/error`），
+> **不是**下文描述的旧扁平 dict（`status/final_decision/errors/warnings`）。各 guard 文件在 `src/guards/`（多数仍带 argparse 可单独跑），
+> 但 `scripts/<guard>.py` 路径与 `guard_contract_utils` 模块均**已不存在**。下文保留为 v0.3.1 历史契约，新代码以 `guard_result.py` 为准。
+
 ## 基本原则
 
-1. **CLI 是稳定接口**。所有 guard 通过 `python scripts/<guard>.py` 调用，参数通过 `--arg value` 传递。
+1. **运行时入口是 guard_registry（进程内）**。各 guard 文件在 `src/guards/<guard>.py`，多数仍带 `argparse` 可单独调用调试，参数通过 `--arg value` 传递。
 2. **内部函数不是稳定接口**。直接 `import` guard 内部函数可能导致类型不兼容、参数签名变化等问题。
 3. **Hermes Agent 优先调用 CLI**。除非明确知道内部函数的签名和返回格式，否则一律用 CLI。
 4. **统一返回格式**。所有 guard 的返回必须是 `dict`（不是 `tuple`），且包含以下字段。
@@ -33,32 +38,25 @@
 
 额外字段由各 guard 自行定义，不影响契约兼容性。
 
-## 统一判断函数
+## 统一判断（v0.8.0 实际做法）
 
-不要自己写 `if report["status"] == "PASS"` 或 `if report.get("final_decision") == "PASS"`。
+> 历史上曾计划用 `guard_contract_utils.guard_passed()` / `normalize_chapter_no()`，**该模块已不存在**。
 
-一律使用 `guard_contract_utils.guard_passed()`:
+现在 guard 返回 `GuardResult`（见 `src/utils/guard_result.py`），直接判断 `status`：
 
 ```python
-from guard_contract_utils import guard_passed
-
-report = run_continuity_evidence_check(...)
-if guard_passed(report):
+result = run_xxx_guard(...)          # 返回 GuardResult
+if result.status == "PASS":
     print("通过")
+# result.findings 为 GuardFinding 列表；result.fail_count / result.warn_count 为便捷计数
 ```
 
-## 统一 chapter_no 规范化
-
-```python
-from guard_contract_utils import normalize_chapter_no
-
-ch = normalize_chapter_no("第5章")  # 返回 5
-ch = normalize_chapter_no(5)         # 返回 5
-```
+整章汇总用 `GuardSummary`（`run_standard_guards` 的返回），它是"唯一真相源"。
+章号规范化用 `src/pipeline/_base.py` 的 `_arabic_to_chinese_numeral` 等工具按需处理。
 
 ## 调用规则
 
-1. ✅ **优先 CLI**: `python scripts/continuity_evidence_guard.py --chapter-no 5 --content-file ch5.txt`
+1. ✅ **调试可单独跑**: `python src/guards/continuity_evidence_guard.py --chapter-no 5 --content-file ch5.txt`（生产路径走 guard_registry）
 2. ⚠️ **必要时 import**: 仅在确认接口契约后使用 `from xx import run_xx_check`
 3. ❌ **禁止解包 tuple**: 不得写 `ok, report = run_guard(...)`，除非该函数文档明确返回 tuple
 4. ❌ **禁止无防护调用**: 所有外部输入（chapter_no、文件路径、JSON 内容）必须做容错处理

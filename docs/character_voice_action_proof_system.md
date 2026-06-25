@@ -145,8 +145,8 @@ pre
 - `docs/voice/character_voice_profiles.example.json` — 角色口吻卡模板
 - `docs/voice/scene_action_card.example.json` — 场景动作卡模板
 - `docs/voice/show_dont_tell_forbidden_patterns.json` — AI 腔禁用模式
-- `scripts/character_voice_guard.py` — 角色口吻门禁
-- `scripts/classical_register_guard.py` — 文言/古雅语体门禁
-- `scripts/show_dont_tell_guard.py` — 总结句检测门禁
-- `scripts/concrete_hook_guard.py` — 具体钩子门禁
-- `scripts/dialogue_beat_guard.py` — 对白节拍门禁
+- `src/guards/character_voice_guard.py` — 角色口吻门禁
+- `src/guards/classical_register_guard.py` — 文言/古雅语体门禁
+- `src/guards/show_dont_tell_guard.py` — 总结句检测门禁
+- `src/guards/concrete_anchor_guard.py` — 具体锚点/钩子门禁
+- `src/guards/dialogue_beat_guard.py` — 对白节拍门禁

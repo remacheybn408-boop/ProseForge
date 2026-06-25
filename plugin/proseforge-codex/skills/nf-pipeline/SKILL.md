@@ -13,11 +13,13 @@ Codex and the task maps to one of these actions:
 - `review`
 - `batch`
 - `volume`
+- `rewrite`
+- `accept`
 
 This plugin does not expose MCP tools. Instead, call the local wrapper script:
 
 ```powershell
-python plugin/hermes-forgen-codex/scripts/nf_pipeline.py --action <action> ...
+python plugin/proseforge-codex/scripts/nf_pipeline.py --action <action> ...
 ```
 
 ## Action mapping
@@ -27,6 +29,8 @@ python plugin/hermes-forgen-codex/scripts/nf_pipeline.py --action <action> ...
 - `review`: run the multi-agent review flow.
 - `batch`: run `post` for a chapter range.
 - `volume`: build the volume-level summary.
+- `rewrite`: 读 post 去重报告，产「改写卡」(outputs/rewrite_cards/) + revision_tasks.json，由 Agent 改写并写 chapter_NNN_revised.txt。内核不调 LLM。
+- `accept`: 原稿 vs revised 出 diff + recommendation；加 `--ingest` 审核通过则入库（追加快照，不覆盖）。
 
 ## Required arguments
 
@@ -35,6 +39,8 @@ python plugin/hermes-forgen-codex/scripts/nf_pipeline.py --action <action> ...
 - `review`: `--slug --vol-no --chapter-no`
 - `batch`: `--slug --title --vol-no --from-ch --to-ch`
 - `volume`: `--slug --title --vol-no`
+- `rewrite`: `--slug --title --vol-no --chapter-no`
+- `accept`: `--slug --title --vol-no --chapter-no` (`--ingest` 可选)
 
 ## Optional arguments
 
@@ -45,9 +51,9 @@ python plugin/hermes-forgen-codex/scripts/nf_pipeline.py --action <action> ...
 ## Examples
 
 ```powershell
-python plugin/hermes-forgen-codex/scripts/nf_pipeline.py --action pre --slug demo_novel --title "Demo Novel" --vol-no 1 --chapter-no 3
-python plugin/hermes-forgen-codex/scripts/nf_pipeline.py --action review --slug demo_novel --vol-no 1 --chapter-no 3 --mode full
-python plugin/hermes-forgen-codex/scripts/nf_pipeline.py --action batch --slug demo_novel --title "Demo Novel" --vol-no 1 --from-ch 1 --to-ch 5
+python plugin/proseforge-codex/scripts/nf_pipeline.py --action pre --slug demo_novel --title "Demo Novel" --vol-no 1 --chapter-no 3
+python plugin/proseforge-codex/scripts/nf_pipeline.py --action review --slug demo_novel --vol-no 1 --chapter-no 3 --mode full
+python plugin/proseforge-codex/scripts/nf_pipeline.py --action batch --slug demo_novel --title "Demo Novel" --vol-no 1 --from-ch 1 --to-ch 5
 ```
 
 Print the returned JSON back to the user in summarized form instead of pasting

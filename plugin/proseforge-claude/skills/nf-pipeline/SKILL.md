@@ -13,6 +13,8 @@ writing pipeline and the task maps to one of these actions:
 - `review`
 - `batch`
 - `volume`
+- `rewrite`
+- `accept`
 
 This plugin does not expose MCP tools. Instead, call the **shared wrapper
 script** that ships with the Codex plugin (the Claude and Codex plugins
@@ -32,6 +34,8 @@ Always invoke from the repo root (`D:\ProseForge`) so the wrapper can resolve
 - `review`: run the 6-agent review flow (`light` or `full` mode).
 - `batch`: run `post` for a chapter range `from-ch..to-ch`.
 - `volume`: build the volume-level summary + bridge report.
+- `rewrite`: 读 post 产出的去重报告，生成「改写卡」(must_keep/avoid + 待改段落原文) 到 `outputs/rewrite_cards/`，由 Agent 据卡改写并写 `chapter_NNN_revised.txt`。内核不调 LLM。
+- `accept`: 原稿 vs `chapter_NNN_revised.txt` 出 diff + 风险标记 + recommendation；加 `--ingest` 时审核通过则入库（追加版本快照，不覆盖原稿）。
 
 ## Required arguments
 
@@ -42,6 +46,8 @@ Always invoke from the repo root (`D:\ProseForge`) so the wrapper can resolve
 | `review` | `--slug --vol-no --chapter-no` |
 | `batch`  | `--slug --title --vol-no --from-ch --to-ch` |
 | `volume` | `--slug --title --vol-no` |
+| `rewrite`| `--slug --title --vol-no --chapter-no` |
+| `accept` | `--slug --title --vol-no --chapter-no` (`--ingest` 可选) |
 
 ## Optional arguments
 

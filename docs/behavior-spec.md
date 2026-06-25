@@ -218,7 +218,7 @@ pre → task_card → write → word_count → continuity → scene → anti_ai 
 
 ## 七、不做什么
 
-- ❌ 18 个独立脚本（全部合并到 chapter_pipeline.py）
+- ❌ 一堆独立 CLI 脚本（全部并入 src/pipeline/ 模块，经 nf_pipeline 工具驱动，无独立 CLI）
 - ❌ 36 步重型流水线
 - ❌ Web UI / FastAPI / Docker / Nginx
 - ❌ 向量数据库

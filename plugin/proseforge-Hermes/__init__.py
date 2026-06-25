@@ -1,7 +1,7 @@
 """
-novel-forge-engine plugin — Hermes 原生 Novel Forge 引擎封装
+proseforge-engine plugin — Hermes 原生 ProseForge 引擎封装
 
-将 Novel Forge 的写作流水线暴露为 2 个 Hermes 工具：
+将 ProseForge 的写作流水线暴露为 2 个 Hermes 工具：
   nf_pipeline — 写作流水线（pre/post/review/batch/volume）
   nf_project  — 项目管理（init/create/list/status/outline/export）
 """
@@ -17,26 +17,29 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # ── 项目路径 ──────────────────────────────────────────────────────────
-NOVEL_FORGE_DIR = Path(r"D:\HermesForgeN")
-NOVEL_FORGE_VENV_PYTHON = NOVEL_FORGE_DIR / ".venv" / "Scripts" / "python.exe"
+PROSEFORGE_DIR = Path(r"D:\Project\ProseForge")
+PROSEFORGE_VENV_PYTHON = PROSEFORGE_DIR / ".venv" / "Scripts" / "python.exe"
 
 
 def _ensure_import() -> None:
     """Ensure the project is importable, refresh src.* modules, and load pipeline entry points."""
-    root = str(NOVEL_FORGE_DIR.resolve())
+    root = str(PROSEFORGE_DIR.resolve())
     if root not in sys.path:
         sys.path.insert(0, root)
     os.chdir(root)
-    global pipeline_pre, pipeline_post, pipeline_volume
+    global pipeline_pre, pipeline_post, pipeline_volume, pipeline_rewrite, pipeline_accept
     stale = [k for k in list(sys.modules) if k.startswith("src.") or k == "src"]
     for k in stale:
         del sys.modules[k]
     from src.pipeline.pre import run_pre as _run_pre
     from src.pipeline.post import run_post as _run_post
     from src.pipeline.volume import volume_post as _volume_post
+    from src.pipeline.rewrite import run_rewrite as _run_rewrite, run_accept as _run_accept
     pipeline_pre = _run_pre
     pipeline_post = _run_post
     pipeline_volume = _volume_post
+    pipeline_rewrite = _run_rewrite
+    pipeline_accept = _run_accept
 
 
 # ── 公共辅助 ──────────────────────────────────────────────────────────
@@ -73,7 +76,7 @@ def _review_candidate_dirs(vol_no: int, slug: str) -> list[Path]:
     from src.pipeline._base import load_config
 
     candidates = []
-    registry_path = NOVEL_FORGE_DIR / "workspace" / "registry.json"
+    registry_path = PROSEFORGE_DIR / "workspace" / "registry.json"
     active_slot = ""
     if registry_path.exists():
         try:
@@ -83,7 +86,7 @@ def _review_candidate_dirs(vol_no: int, slug: str) -> list[Path]:
             active_slot = ""
 
     if active_slot:
-        slot_chapters = NOVEL_FORGE_DIR / "workspace" / active_slot / "chapters"
+        slot_chapters = PROSEFORGE_DIR / "workspace" / active_slot / "chapters"
         candidates.append(slot_chapters / f"第{vol_no:02d}卷")
         candidates.append(slot_chapters)
         if slot_chapters.exists():
@@ -92,7 +95,7 @@ def _review_candidate_dirs(vol_no: int, slug: str) -> list[Path]:
     cfg = load_config(None)
     novels_root = Path(cfg.get("novels_root", "./novels"))
     if not novels_root.is_absolute():
-        novels_root = NOVEL_FORGE_DIR / novels_root
+        novels_root = PROSEFORGE_DIR / novels_root
     candidates.append(novels_root / slug / f"第{vol_no:02d}卷")
     candidates.append(novels_root / slug)
 
@@ -122,7 +125,7 @@ def _load_review_content(args: dict) -> tuple[str, Path]:
     raise FileNotFoundError(f"找不到第{chapter_no}章 TXT，无法执行 review")
 
 
-_PIPELINE_ACTIONS = {"pre", "post", "review", "batch", "volume"}
+_PIPELINE_ACTIONS = {"pre", "post", "review", "batch", "volume", "rewrite", "accept"}
 
 
 def _handle_pipeline(args: dict, **kw) -> dict:
@@ -191,6 +194,27 @@ def _handle_pipeline(args: dict, **kw) -> dict:
             )
             return result if result else {"status": "ok", "message": "volume completed"}
 
+        elif action == "rewrite":
+            result = pipeline_rewrite(
+                novel_slug=args["slug"],
+                novel_title=args["title"],
+                volume_no=int(args["vol_no"]),
+                chapter_no=int(args["chapter_no"]),
+                chapter_type=args.get("chapter_type", "normal"),
+            )
+            return result if result else {"status": "ok", "message": "rewrite completed"}
+
+        elif action == "accept":
+            result = pipeline_accept(
+                novel_slug=args["slug"],
+                novel_title=args["title"],
+                volume_no=int(args["vol_no"]),
+                chapter_no=int(args["chapter_no"]),
+                chapter_type=args.get("chapter_type", "normal"),
+                ingest=bool(args.get("ingest", False)),
+            )
+            return result if result else {"status": "ok", "message": "accept completed"}
+
     except Exception as e:
         logger.exception("nf_pipeline %s failed", action)
         return {"status": "error", "message": str(e)}
@@ -215,7 +239,7 @@ def _handle_project(args: dict, **kw) -> dict:
         if action == "init":
             from src.db.slot_manager import SlotManager
 
-            project_root = NOVEL_FORGE_DIR
+            project_root = PROSEFORGE_DIR
             ws_dir = project_root / "workspace"
             ws_dir.mkdir(exist_ok=True)
             SlotManager(project_root).init()
@@ -224,7 +248,7 @@ def _handle_project(args: dict, **kw) -> dict:
         elif action == "create":
             from src.db.slot_manager import SlotManager
 
-            mgr = SlotManager(NOVEL_FORGE_DIR)
+            mgr = SlotManager(PROSEFORGE_DIR)
             mgr.create(args["slot_name"], args["title"])
             return {
                 "status": "ok",
@@ -235,12 +259,12 @@ def _handle_project(args: dict, **kw) -> dict:
         elif action == "list":
             from src.db.registry import Registry
 
-            reg = Registry(NOVEL_FORGE_DIR / "workspace")
+            reg = Registry(PROSEFORGE_DIR / "workspace")
             slots = reg.list_slots()
             return {"status": "ok", "slots": slots}
 
         elif action == "status":
-            project_root = NOVEL_FORGE_DIR
+            project_root = PROSEFORGE_DIR
             registry_path = project_root / "workspace" / "registry.json"
             if not registry_path.exists():
                 return {
@@ -270,7 +294,7 @@ def _handle_project(args: dict, **kw) -> dict:
                 }
             from src.outline.outline_manager import OutlineManager
 
-            manager = OutlineManager(NOVEL_FORGE_DIR)
+            manager = OutlineManager(PROSEFORGE_DIR)
             if sub_action == "add":
                 file_path = args.get("file_path", "")
                 if not file_path:
@@ -319,13 +343,13 @@ def _handle_project(args: dict, **kw) -> dict:
 
 NF_PIPELINE_SCHEMA = {
     "name": "nf_pipeline",
-    "description": "Writing pipeline. action=pre/post/review(agent review)/batch(from_ch~to_ch)/volume",
+    "description": "Writing pipeline. action=pre/post/review(agent review)/batch(from_ch~to_ch)/volume/rewrite(产改写卡)/accept(diff+可选入库)",
     "parameters": {
         "type": "object",
         "properties": {
             "action": {
                 "type": "string",
-                "enum": ["pre", "post", "review", "batch", "volume"],
+                "enum": ["pre", "post", "review", "batch", "volume", "rewrite", "accept"],
                 "description": "Pipeline action. Required.",
             },
             "slug": {
@@ -342,7 +366,11 @@ NF_PIPELINE_SCHEMA = {
             },
             "chapter_no": {
                 "type": "integer",
-                "description": "Chapter number. Required by pre/post/review.",
+                "description": "Chapter number. Required by pre/post/review/rewrite/accept.",
+            },
+            "ingest": {
+                "type": "boolean",
+                "description": "accept: 通过审核后入库（追加版本快照，不覆盖原稿），默认 false。",
             },
             "chapter_type": {
                 "type": "string",
@@ -423,23 +451,23 @@ NF_PROJECT_SCHEMA = {
 
 def register(ctx) -> None:
     """Registered by Hermes plugin loader on enable."""
-    if not NOVEL_FORGE_DIR.exists():
-        logger.warning("novel-forge-engine: project dir %s not found — not registering.", NOVEL_FORGE_DIR)
+    if not PROSEFORGE_DIR.exists():
+        logger.warning("proseforge-engine: project dir %s not found — not registering.", PROSEFORGE_DIR)
         return
 
     ctx.register_tool(
         name="nf_pipeline",
-        toolset="hermes-forgen-engine",
+        toolset="proseforge-engine",
         schema=NF_PIPELINE_SCHEMA,
         handler=_handle_pipeline,
         emoji="\N{WRENCH}",
     )
     ctx.register_tool(
         name="nf_project",
-        toolset="hermes-forgen-engine",
+        toolset="proseforge-engine",
         schema=NF_PROJECT_SCHEMA,
         handler=_handle_project,
         emoji="\N{OPEN FILE FOLDER}",
     )
 
-    logger.info("novel-forge-engine: registered 2 tools (nf_pipeline, nf_project) from %s", NOVEL_FORGE_DIR)
+    logger.info("proseforge-engine: registered 2 tools (nf_pipeline, nf_project) from %s", PROSEFORGE_DIR)

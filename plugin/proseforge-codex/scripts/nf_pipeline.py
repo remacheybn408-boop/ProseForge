@@ -17,9 +17,10 @@ from src.agents.orchestrator import run_agent_review
 from src.pipeline._base import _find_chapter_file, _strip_selfcheck
 from src.pipeline.post import run_post
 from src.pipeline.pre import run_pre
+from src.pipeline.rewrite import run_accept, run_rewrite
 from src.pipeline.volume import volume_post
 from src.utils.config_utils import load_json_config, resolve_path
-SUPPORTED_ACTIONS = ["pre", "post", "review", "batch", "volume"]
+SUPPORTED_ACTIONS = ["pre", "post", "review", "batch", "volume", "rewrite", "accept"]
 
 
 def _require_args(args: argparse.Namespace, fields: list[str]) -> None:
@@ -136,6 +137,29 @@ def _run_pipeline(args: argparse.Namespace) -> object:
             **shared,
         )
 
+    if args.action == "rewrite":
+        _require_args(args, ["slug", "title", "vol_no", "chapter_no"])
+        return run_rewrite(
+            novel_slug=args.slug,
+            novel_title=args.title,
+            volume_no=args.vol_no,
+            chapter_no=args.chapter_no,
+            chapter_type=args.chapter_type,
+            **shared,
+        )
+
+    if args.action == "accept":
+        _require_args(args, ["slug", "title", "vol_no", "chapter_no"])
+        return run_accept(
+            novel_slug=args.slug,
+            novel_title=args.title,
+            volume_no=args.vol_no,
+            chapter_no=args.chapter_no,
+            chapter_type=args.chapter_type,
+            ingest=args.ingest,
+            **shared,
+        )
+
     raise ValueError(f"unsupported action: {args.action}")
 
 
@@ -162,6 +186,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mode", default="full", choices=["light", "full"])
     parser.add_argument("--from-ch", dest="from_ch", type=int)
     parser.add_argument("--to-ch", dest="to_ch", type=int)
+    parser.add_argument("--ingest", action="store_true", help="accept: 通过审核后入库（追加版本快照，不覆盖）")
     parser.add_argument("--project-root")
     parser.add_argument("--config-path")
     return parser

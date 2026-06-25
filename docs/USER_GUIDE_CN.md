@@ -1,105 +1,80 @@
-# Novel Forge — 普通用户操作手册 v0.8.0
+# ProseForge — 普通用户操作手册 v0.8.0
 
-> 最后更新：2026-06-07
 > 适用版本：v0.8.0 及以上
 
 ---
 
-## v0.8.0 浏览器写作路径
+## 工具总览（重要）
 
-Windows 双击 `一键启动.bat`，或在终端运行 `start_web.bat`。启动器会优先使用
-`uv` 自动准备 API 依赖并打开浏览器。启动后按以下顺序完成日常创作：
+ProseForge **没有 Web/浏览器界面**，也没有一堆中文命名的工具。所有功能只通过 **2 个工具**提供，
+每个工具用 `action` 参数选择具体操作：
 
-1. 选择小说项目并进入写作页。
-2. 加载章节或打开空白章节开始写作。
-3. 等待自动保存状态变为“已保存”。
-4. 使用 AI 快捷操作时先选择正文；未选择时会要求确认整章操作。
-5. 在结果预览中选择替换、插入或复制，结果不会自动覆盖原文。
-6. 查看右侧相关角色、地点和设定。
-7. 点击“检查本章”，再到报告页查看 Novel Agent 结果。
-8. 完成后导出小说。
+| 工具 | action | 作用 |
+|------|--------|------|
+| `nf_project` | `init` / `create` / `list` / `status` / `outline` / `export` | 项目/工作区/大纲管理 |
+| `nf_pipeline` | `pre` / `post` / `review` / `batch` / `volume` / `rewrite` / `accept` | 写作流水线 |
 
-默认是简单模式。高级模式可在设置页打开。AI 快捷操作不调用外部 API；
-如果未配置本地 AI 适配器，界面会给出明确提示。
+三个使用面共享同一内核：
+- **Hermes**：在 Hermes Agent 里直接调 `nf_project(...)` / `nf_pipeline(...)` 工具
+- **Codex / Claude**：跑命令 `python plugin/proseforge-codex/scripts/nf_pipeline.py --action ...`
+  （Claude 面的 skill 也是转调这套 codex 脚本）
+
+下文示例以 Hermes 工具调用写法为主；括号里给出等价 action。
 
 ---
 
 ## 目录
 
 1. [这个工具是干什么的](#1-这个工具是干什么的)
-2. [安装（Windows / macOS / Linux）](#2-安装windows--macos--linux)
+2. [安装](#2-安装windows--macos--linux)
 3. [第一次启动（初始化）](#3-第一次启动初始化)
 4. [创建第一部小说](#4-创建第一部小说)
 5. [添加大纲](#5-添加大纲)
 6. [为什么没有大纲就不能写](#6-为什么没有大纲就不能写)
-7. [写第一章（pre → 写文 → post → report）](#7-写第一章pre--写文--post--report)
-8. [审稿（jury / agents）](#8-审稿jury--agents)
-9. [管理 DB 工作区和大纲](#9-管理-db-工作区和大纲)
-10. [大纲的相似度检测](#10-大纲的相似度检测)
-11. [常用命令速查](#11-常用命令速查)
+7. [写第一章（pre → 写文 → post → 报告）](#7-写第一章pre--写文--post--报告)
+8. [审稿（review agents）](#8-审稿review-agents)
+9. [改写闭环（rewrite / accept）](#9-改写闭环rewrite--accept)
+10. [管理工作区和大纲](#10-管理工作区和大纲)
+11. [常用调用速查](#11-常用调用速查)
 
 ---
 
 ## 1. 这个工具是干什么的
 
-Novel Forge 是一个帮你**工程化写长篇小说**的命令行工具。
+ProseForge 是一个帮你**工程化写长篇小说**的系统（命令行 / Agent 工具，无 GUI）。
 
 它不帮你"自动水文"——它帮你：
 
 - **记住前面写了什么**：角色状态、伏笔、设定，不会写着写着忘了。
 - **写前告诉你该写什么**：自动生成"任务卡"，告诉你这章需要承接什么、推进什么、禁止写什么。
-- **写后帮你检查质量**：26 个门禁检查，AI 腔、幻觉设定、情节断裂、缺少后果……全给你揪出来。
-- **多角度审稿**：6 个合并审稿 Agent + Chief Editor 聚合层，从对话、场景、人物、追读力等维度出报告。
-- **版本管理**：大纲可以回滚，章节可以备份，不用担心改坏。
+- **写后帮你检查质量**：registry 派发 10 个门禁（另有 human_texture 平行路径 11 个），把 AI 腔、幻觉设定、情节断裂、缺少后果等揪出来。
+- **多角度审稿**：6 个审读 Agent + Chief Editor 聚合层，从对话、场景、人物、追读力等维度出报告（纯规则，不调 LLM）。
+- **版本管理**：章节版本快照永不覆盖，大纲可切换。
 
-它是一个"写作+检查+记忆"系统，不是一个"输入一句话自动出正文"的工具。
+它是一个"写作+检查+记忆"系统，不是"输入一句话自动出正文"的工具。
 
 ---
 
 ## 2. 安装（Windows / macOS / Linux）
 
 ### 前提条件
-
 - **Python 3.10 或更高版本**
-- **Git**（可选，用于克隆代码）
+- **Git**（可选）
 
 ### Windows
-
-> 注：仓库未提供 Windows 批处理脚本（install.bat / run_demo.bat / run_report.bat），请使用下面的手动步骤。
-
 ```powershell
-# 1. 克隆仓库
 git clone https://github.com/remacheybn408-boop/ProseForge.git
 cd ProseForge
-
-# 2. 创建虚拟环境并安装（依赖声明在 pyproject.toml；RAG 可选：pip install -e .[rag]）
 python -m venv .venv
 .venv\Scripts\activate
-pip install -e .
-
-# 3. 准备配置
+pip install -e .            # RAG 可选：pip install -e .[rag]
 copy config.example.json config.json
 ```
 
-### macOS
-
+### macOS / Linux
 ```bash
 git clone https://github.com/remacheybn408-boop/ProseForge.git
 cd ProseForge
-
-chmod +x install.sh
-./install.sh
-```
-
-### Linux
-
-```bash
-# Ubuntu/Debian 先装 Python
-sudo apt install python3 python3-venv python3-pip
-
-git clone https://github.com/remacheybn408-boop/ProseForge.git
-cd ProseForge
-
 chmod +x install.sh
 ./install.sh
 ```
@@ -108,301 +83,170 @@ chmod +x install.sh
 
 ## 3. 第一次启动（初始化）
 
-安装完成后，打开 Hermes Agent（Writer profile），调用以下工具完成初始化：
+初始化工作区：
 
-1. **`nf_初化()`** — 创建 workspace 目录和数据库
-2. **`nf_状态()`** — 确认环境正常
+1. **`nf_project(action="init")`** — 创建 workspace 目录和数据库
+2. **`nf_project(action="status")`** — 确认环境正常
 
 这会创建：
 - `workspace/registry.json`：工作区注册表（**初始为空，不预创建任何 slot**）
-- `workspace/<书名 slug>/`：第一次 `nf_大纲(action="add", ...)` 时根据大纲 title 自动派生 slug 创建
+- `workspace/<slug>/`：第一次 `nf_project(action="outline", sub_action="add", ...)` 时根据大纲 title 自动派生 slug 创建
 
 ---
 
 ## 4. 创建第一部小说
 
-引擎使用 **DB 工作区（slot）** 来隔离不同小说的数据和文件。在 Hermes 中调用：
+引擎用 **DB 工作区（slot）** 隔离不同小说的数据和文件：
 
-1. **`nf_列表()`** — 查看已有工作区
-2. **`nf_新建(slot_name="slot_004", title="我的第一本修仙小说")`** — 创建新小说
+1. **`nf_project(action="list")`** — 查看已有工作区
+2. **`nf_project(action="create", slot_name="slot_004", title="我的第一本修仙小说")`** — 创建新小说
 
-> 创建新工作区时会自动生成 slot_004、slot_005……以此类推。
+> 创建新工作区会自动生成 slot_004、slot_005……
 
 ---
 
 ## 5. 添加大纲
 
 ### 为什么需要大纲？
-
-**没有大纲就不能开始写**。引擎需要大纲来：
-- 生成写前任务卡时知道"这章要写什么"
-- 检查章节是否偏离大纲设定
-- 进行相似度检测（防止把修真大纲写到都市小说里）
+**没有大纲就不能开始写**。引擎需要大纲来生成写前任务卡、检查偏离、做相似度检测。
 
 ### 创建大纲文件
-
-先创建一个 `.txt` 文件，格式自由，建议包含：
+先建一个 `.txt`，格式自由，建议包含标题/题材/主角/世界观/分卷分章要点，例如：
 
 ```
 # 标题：青云问道
-
 ## 题材：修仙 / 玄幻
-
 ## 主角：李明远（外门弟子，身怀神秘玉佩）
-
-## 世界观：
-- 青云宗：七大仙门之一，分内门外门
-- 修炼境界：炼气 → 筑基 → 金丹 → 元婴
-- 测灵石：能检测弟子根骨
-
 ## 第一卷：初入宗门
 - 第1章：外门晨练，玉佩异动，大长老临时复测根骨
-- 第2章：根骨测试暴露青金色灵根，被戒律堂盯上
-- 第3章：深夜后山禁地，发现玉佩与封印阵的关联
 - ...
 ```
 
 ### 添加大纲
+1. **`nf_project(action="outline", sub_action="add", file_path="大纲.txt")`**
+2. **`nf_project(action="outline", sub_action="list", slot_name="slot_004")`**
 
-在 Hermes 中调用：
-
-1. **`nf_大纲(action="add", file_path="大纲.txt")`** — 添加大纲
-2. **`nf_大纲(action="list", slot_name="slot_004")`** — 查看已有大纲
-
-> 添加大纲时会**自动进行相似度检测**，如果当前工作区已有大纲，引擎会对比两者并给出建议（见第10章）。
+> 添加大纲时会**自动相似度检测**：若工作区已有大纲，引擎会对比并给建议。
 
 ---
 
 ## 6. 为什么没有大纲就不能写
 
-引擎的设计哲学是：**没有计划的写作是堆字数，不是创作**。
-
-如果你在没有大纲的情况下运行 `pre`、`post` 或 `story contract`，会看到：
-
-```
-============================================================
-  ⛔ 没有激活的大纲
-============================================================
-
-  当前小说没有激活大纲，不能开写。
-  请先在 Hermes 中调用 nf_大纲(action="add", file_path="大纲.txt")
-
-  或者执行:
-  nf_大纲(action="add", file_path="大纲.txt")  # 指定标题
-```
-
-这不是 bug，是设计。请先规划好故事骨架再动笔。
+设计哲学：**没有计划的写作是堆字数，不是创作**。没有激活大纲时跑 `pre`/`post` 会被拦下，
+提示先 `nf_project(action="outline", sub_action="add", ...)`。这不是 bug，是设计。
 
 ---
 
-## 7. 写第一章（pre → 写文 → post → report）
+## 7. 写第一章（pre → 写文 → post → 报告）
 
-v0.8.0 的标准写作流程：
+v0.8.0 标准流程：
 
 ```
-大纲 → pre（任务卡） → 写正文 → post（门禁+入库） → report（查看报告）
+大纲 → pre（任务卡） → 写正文 → post（门禁+入库） → 报告
 ```
 
 ### 步骤 1：pre —— 生成写前任务卡
-
-```bash
-# 在 Hermes 中调用:
-nf_预写(slug="<你的slug>", title="<小说名>", vol_no=1, chapter_no=1)
 ```
-
-这会从数据库提取上一章（如果是第一章则从大纲提取）的上下文，生成一张"任务卡"：
-
-- **承接了什么**：上一章结尾的悬念、未解决的伏笔
-- **本章推进什么**：大纲中第1章的剧情要点
-- **禁止写什么**：不能新引入的设定、不能遗忘的人物状态
+nf_pipeline(action="pre", slug="<slug>", title="<小说名>", vol_no=1, chapter_no=1)
+```
+从 DB 提取上章（第一章则从大纲）上下文，生成任务卡：承接什么 / 推进什么 / 禁止写什么。
 
 ### 步骤 2：写正文
-
-根据任务卡的指引，写出第 1 章的 `.txt` 文件，放到对应位置：
-
+按任务卡写出 `.txt`，放到对应位置：
 ```
-novels/<小说slug>/第01卷/第1章_开篇.txt
+workspace/<slot>/chapters/第01卷/第1章_开篇.txt
 ```
-
-（如果不确定 slug，运行 `nf_状态()` 查看当前激活槽位。）
+（不确定 slug 就 `nf_project(action="status")` 查看激活槽位。）
 
 ### 步骤 3：post —— 跑门禁 + 入库
+```
+nf_pipeline(action="post", slug="<slug>", title="<小说名>", vol_no=1, chapter_no=1)
+```
+这会：字数门禁 → 10 个 registry 门禁（连续性 / 反 AI 腔 / 场景推进 / 追读力 / 合规…）
+→ human_texture 检查 → 去重修改任务 → **入库（追加 chapter_versions 快照）** + stage_review。
+严重问题会报 WARNING 或 FAIL。
 
-```bash
-# 在 Hermes 中调用:
-nf_续写(slug="<你的slug>", title="<小说名>", vol_no=1, chapter_no=1)
+### 步骤 4：查看报告
+- 门禁报告在 `exports/reports/chapter_NNN_*.json`
+- 卷级总结：**`nf_pipeline(action="volume", slug="<slug>", title="<小说名>", vol_no=1)`**
+
+---
+
+## 8. 审稿（review agents）
+
+写完一章后让 AI 审读团审稿：
+
+```
+nf_pipeline(action="review", slug="<slug>", vol_no=1, chapter_no=1, mode="full")
 ```
 
-这会运行全部 26 个门禁检查：
-- 连续性：上一章的状态有没有被遗忘
-- 反 AI 腔：有没有"总之""综上所述""缓缓开口"等模板句
-- 场景推进：这一章有没有真的发生事件
-- 追读力：钩子、悬念、爽点是否到位
-- 标点：破折号/感叹号有没有滥用
-- ……
+- `mode="light"`：跑 3 个 Agent（continuity / prose / plot）
+- `mode="full"`：跑 6 个 Agent（再加 character / reader / detail）
 
-如果发现严重问题，门禁会报 WARNING 或 FAIL。
+6 个审读 Agent 关注：对话与潜台词、场景落地与动作、情节推进与伏笔、连续性与设定、
+人物心理、情绪曲线与追读力、反 AI 腔。**纯规则，不调 LLM。**
+Chief Editor 汇总去重并分类 `must_fix / should_fix / keep`。**审稿不覆盖正文，只出报告。**
 
-### 步骤 4：生成 Story 提交记录（可选）
-
-nf_续写 默认包含入库逻辑，无需额外命令。
-
-这会自动生成一篇 `.story/commits/chapter_001_commit.json`，记录本章的关键信息，供后续章节参考。
-
-### 步骤 5：查看报告
-
-在 Hermes 中调用 **`nf_卷管(slug="<你的slug>", title="<小说名>", vol_no=1)`** 查看卷级总结。
-
-列出最近生成的门禁报告，告诉你哪些章节通过了、哪些有问题。
+批量跑多章 post：`nf_pipeline(action="batch", slug=..., title=..., vol_no=1, from_ch=1, to_ch=5)`。
 
 ---
 
-## 8. 审稿（jury / agents）
+## 9. 改写闭环（rewrite / accept）
 
-写完一章后，可以让 AI 审稿团帮你审稿：
+按门禁/审稿发现的问题做**受约束的改稿**（详见 [REVISION_LOOP.md](REVISION_LOOP.md)）：
 
-在 Hermes 中调用 **`nf_审稿(slug="<slug>", title="<小说名>", vol_no=1, chapter_no=1)`** 进行章节复盘。
+1. **`nf_pipeline(action="rewrite", slug=..., title=..., vol_no=1, chapter_no=1)`**
+   —— 读 post 的去重报告，生成「改写卡」到 `outputs/rewrite_cards/`
+2. 按改写卡只改问题段，把全章写入 `chapter_NNN_revised.txt`
+3. **`nf_pipeline(action="accept", ..., chapter_no=1, ingest=true)`**
+   —— 原稿 vs 改稿出 diff + 风险标记；审核通过则入库（追加快照，**不覆盖原稿**）
 
-6 个合并审稿 Agent 的核心关注维度包括：
-- 对话与潜台词
-- 场景落地与动作自然度
-- 情节推进与伏笔兑现
-- 连续性与设定稳定性
-- 人物关系与心理变化
-- 情绪曲线与章节呼吸
-- 追读力与段落质感
-- 反 AI 腔与口吻控制
-
-多维度出报告，Chief Editor 负责汇总去重并分类为 `must_fix / should_fix / keep`。**审稿不覆盖正文，只出报告。**
+内核不调 LLM：正文改写由你 / Agent 执行，内核只给约束与验收。
 
 ---
 
-## 9. 管理 DB 工作区和大纲
+## 10. 管理工作区和大纲
 
-### 工作区管理
-
-在 Hermes 中调用：
-
-| 工具 | 功能 |
+| 操作 | 调用 |
 |------|------|
-| `nf_列表()` | 列出所有工作区 |
-| `nf_新建(slug="binghuozhige", title="冰火之歌")` | 显式创建新工作区（高阶用法；通常 outline add 自动建即可）|
-| `nf_状态()` | 查看当前激活槽位 |
-| `nf_大纲(action="switch", slot_name="my_novel")` | 切换工作区（通过大纲切换） |
+| 列出工作区 | `nf_project(action="list")` |
+| 创建工作区 | `nf_project(action="create", slot_name="...", title="...")` |
+| 查看激活槽位 | `nf_project(action="status")` |
+| 添加大纲 | `nf_project(action="outline", sub_action="add", file_path="大纲.txt")` |
+| 列出大纲 | `nf_project(action="outline", sub_action="list", slot_name="...")` |
+| 切换大纲 | `nf_project(action="outline", sub_action="switch", slot_name="...")` |
+| 导出小说 | `nf_project(action="export", slug="...", format="txt")` |
 
-### 大纲管理
+> 大纲对比（compare）和回滚（rollback）逻辑在 `src/outline/`，目前未封装为独立 action，可先 list 后手动操作。
 
-在 Hermes 中调用 **`nf_大纲(action="...", ...)`**：
-
-| 操作 | 命令 |
-|------|------|
-| 添加 | `nf_大纲(action="add", slot_name="...", file_path="大纲.txt")` |
-| 列出 | `nf_大纲(action="list", slot_name="...")` |
-| 切换 | `nf_大纲(action="switch", slot_name="...", outline_id="...")` |
-
-> 大纲对比（diff/compare）和回滚（rollback）暂未直接封装为独立工具，可通过 `nf_大纲(action="list")` 查看后手动操作。
-
-### 版本回滚
-
-每次更新大纲时，引擎会自动保存一个版本快照。回滚后可以恢复到之前的版本：
-
-大纲每次更新自动保存快照。回滚操作暂未封装为独立 Hermes 工具，需要直接操作数据库。
-回滚后显示（参考）：
-```
-  ✅ 已回滚大纲「青云问道」到版本 v3
-  保存时间: 2026-05-25 14:30:00
-  剩余历史版本: 2
-```
+相似度检测维度（添加大纲时自动）：标题(15%) / 角色重叠(25%) / 世界观关键词(25%) /
+章节结构(15%) / 题材风格(20%)。≥70 建议升级、35–69 不确定、<35 建议新建工作区。
 
 ---
 
-## 10. 大纲的相似度检测
+## 11. 常用调用速查
 
-添加大纲时，引擎会自动检测新大纲与当前激活大纲的相似度。检测维度包括：
-
-| 维度 | 权重 | 说明 |
-|------|------|------|
-| 标题相似度 | 15% | Levenshtein 编辑距离 |
-| 角色名重叠 | 25% | 提取中英文人名，计算重叠率 |
-| 世界观关键词 | 25% | 识别修炼体系、宗派、世界设定等关键词 |
-| 章节结构 | 15% | 章节数、卷数是否接近 |
-| 题材/风格 | 20% | 修仙/都市/科幻等题材标签是否一致 |
-
-### 分类结果
-
-| 相似度范围 | 分类 | 建议 |
-|-----------|------|------|
-| ≥70 | 高相似度 | 建议升级（同一部小说的新版本） |
-| 35–69 | 不确定 | 根据角色/世界观细节进一步判断 |
-| <35 | 低相似度 | 可能是不同小说，建议新建工作区 |
-
-### 手动对比
-
-你也可以随时对比两个大纲：
-
-大纲对比功能暂未封装为独立 Hermes 工具。以下为 CLI 时代的输出示例供参考：
-```
-
-
-```
-  大纲对比: [青云问道_20260526120000] 青云问道  vs  [都市重生_20260526120100] 都市重生
-
-  📊 综合相似度: 12/100
-  🏷️  分类: 低相似度
-  💡 建议: 可能是不同小说
-
-  各维度明细:
-  --------------------------------------------------
-  标题相似度:      15.0分  (权重15%)
-  角色名重叠:      0.0分  (权重25%)
-    共同角色: (无)
-  世界观重叠:      5.0分  (权重25%)
-    共同关键词: (无)
-  章节结构相似:    30.0分  (权重15%)
-  题材/风格重叠:   10.0分  (权重20%)
-```
-
----
-
-## 11. Hermes 工具速查
-
-所有功能通过 Hermes Agent hermes-forgen-engine 插件提供：
-
-| 工具 | 功能 |
-|------|------|
-| `nf_状态` | 环境/状态诊断 |
-| `nf_初化` | 初始化 workspace |
-| `nf_新建(slot_name, title)` | 创建新工作区 / 小说 |
-| `nf_列表` | 列出所有工作区 |
-| `nf_大纲(action, ...)` | 大纲管理：add / list / switch |
-| `nf_预写(slug, title, vol_no, chapter_no)` | 写前任务卡 |
-| `nf_续写(slug, title, vol_no, chapter_no)` | 写后门禁 + 入库 |
-| `nf_流水(slug, title, vol_no, from_ch, to_ch)` | 批量审稿 |
-| `nf_审稿(slug, title, vol_no, chapter_no)` | 章节复盘 |
-| `nf_改写(slug, title, vol_no, chapter_no)` | 统一改写器 |
-| `nf_卷管(slug, title, vol_no)` | 卷总结 |
-| `nf_导出(slug, format, output)` | 导出小说 |
-
----
-
-## 快速开始（5 分钟体验完整流程）
-
-在 Hermes Agent（Writer profile）中依次调用：
-
-1. **`nf_初化()`** — 初始化工作区
-2. **`nf_新建(slot_name="my_novel", title="我的小说")`** — 创建小说
-3. 创建大纲文件后：**`nf_大纲(action="add", slot_name="my_novel", file_path="my_outline.txt")`** — 添加大纲
-4. **`nf_预写(slug="my_novel", title="我的小说", vol_no=1, chapter_no=1)`** — 写前任务卡
-5. （手动写第1章正文，放到 `novels/<slug>/第01卷/第1章*.txt`）
-6. **`nf_续写(slug="my_novel", title="我的小说", vol_no=1, chapter_no=1)`** — 门禁 + 入库
-7. **`nf_审稿(slug="my_novel", title="我的小说", vol_no=1, chapter_no=1)`** — 审稿
-8. **`nf_卷管(slug="my_novel", title="我的小说", vol_no=1)`** — 查看卷总结
+| 目的 | Hermes 调用 | 等价 action |
+|------|-------------|-------------|
+| 初始化 | `nf_project(action="init")` | nf_project init |
+| 状态诊断 | `nf_project(action="status")` | nf_project status |
+| 创建小说 | `nf_project(action="create", slot_name=, title=)` | nf_project create |
+| 列出工作区 | `nf_project(action="list")` | nf_project list |
+| 大纲管理 | `nf_project(action="outline", sub_action=add/list/switch)` | nf_project outline |
+| 导出 | `nf_project(action="export", slug=, format=)` | nf_project export |
+| 写前任务卡 | `nf_pipeline(action="pre", ...)` | nf_pipeline pre |
+| 写后门禁+入库 | `nf_pipeline(action="post", ...)` | nf_pipeline post |
+| 审稿 | `nf_pipeline(action="review", ..., mode=)` | nf_pipeline review |
+| 批量 post | `nf_pipeline(action="batch", ..., from_ch=, to_ch=)` | nf_pipeline batch |
+| 卷总结 | `nf_pipeline(action="volume", ...)` | nf_pipeline volume |
+| 改写产卡 | `nf_pipeline(action="rewrite", ...)` | nf_pipeline rewrite |
+| 改稿对比/入库 | `nf_pipeline(action="accept", ..., ingest=)` | nf_pipeline accept |
 
 ---
 
 ## 遇到问题？
 
-- 先调用 `nf_状态()` 确认环境正常
+- 先 `nf_project(action="status")` 确认环境正常
 - 确认 `config.json` 存在且配置正确
-- 确认大纲已添加且激活（`nf_大纲(action="list")`）
-- 查看项目 [README.md](../README.md) 和 [CHANGELOG.md](../CHANGELOG.md)
+- 确认大纲已添加且激活（`nf_project(action="outline", sub_action="list")`）
+- 查看 [README.md](../README.md) 和 [CHANGELOG.md](../CHANGELOG.md)

@@ -1,6 +1,13 @@
 # 数据库 Schema
 
-基于 SQLite 3，单文件 `hermes_memory.db`，15 张表分为三层。
+基于 SQLite 3。**每个槽位一个独立数据库** `workspace/<slot>/novel.db`（不是单文件 `hermes_memory.db`）。
+实际约 **30 张表 + 6 张 FTS5 虚表**，分为三层。
+
+> 权威 DDL：`database/schema.sql` + `database/migrations/*.sql`。其中基础 12 张表由 schema.sql 建；
+> 其余（如 `chapter_plans` / `chapter_contexts` / `chapter_summaries` / `continuity_checks` / `novel_logs` /
+> `character_voice_*` / `title_history` / `voice_packs` / `arc_character_states` / `character_relationships` /
+> `schema_migrations` 及各 `novel_*_fts`）由 `src/db/init_db.py` 应用 migrations 或代码运行时 `ensure_tables` 建。
+> 下表只列核心业务表，非完整清单。
 
 ## 一、通用记忆底座
 
@@ -206,7 +213,8 @@ CREATE VIRTUAL TABLE memory_fts USING fts5(
 | change_reason | TEXT | 变更原因 |
 | created_at | TEXT | |
 
-**规则：** 旧版本不物理删除，只标记 `deprecated`。每次 `ingest` 自动保存新版本。
+**规则：** 每次 `ingest` 追加一条新快照（`version_no` 自增），**旧版本永不物理删除**。
+`accept --ingest` 采纳改稿时同样是追加快照，不覆盖原稿。
 
 ### reader_promises（读者承诺）
 

@@ -1,10 +1,10 @@
 # 部署指南
 
-在任何操作系统上从零搭建 Novel Forge - 小说引擎。
+在任何操作系统上从零搭建 ProseForge（v0.8.0）。
 
 ## 环境要求
 
-- Python 3.8+ (推荐 3.10+)
+- Python 3.10+
 - SQLite 3（Python 自带）
 - 可用磁盘空间 ≥ 500MB
 - Windows / macOS / Linux
@@ -12,200 +12,128 @@
 ## 第一步：克隆项目
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/remacheybn408-boop/ProseForge.git
 cd ProseForge
 ```
 
-## 第二步：配置路径
+## 第二步：配置
 
 ```bash
 cp config.example.json config.json
 ```
 
-编辑 `config.json`，设置核心路径：
+`config.json` 的核心结构（节选自 `config.example.json`，路径用正斜杠，跨平台兼容）：
 
 ```json
 {
-  "project_root": "/home/user/novel-pipeline-write-engine",
-  "novel_dir": "/home/user/novels",
-  "database_path": "/home/user/novel-pipeline-write-engine/database/hermes_memory.db",
-  "default_novel_slug": "my_novel",
-  "default_novel_name": "我的小说"
+  "app": { "name": "Novel Forge - 小说引擎", "version": "0.8.0", "mode": "local" },
+  "paths": {
+    "db_path": "./data/novel_memory.db",
+    "novels_root": "./novels",
+    "exports_root": "./exports",
+    "reports_root": "./exports/reports",
+    "outputs_root": "./outputs",
+    "tmp_root": "./tmp"
+  },
+  "novel": { "default_slug": "demo_novel", "default_title": "Demo Novel" }
 }
 ```
 
-**路径说明** — 所有路径使用 pathlib 风格（正斜杠），跨平台兼容：
+> 数据库：`paths.db_path` 是默认回退路径；实际写作时引擎用**槽位数据库** `workspace/<slot>/novel.db`
+> （由 `src/db/slot_manager.py` / `registry.py` 管理）。不存在 `hermes_memory.db`。
 
-| 平台 | 示例路径 |
-|------|----------|
-| Linux | `/home/user/novel-pipeline-write-engine` |
-| macOS | `/Users/<username>/novel-pipeline-write-engine` |
-| Windows | `C:/Users/<username>/novel-pipeline-write-engine` |
-
-> **注意**: 在 Windows 上，pathlib 和 Python 会自动处理路径分隔符。配置中使用正斜杠 `/` 即可，无需使用 `\\`。
+> Windows 上 pathlib 自动处理分隔符，配置里用 `/` 即可，无需 `\\`。
 
 ## 第三步：安装
 
 ### Linux / macOS
-
 ```bash
 chmod +x install.sh
 ./install.sh
 ```
 
-或者手动安装：
-
+手动安装（任意平台）：
 ```bash
-# 创建虚拟环境
 python3 -m venv .venv
-source .venv/bin/activate
-
-# 安装依赖（依赖声明在 pyproject.toml；RAG 可选：pip install -e .[rag]）
-pip install -e .
-
-# 初始化 workspace (已迁移至 Hermes: nf_初化)
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -e .                 # RAG 可选：pip install -e .[rag]
 ```
 
-### Windows
+> 仓库未提供 `install.bat`；Windows 用上面的手动步骤。
 
-手动安装（仓库未提供 install.bat）：
+## 第四步：初始化工作区
 
-```cmd
-python -m venv .venv
-.venv\Scripts\activate
-pip install -e .
-# (已迁移至 Hermes: nf_初化)
-```
+ProseForge 无 CLI 入口，全部经 2 个工具驱动。初始化：
 
-## 第四步：验证安装
+- Hermes：`nf_project(action="init")`，再 `nf_project(action="status")` 验证
+- Codex / Claude：
+  ```bash
+  python plugin/proseforge-codex/scripts/nf_project.py --action init
+  python plugin/proseforge-codex/scripts/nf_project.py --action status
+  ```
 
-```bash
-# macOS / Linux
-source .venv/bin/activate
-
-# Windows
-.venv\Scripts\activate
-
-# 检查状态 (已迁移至 Hermes: nf_状态)
-```
-
-预期输出：
-```
-============================================================
-  Novel Forge - 小说引擎 v0.7.1
-  状态检查 (标准)
-============================================================
-
-  [OK] OS: ...
-  [OK] Python 3.11
-  [OK] config.json
-  [OK] src/guards/reader_pull_guard.py
-  ...
-  All checks passed. Ready to write.
-```
-
-## 第五步：初始化工作区
-
-在 Hermes Writer profile 中调用 `nf_初化` 完成初始化。
-然后调用 `nf_新建` 创建新小说槽位。
-
-## 第六步：开始写第一章
-
-### 写作前准备
-在 Hermes 中调用：`nf_预写(slug="<slug>", title="<小说名>", vol_no=1, chapter_no=1)`
-
-### 撰写正文
-保存到: `novels/<小说名>/第01卷/第1章_标题.txt`
-
-### 门禁检查 + 入库
-在 Hermes 中调用：`nf_续写(slug="<slug>", title="<小说名>", vol_no=1, chapter_no=1)`
-
-## 部署后目录结构
+## 第五步：创建小说 + 开始写第一章
 
 ```
-novel-pipeline-write-engine/       ← 项目根目录
+nf_project(action="create", slot_name="slot_004", title="我的小说")
+nf_project(action="outline", sub_action="add", file_path="大纲.txt")
+nf_pipeline(action="pre",  slug="<slug>", title="我的小说", vol_no=1, chapter_no=1)
+# 写正文到 workspace/<slot>/chapters/第01卷/第1章_标题.txt
+nf_pipeline(action="post", slug="<slug>", title="我的小说", vol_no=1, chapter_no=1)
+```
+
+详细流程见 [USER_GUIDE_CN.md](USER_GUIDE_CN.md) 与 [pipeline.md](pipeline.md)。
+
+## 部署后目录结构（真实）
+
+```
+ProseForge/                        ← 项目根目录
 ├── config.json                    ← 路径配置
 ├── install.sh                     ← 安装脚本（Linux/macOS）
 ├── pyproject.toml                 ← Python 依赖与打包声明
-├── workspace/                     ← 工作区（Multi-DB）
+├── database/                      ← 权威 schema（安装必需）
+│   ├── schema.sql
+│   └── migrations/
+├── workspace/                     ← 工作区（Multi-DB，每槽位独立）
 │   ├── registry.json              ← 注册表
-│   ├── 冰火之歌/                  ← slot 按书名命名（outline add 时自动创建）
-│   │   ├── novel.db               ← 项目数据库
-│   │   ├── project.json           ← 项目配置
-│   │   ├── outlines/
-│   │   ├── chapters/
-│   │   ├── reports/
-│   │   ├── exports/
-│   │   └── backups/
-│   ├── my_novel/
-│   └── _trash/                    ← 回收站
-├── scripts/                       ← 核心脚本
-│   ├── db/
-│   │   ├── slot_manager.py
-│   │   └── registry.py
-│   ├── outline/
-│   ├── story/
-│   └── fts_health.py
-├── src/guards/                    ← 门禁检查
-├── configs/                       ← 配置
-├── novels/<小说名>/               ← 小说项目
-│   ├── 第01卷/
-│   │   ├── 第1章_标题.txt
-│   │   └── ...
-│   └── exports/
-├── docs/                          ← 文档
-└── voice_packs/                   ← 风格包
+│   └── <slot>/
+│       ├── novel.db               ← 槽位数据库
+│       ├── outlines/  chapters/  ...
+├── src/                           ← 全部内核代码
+│   ├── pipeline/                  ← pre/post/volume/rewrite/export 入口
+│   ├── guards/                    ← 门禁（+ human_texture/）
+│   ├── agents/                    ← 审读 agents
+│   ├── rag/  db/  story/  outline/  utils/
+│   └── runtime.py
+├── plugin/                        ← 3 个插件面
+│   ├── proseforge-Hermes/  proseforge-codex/  proseforge-claude/
+├── scripts/                       ← 仅 migrate_slot_names.py（无核心脚本）
+├── configs/  packs/  examples/  tests/  docs/
+└── exports/  outputs/             ← 运行时产物
 ```
 
-## Hermes 工具（替代 CLI）
+> 注意：`db/`、`outline/`、`story/`、`fts_health.py` 都在 **`src/`** 下
+> （`src/db/`、`src/outline/`、`src/story/`、`src/utils/fts_health.py`），**不在 `scripts/`**。
 
-通过 Hermes Agent hermes-forgen-engine 插件直接调用：
+## 工具一览（替代 CLI）
 
-| 工具 | 功能 |
-|------|------|
-| `nf_状态` | 环境/状态诊断 |
-| `nf_初化` | 初始化工作区 |
-| `nf_新建` | 创建新小说槽位 |
-| `nf_列表` | 列出所有槽位 |
-| `nf_大纲` | 大纲管理（add/list/switch） |
-| `nf_预写` | 写前准备（任务卡生成） |
-| `nf_续写` | 写后门禁 + 入库 |
-| `nf_流水` | 批量审稿 |
-| `nf_审稿` | 章节复盘 |
-| `nf_改写` | 统一改写器 |
-| `nf_卷管` | 卷总结 |
-| `nf_导出` | 导出小说 |
+只有 2 个工具：
+
+| 工具 | action |
+|------|--------|
+| `nf_project` | init / create / list / status / outline(add/list/switch) / export |
+| `nf_pipeline` | pre / post / review / batch / volume / rewrite / accept |
 
 ## 迁移到其他机器
 
 ```bash
-# 1. 复制整个项目目录
-cp -r novel-pipeline-write-engine /new/location/
-
-# 2. 复制小说文件
-cp -r novels/<小说名> /new/location/novels/
-
-# 3. 修改 config.json 中的路径（使用 pathlib 风格正斜杠）
-# 4. 重新安装依赖: pip install -e .
+cp -r ProseForge /new/location/
+# 修改 config.json 路径（正斜杠）；重新 pip install -e .
+# 槽位数据在 workspace/ 下，随目录一起复制
 ```
 
 ## 故障排查
 
-### "workspace/ 未初始化"
-
-在 Hermes 中调用 `nf_初化` 完成初始化。
-
-### "字数不达标"
-
-```
-⛔ 红灯失败 (< 3000) — 必须重写
-```
-
-扩写场景动作、对话冲突、环境压力。**不要**末尾补空泛心理独白。
-
-### 跨平台路径问题
-
-- 配置文件中的路径统一使用正斜杠 `/`
-- Windows 上 Python pathlib 自动处理路径转换
-- 不要使用硬编码的盘符（如 `D:\`）
-- 使用相对路径时基于项目根目录（`PROJECT_ROOT`）
+- **"workspace/ 未初始化"** → `nf_project(action="init")`
+- **"字数不达标"** → 扩写场景动作/对话冲突/环境压力，**不要**末尾补空泛心理独白
+- **跨平台路径** → 配置统一用正斜杠 `/`，不要硬编码盘符

@@ -6,7 +6,7 @@ description: ProseForge 长篇小说工程化系统 — 写作流水线 + 项目
 # ProseForge — Hermes 写作引擎
 
 ProseForge 是一个 AI Agent 辅助长篇小说创作系统，跑在 Hermes Agent 上。
-核心思路不是"怎么写"，而是"怎么保证写对"——通过 30+ 门禁强制执行写作纪律。
+核心思路不是"怎么写"，而是"怎么保证写对"——通过 registry 10 门禁（+ human_texture 平行路径 11 门禁）强制执行写作纪律。
 
 ## 可用工具
 
@@ -17,10 +17,10 @@ ProseForge 是一个 AI Agent 辅助长篇小说创作系统，跑在 Hermes Age
 ```json
 {
   "name": "nf_pipeline",
-  "description": "写作流水线。action=pre/post/review/batch/volume",
+  "description": "写作流水线。action=pre/post/review/batch/volume/rewrite/accept",
   "required": ["action"],
   "properties": {
-    "action":     {"enum": ["pre", "post", "review", "batch", "volume"]},
+    "action":     {"enum": ["pre", "post", "review", "batch", "volume", "rewrite", "accept"]},
     "slug":       "小说 slug，大部分 action 必填",
     "title":      "小说中文标题",
     "vol_no":     "卷号 (integer)",
@@ -29,6 +29,7 @@ ProseForge 是一个 AI Agent 辅助长篇小说创作系统，跑在 Hermes Age
     "mode":         {"enum": ["light", "full"], "for review"},
     "from_ch":      "batch 起始章号",
     "to_ch":        "batch 结束章号",
+    "ingest":       "accept 用，true 时审核通过入库（追加快照，不覆盖）",
   }
 }
 ```
@@ -85,12 +86,20 @@ ProseForge 是一个 AI Agent 辅助长篇小说创作系统，跑在 Hermes Age
 批量后处理: nf_pipeline action=batch from_ch=1 to_ch=5 ...
 ```
 
+### 改写闭环（rewrite / accept）
+
+```
+1. nf_pipeline action=rewrite ... chapter_no=N   → 产改写卡 outputs/rewrite_cards/
+2. AI 按卡只改问题段 → 写 chapter_NNN_revised.txt
+3. nf_pipeline action=accept ... chapter_no=N ingest=true → diff + 入库（不覆盖原稿）
+```
+
 ## 重要规则
 
 1. **pre → AI写 → post** 三步必须完整走，不能跳过 pre 直接写
 2. **chapter_type** 默认 normal。高潮/关键情节用 key/climax（字数标准不同）
 3. **review mode**: light（3 agents）≈ 快速检查，full（6 agents）≈ 完整审读
-4. `review` 只做审读，不再承诺旧版 `rewrite` 改写路径
+4. `review` 只做审读出报告；改写走 `rewrite`（产卡）+ `accept`（diff/入库）闭环，内核不调 LLM
 5. **字数标准** 按 chapter_type 不同，参见 config.example.json 的 word_count 段
 6. **作品输出目录**：D:\作品\小说\<小说名>\ 每章独立 TXT
 7. **零引号文学**：对话融入叙述，禁用所有引号

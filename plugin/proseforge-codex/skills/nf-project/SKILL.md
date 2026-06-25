@@ -18,7 +18,7 @@ workspace and the task maps to one of these actions:
 This plugin does not expose MCP tools. Instead, call the local wrapper script:
 
 ```powershell
-python plugin/hermes-forgen-codex/scripts/nf_project.py --action <action> ...
+python plugin/proseforge-codex/scripts/nf_project.py --action <action> ...
 ```
 
 ## Action mapping
@@ -45,10 +45,10 @@ python plugin/hermes-forgen-codex/scripts/nf_project.py --action <action> ...
 ## Examples
 
 ```powershell
-python plugin/hermes-forgen-codex/scripts/nf_project.py --action init
-python plugin/hermes-forgen-codex/scripts/nf_project.py --action create --slot-name gwdz --title "诡雾灯盏"
-python plugin/hermes-forgen-codex/scripts/nf_project.py --action outline --sub-action add --file-path examples/demo_novel/outline_skeleton.json
-python plugin/hermes-forgen-codex/scripts/nf_project.py --action export --slug demo_novel --format txt
+python plugin/proseforge-codex/scripts/nf_project.py --action init
+python plugin/proseforge-codex/scripts/nf_project.py --action create --slot-name gwdz --title "诡雾灯盏"
+python plugin/proseforge-codex/scripts/nf_project.py --action outline --sub-action add --file-path examples/demo_novel/outline_skeleton.json
+python plugin/proseforge-codex/scripts/nf_project.py --action export --slug demo_novel --format txt
 ```
 
 Prefer these two wrapper scripts over ad hoc shell commands so the Codex-side

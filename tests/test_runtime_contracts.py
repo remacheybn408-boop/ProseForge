@@ -42,15 +42,22 @@ def test_init_db_applies_real_migrations(tmp_path: Path, project_root: Path):
         conn.close()
 
 
-def test_nf_pipeline_cli_no_longer_accepts_rewrite(project_root: Path):
+def test_nf_pipeline_cli_accepts_rewrite_and_accept(project_root: Path):
+    """rewrite/accept 是合法 action（产改写卡 / diff+入库），且要求必填参数。
+
+    重新引入改写闭环后契约变更：不再拒绝 rewrite，而是要求 slug/title/vol-no/chapter-no。
+    """
     script = project_root / "plugin" / "proseforge-codex" / "scripts" / "nf_pipeline.py"
-    result = subprocess.run(
-        [sys.executable, str(script), "--action", "rewrite"],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode != 0
-    combined = f"{result.stdout}\n{result.stderr}"
-    assert "rewrite" in combined
-    assert "invalid choice" in combined or "unsupported action" in combined
+    for action in ("rewrite", "accept"):
+        result = subprocess.run(
+            [sys.executable, str(script), "--action", action],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+        )
+        combined = f"{result.stdout}\n{result.stderr}"
+        # action 被识别（不是 invalid choice），但缺参数时报 missing required arguments
+        assert "invalid choice" not in combined
+        assert result.returncode != 0
+        assert "missing required arguments" in combined
+        assert action in combined

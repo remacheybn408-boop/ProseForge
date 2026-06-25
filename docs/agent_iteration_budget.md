@@ -36,7 +36,7 @@ remaining_budget:   N
 ```
 Phase 1：只改 README + ROADMAP
 Phase 2：只改 pipeline.md + skills
-Phase 3：只改 chapter_pipeline.py + agent_run_guard.py
+Phase 3：只改 src/pipeline/*.py + src/guards/*.py
 Phase 4：只改 tests
 Phase 5：统一 grep 旧规则 + 跑 pytest
 ```
