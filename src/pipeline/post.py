@@ -187,6 +187,75 @@ def _post_load_prev_brief(app, chapter_no):
     return prev_brief, prev_tail_text
 
 
+def _post_word_count_and_merge(app, args, content, chapter_no, chapter_type, genre, chapter_file):
+    """字数门禁；不足且 merge_if_short 时合并下一章重判。返回 (content, wc)；仍不足则 raise。"""
+    wc_pass, wc, eff_min = word_count_gate(
+        content,
+        chapter_no,
+        chapter_type,
+        genre=genre or None,
+        app_inst=app,
+    )
+    if wc_pass is False:
+        # ── v0.4.5: 自动合并下一章 ──
+        if args.merge_if_short:
+            next_candidate = find_chapter_file_with_fallback(chapter_no + 1, app)
+            if next_candidate:
+                next_content = _strip_selfcheck(next_candidate.read_text(encoding='utf-8'))
+                merged = content.rstrip() + "\n\n---\n\n" + next_content
+                # Save merged content
+                merged_path = chapter_file
+                merged_path.write_text(merged, encoding='utf-8')
+                # Rename next chapter as merged backup
+                bak = str(next_candidate) + ".merged"
+                next_candidate.rename(bak)
+                print(f"\n[MERGE] chapter {chapter_no} ({wc} chars) merged with chapter {chapter_no + 1}")
+                print(f"  [OK] merged content saved: {merged_path.name}")
+                print(f"  [OK] next chapter backed up: {Path(bak).name}")
+                # Re-check word count with merged content
+                content = merged
+                wc_pass, wc, eff_min2 = word_count_gate(
+                    content,
+                    chapter_no,
+                    chapter_type,
+                    genre=genre or None,
+                    app_inst=app,
+                )
+                if wc_pass is False:
+                    raise RuntimeError(f"合并后仍不足 {eff_min2} 字 (实际: {wc})")
+            else:
+                raise RuntimeError(f"word count gate failed and chapter {chapter_no + 1} was not available to merge; short by {eff_min - wc} chars")
+        else:
+            raise RuntimeError(f"word count gate failed; short by {eff_min - wc} chars")
+    return content, wc
+
+
+def _post_build_extra_context(app, cfg, chapter_no, prev_brief, selected_genre):
+    """构建守卫 extra_context（含可选 voice_context 透传）。"""
+    extra_context = build_guard_context(
+        app,
+        chapter_no=chapter_no,
+        prev_brief=prev_brief,
+        genre=selected_genre,
+    )
+    try:
+        from src.agents.character import load_voice_context
+        voice_context = load_voice_context(cfg, app.novel_slug)
+        if voice_context["enabled"]:
+            extra_context = build_guard_context(
+                app,
+                chapter_no=chapter_no,
+                prev_brief=prev_brief,
+                genre=selected_genre,
+                voice_context=voice_context,
+            )
+            print(f"  [VOICE] {voice_context['source']}: {len(voice_context['profiles'])} profiles, {len(voice_context['packs'])} packs")
+    except Exception as _e:
+        from src.utils.error_handling import log_optional_failure
+        log_optional_failure("post: voice_context 加载", _e)
+    return extra_context
+
+
 def run_post(
     chapter_no,
     chapter_type="normal",
@@ -253,44 +322,8 @@ def run_post(
 
     # STEP 4: word_count（genre 缺失时回退 novels 表）
     _pipeline_genre = _post_resolve_genre(app, state)
-    wc_pass, wc, eff_min = word_count_gate(
-        content,
-        chapter_no,
-        chapter_type,
-        genre=_pipeline_genre or None,
-        app_inst=app,
-    )
-    if wc_pass is False:
-    # ── v0.4.5: 自动合并下一章 ──
-        if args.merge_if_short:
-            next_candidate = find_chapter_file_with_fallback(chapter_no + 1, app)
-            if next_candidate:
-                next_content = _strip_selfcheck(next_candidate.read_text(encoding='utf-8'))
-                merged = content.rstrip() + "\n\n---\n\n" + next_content
-            # Save merged content
-                merged_path = chapter_file
-                merged_path.write_text(merged, encoding='utf-8')
-            # Rename next chapter as merged backup
-                bak = str(next_candidate) + ".merged"
-                next_candidate.rename(bak)
-                print(f"\n[MERGE] chapter {chapter_no} ({wc} chars) merged with chapter {chapter_no + 1}")
-                print(f"  [OK] merged content saved: {merged_path.name}")
-                print(f"  [OK] next chapter backed up: {Path(bak).name}")
-            # Re-check word count with merged content
-                content = merged
-                wc_pass, wc, eff_min2 = word_count_gate(
-                    content,
-                    chapter_no,
-                    chapter_type,
-                    genre=_pipeline_genre or None,
-                    app_inst=app,
-                )
-                if wc_pass is False:
-                    raise RuntimeError(f"合并后仍不足 {eff_min2} 字 (实际: {wc})")
-            else:
-                raise RuntimeError(f"word count gate failed and chapter {chapter_no + 1} was not available to merge; short by {eff_min - wc} chars")
-        else:
-            raise RuntimeError(f"word count gate failed; short by {eff_min - wc} chars")
+    content, wc = _post_word_count_and_merge(
+        app, args, content, chapter_no, chapter_type, _pipeline_genre, chapter_file)
 
     # Read prev_brief/prev_tail once for all downstream guards
     prev_brief, prev_tail_text = _post_load_prev_brief(app, chapter_no)
@@ -309,27 +342,7 @@ def run_post(
 # Voice context（profiles/packs/narration_policy）供 dialogue_quality_guard /
 # prose_authenticity_guard 的子检测使用；通过 extra_context 透传。
     selected_genre = _pipeline_genre or args.genre or cfg.get("default_genre", "default")
-    extra_context = build_guard_context(
-        app,
-        chapter_no=chapter_no,
-        prev_brief=prev_brief,
-        genre=selected_genre,
-    )
-    try:
-        from src.agents.character import load_voice_context
-        voice_context = load_voice_context(cfg, app.novel_slug)
-        if voice_context["enabled"]:
-            extra_context = build_guard_context(
-                app,
-                chapter_no=chapter_no,
-                prev_brief=prev_brief,
-                genre=selected_genre,
-                voice_context=voice_context,
-            )
-            print(f"  [VOICE] {voice_context['source']}: {len(voice_context['profiles'])} profiles, {len(voice_context['packs'])} packs")
-    except Exception as _e:
-        from src.utils.error_handling import log_optional_failure
-        log_optional_failure("post: voice_context 加载", _e)
+    extra_context = _post_build_extra_context(app, cfg, chapter_no, prev_brief, selected_genre)
 
     # 空安全兜底：orchestrator 失败时下游 human_texture/dedup 仍可安全引用
     orch_report = {"warnings": [], "executed_guards": [], "warning_count": 0}

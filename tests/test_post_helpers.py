@@ -13,6 +13,7 @@ from src.pipeline.post import (
     _post_resolve_state,
     _post_resolve_genre,
     _post_load_prev_brief,
+    _post_word_count_and_merge,
 )
 from src.pipeline._base import write_json_atomic
 
@@ -97,3 +98,27 @@ def test_load_prev_brief_reads_ending_state(tmp_path):
     prev_brief, prev_tail = _post_load_prev_brief(app, 5)   # 读第 4 章
     assert prev_brief["ending_state"] == "夜色降临"
     assert prev_tail == "夜色降临"
+
+
+# ── _post_word_count_and_merge ───────────────────────────────────────
+def _wc_app():
+    return types.SimpleNamespace(
+        wc_rules={},
+        wc_default={"min": 5, "max": 1000, "best_min": 10, "best_max": 900},
+    )
+
+
+def test_word_count_pass_returns_content_and_count():
+    app = _wc_app()
+    args = types.SimpleNamespace(merge_if_short=False)
+    content = "你好世界" * 10                    # 40 个中文字，过下限
+    out_content, wc = _post_word_count_and_merge(app, args, content, 1, "normal", None, None)
+    assert out_content == content
+    assert wc == 40
+
+
+def test_word_count_short_without_merge_raises():
+    app = _wc_app()
+    args = types.SimpleNamespace(merge_if_short=False)
+    with pytest.raises(RuntimeError, match="short by"):
+        _post_word_count_and_merge(app, args, "短", 1, "normal", None, None)
