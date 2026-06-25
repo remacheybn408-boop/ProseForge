@@ -54,6 +54,89 @@ def _load_json_dict(path, step, log_entries=None):
         return None
     return payload
 
+
+def _pre_fts_health(app, log_entries):
+    """FTS5 健康检查 + 自动 repair（best-effort，失败仅告警）。"""
+    try:
+        from src.utils.fts_health import ensure_fts_healthy
+        _fts_cfg = {"db_path": str(app.db_path)}
+        fts_result = ensure_fts_healthy(_fts_cfg)
+        health_before = fts_result.get("health_before", {})
+        print(f"  [FTS] scope: {health_before.get('total_tables', 0)} table(s)")
+        for step in fts_result.get("repair", {}).get("progress", []):
+            if step.get("status") == "repaired":
+                print(
+                    f"  [FTS] {step['index']}/{step['total_tables']} {step['table']} -> {step.get('method', 'rebuild')}"
+                )
+        if fts_result["action"] == "repair_failed":
+            print("  [WARN] FTS repair failed; downstream retrieval will use LIKE fallback")
+    except ImportError as exc:
+        _warn_optional("FTS health check unavailable", exc, log_entries)
+    except (sqlite3.Error, OSError) as exc:
+        _warn_optional("FTS health check failed", exc, log_entries)
+
+
+def _pre_load_genre(cur, nid, log_entries):
+    """读取 novels.genre；查询失败回退空串。"""
+    try:
+        row = cur.execute("SELECT genre FROM novels WHERE id=?", (nid,)).fetchone()
+        if row and row[0]:
+            return row[0]
+    except sqlite3.Error as exc:
+        _warn_optional("genre lookup failed", exc, log_entries)
+    return ""
+
+
+def _pre_load_skeleton(cur, nid, app, chapter_no, log_entries):
+    """读取卷/章标题骨架并打印；返回 (vol_row, ch_plan_row)。"""
+    vol = cur.execute(
+        "SELECT planned_title, volume_goal, opening_state, ending_target, must_complete, suggested_chapters "
+        "FROM volume_plans WHERE novel_id=? AND volume_no=?", (nid, app.volume_no)).fetchone()
+    ch_plan = cur.execute(
+        "SELECT planned_title, chapter_goal, main_event, character_focus, conflict_point, "
+        "must_include, plot_threads_to_advance, reader_promises_to_advance, "
+        "ending_hook_direction, continuity_from_previous "
+        "FROM chapter_plans WHERE novel_id=? AND volume_no=? AND chapter_no=?",
+        (nid, app.volume_no, chapter_no)).fetchone()
+
+    if vol:
+        print(f"\n  >>> 第{app.volume_no}卷《{vol['planned_title']}》")
+        print(f"      目标: {vol['volume_goal']}")
+        if vol['opening_state']: print(f"      开端: {vol['opening_state']}")
+        if vol['ending_target']: print(f"      卷末: {vol['ending_target']}")
+        log_entries.append(f"读取卷骨架:第{app.volume_no}卷")
+    if ch_plan:
+        print(f"\n  >>> 本章骨架《{ch_plan['planned_title']}》")
+        if ch_plan['chapter_goal']:       print(f"      章节目标: {ch_plan['chapter_goal']}")
+        if ch_plan['main_event']:         print(f"      核心事件: {ch_plan['main_event']}")
+        if ch_plan['character_focus']:    print(f"      人物重点: {ch_plan['character_focus']}")
+        if ch_plan['conflict_point']:     print(f"      冲突点:   {ch_plan['conflict_point']}")
+        if ch_plan['must_include']:       print(f"      必须包含: {ch_plan['must_include']}")
+        if ch_plan['plot_threads_to_advance']:    print(f"      推进伏笔: {ch_plan['plot_threads_to_advance']}")
+        if ch_plan['ending_hook_direction']:      print(f"      结尾钩子: {ch_plan['ending_hook_direction']}")
+        if ch_plan['continuity_from_previous']:   print(f"      上章承接: {ch_plan['continuity_from_previous']}")
+        log_entries.append(f"读取章骨架:第{chapter_no}章")
+    else:
+        print(f"\n  [INFO] 第{chapter_no}章无标题骨架数据，按自由模式写作")
+    return vol, ch_plan
+
+
+def _pre_check_volume_sequence(cur, nid, app, log_entries):
+    """卷序检查：提醒前序各卷是否尚无已入库章节。"""
+    if app.volume_no > 1:
+        for vn in range(1, app.volume_no):
+            prev_vol_chs = cur.execute(
+                "SELECT COUNT(*) as cnt FROM chapters WHERE novel_id=? AND volume_id=(SELECT id FROM volumes WHERE novel_id=? AND volume_no=?)",
+                (nid, nid, vn)).fetchone()
+            prev_vol_plan = cur.execute("SELECT planned_title FROM volume_plans WHERE novel_id=? AND volume_no=?",
+                (nid, vn)).fetchone()
+            prev_vol_name = prev_vol_plan['planned_title'] if prev_vol_plan else f"第{vn}卷"
+            if prev_vol_chs and prev_vol_chs['cnt'] == 0:
+                print(f"\n  [WARN] 卷序警告: 《{prev_vol_name}》(第{vn}卷)尚无已入库章节")
+                print(f"         建议先完成第{vn}卷再开始第{app.volume_no}卷")
+                log_entries.append(f"卷序警告:第{vn}卷未完成")
+
+
 def run_pre(
     chapter_no,
     chapter_type="normal",
@@ -94,23 +177,7 @@ def run_pre(
         prev_ch = chapter_no - 1; prev_ending = ""
 
         # ── FTS5 健康检查 ──
-        try:
-            from src.utils.fts_health import ensure_fts_healthy
-            _fts_cfg = {"db_path": str(app.db_path)}
-            fts_result = ensure_fts_healthy(_fts_cfg)
-            health_before = fts_result.get("health_before", {})
-            print(f"  [FTS] scope: {health_before.get('total_tables', 0)} table(s)")
-            for step in fts_result.get("repair", {}).get("progress", []):
-                if step.get("status") == "repaired":
-                    print(
-                        f"  [FTS] {step['index']}/{step['total_tables']} {step['table']} -> {step.get('method', 'rebuild')}"
-                    )
-            if fts_result["action"] == "repair_failed":
-                print("  [WARN] FTS repair failed; downstream retrieval will use LIKE fallback")
-        except ImportError as exc:
-            _warn_optional("FTS health check unavailable", exc, log_entries)
-        except (sqlite3.Error, OSError) as exc:
-            _warn_optional("FTS health check failed", exc, log_entries)
+        _pre_fts_health(app, log_entries)
 
         # ── story contract 变量初始化 ──
         PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -118,65 +185,18 @@ def run_pre(
         char_arcs = None
         open_promises = None
         contract_goal = None
-        genre = ""
         # ── 优先读取题材 genre ──
-        try:
-            row = cur.execute("SELECT genre FROM novels WHERE id=?", (nid,)).fetchone()
-            if row and row[0]:
-                genre = row[0]
-        except sqlite3.Error as exc:
-            _warn_optional("genre lookup failed", exc, log_entries)
+        genre = _pre_load_genre(cur, nid, log_entries)
 
         print("="*60)
         print(f"STEP 1: PRE — 第{chapter_no}章 [{chapter_type}] — 《{app.novel_title}》")
         print("="*60)
 
         # ── 标题骨架：从 volume_plans / chapter_plans 读取 ──
-        vol = cur.execute(
-            "SELECT planned_title, volume_goal, opening_state, ending_target, must_complete, suggested_chapters "
-            "FROM volume_plans WHERE novel_id=? AND volume_no=?", (nid, app.volume_no)).fetchone()
-        ch_plan = cur.execute(
-            "SELECT planned_title, chapter_goal, main_event, character_focus, conflict_point, "
-            "must_include, plot_threads_to_advance, reader_promises_to_advance, "
-            "ending_hook_direction, continuity_from_previous "
-            "FROM chapter_plans WHERE novel_id=? AND volume_no=? AND chapter_no=?", 
-            (nid, app.volume_no, chapter_no)).fetchone()
-
-        if vol:
-            print(f"\n  >>> 第{app.volume_no}卷《{vol['planned_title']}》")
-            print(f"      目标: {vol['volume_goal']}")
-            if vol['opening_state']: print(f"      开端: {vol['opening_state']}")
-            if vol['ending_target']: print(f"      卷末: {vol['ending_target']}")
-            log_entries.append(f"读取卷骨架:第{app.volume_no}卷")
-        if ch_plan:
-            print(f"\n  >>> 本章骨架《{ch_plan['planned_title']}》")
-            if ch_plan['chapter_goal']:       print(f"      章节目标: {ch_plan['chapter_goal']}")
-            if ch_plan['main_event']:         print(f"      核心事件: {ch_plan['main_event']}")
-            if ch_plan['character_focus']:    print(f"      人物重点: {ch_plan['character_focus']}")
-            if ch_plan['conflict_point']:     print(f"      冲突点:   {ch_plan['conflict_point']}")
-            if ch_plan['must_include']:       print(f"      必须包含: {ch_plan['must_include']}")
-            if ch_plan['plot_threads_to_advance']:    print(f"      推进伏笔: {ch_plan['plot_threads_to_advance']}")
-            if ch_plan['ending_hook_direction']:      print(f"      结尾钩子: {ch_plan['ending_hook_direction']}")
-            if ch_plan['continuity_from_previous']:   print(f"      上章承接: {ch_plan['continuity_from_previous']}")
-            log_entries.append(f"读取章骨架:第{chapter_no}章")
-        else:
-            print(f"\n  [INFO] 第{chapter_no}章无标题骨架数据，按自由模式写作")
-        # ── 标题骨架结束 ──
+        vol, ch_plan = _pre_load_skeleton(cur, nid, app, chapter_no, log_entries)
 
         # ── 卷序检查：前面各卷是否完成 ──
-        if app.volume_no > 1:
-            for vn in range(1, app.volume_no):
-                prev_vol_chs = cur.execute(
-                    "SELECT COUNT(*) as cnt FROM chapters WHERE novel_id=? AND volume_id=(SELECT id FROM volumes WHERE novel_id=? AND volume_no=?)",
-                    (nid, nid, vn)).fetchone()
-                prev_vol_plan = cur.execute("SELECT planned_title FROM volume_plans WHERE novel_id=? AND volume_no=?",
-                    (nid, vn)).fetchone()
-                prev_vol_name = prev_vol_plan['planned_title'] if prev_vol_plan else f"第{vn}卷"
-                if prev_vol_chs and prev_vol_chs['cnt'] == 0:
-                    print(f"\n  [WARN] 卷序警告: 《{prev_vol_name}》(第{vn}卷)尚无已入库章节")
-                    print(f"         建议先完成第{vn}卷再开始第{app.volume_no}卷")
-                    log_entries.append(f"卷序警告:第{vn}卷未完成")
-        # ── 卷序检查结束 ──
+        _pre_check_volume_sequence(cur, nid, app, log_entries)
 
         if prev_ch >= 1:
             cur.execute("SELECT title, content FROM chapters WHERE novel_id=? AND chapter_no=?", (nid, prev_ch))
