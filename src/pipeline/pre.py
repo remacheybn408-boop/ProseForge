@@ -137,6 +137,139 @@ def _pre_check_volume_sequence(cur, nid, app, log_entries):
                 log_entries.append(f"卷序警告:第{vn}卷未完成")
 
 
+def _pre_load_prev_chapter(cur, nid, app, chapter_no, prev_ch, project_root, log_entries):
+    """读取上章结尾/brief/jury/orchestrator 报告并打印；返回 (prev_ending, jury)。"""
+    prev_ending = ""
+    jury = None
+    if prev_ch >= 1:
+        cur.execute("SELECT title, content FROM chapters WHERE novel_id=? AND chapter_no=?", (nid, prev_ch))
+        prev = cur.fetchone()
+        if not prev:
+            print(f"\n[WARN] 第{prev_ch}章不存在于数据库")
+        else:
+            prev_ending = _strip_selfcheck(prev['content'])[-800:]
+            cur.execute("SELECT short_summary FROM chapter_summaries WHERE novel_id=? AND chapter_id=(SELECT id FROM chapters WHERE novel_id=? AND chapter_no=?)", (nid, nid, prev_ch))
+            sm = cur.fetchone()
+            print(f"  [OK] 上章: 第{prev_ch}章《{prev['title']}》末400字:")
+            print(f"  {prev_ending[-400:]}")
+            log_entries.append(f"读取第{prev_ch}章结尾{len(prev_ending)}字")
+
+        # ── 读取上一章 actual chapter_brief ──
+        prev_brief_path = app.exports_root / "chapter_briefs" / f"chapter_{prev_ch:03d}_brief.json"
+        brief_data = None
+        if prev_brief_path.exists():
+            brief_data = _load_json_dict(
+                prev_brief_path,
+                f"chapter {prev_ch} brief load failed",
+                log_entries,
+            ) or {}
+            if brief_data:
+                print(f"\n  [OK] 上章 brief 已加载:")
+                if brief_data.get('ending_state'):
+                    print(f"    实际结尾: {brief_data['ending_state'][:120]}")
+                if brief_data.get('next_chapter_hooks'):
+                    print(f"    遗留钩子: {brief_data['next_chapter_hooks'][:120]}")
+                diff = brief_data.get('planned_vs_actual_diff', {})
+                if isinstance(diff, str):
+                    try:
+                        diff = json.loads(diff)
+                    except json.JSONDecodeError:
+                        diff = {}
+                elif not isinstance(diff, dict):
+                    diff = {}
+                if diff.get('title_match') == 'changed':
+                    print(f"    [WARN] 上章标题已变更: {diff.get('planned_title','')} → {diff.get('actual_title','')}")
+                log_entries.append(f"读取第{prev_ch}章brief")
+        elif prev_ch > 1:
+            print(f"\n  [WARN] 第{prev_ch}章 brief 文件缺失 — 建议先执行 post")
+
+        # ── 读取上章 agent review ──
+        jury_path = project_root / "reports" / "agent_reviews" / f"chapter_{prev_ch:03d}_agent_review.json"
+        if jury_path.exists():
+            try:
+                jury = _load_json_dict(
+                    jury_path,
+                    f"chapter {prev_ch} jury load failed",
+                    log_entries,
+                )
+                jury = jury or {}
+                ce = jury.get("chief_editor", {})
+                print(f"  [OK] 上章陪审团意见: score={jury.get('overall_score')}, status={jury.get('status')}, "
+                      f"must_fix={len(ce.get('must_fix', []))}, should_fix={len(ce.get('should_fix', []))}")
+                log_entries.append(f"读取第{prev_ch}章jury({jury.get('status')})")
+            except (TypeError, ValueError) as e:
+                log_optional_failure("pre: 上章jury读取", e)
+
+        # ── 读取上章 orchestrator 报告（更细粒度的 guard 建议）──
+        orch_path = app.exports_root / "reports" / f"chapter_{prev_ch:03d}_orchestrator_report.json"
+        if orch_path.exists():
+            try:
+                orch_report = _load_json_dict(
+                    orch_path,
+                    f"chapter {prev_ch} orchestrator report load failed",
+                    log_entries,
+                )
+                log_entries.append(f"读取第{prev_ch}章orchestrator({orch_report.get('final_status','?')})")
+            except (TypeError, ValueError) as e:
+                log_optional_failure(f"pre: chapter {prev_ch} orchestrator report load", e)
+    else:
+        print("  [OK] 第1章，无上章")
+    return prev_ending, jury
+
+
+def _pre_load_story_health(chapter_no, project_root, log_entries):
+    """读取故事合同健康；返回 (story_health_result, char_arcs, contract_goal, open_promises)。"""
+    story_health_result = None
+    char_arcs = None
+    contract_goal = None
+    open_promises = None
+    if story_health is not None:
+        try:
+            health = story_health.check_health(project_root)
+            story_health_result = health
+            if health["status"] != "FAIL" or any("missing" not in f for f in health.get("failures", [])):
+                sd = Path(health["story_dir"])
+                char_arcs = load_characters(sd)
+                contract_file = sd / "chapters" / f"chapter_{chapter_no:03d}_contract.json"
+                if contract_file.exists():
+                    contract = json.loads(contract_file.read_text(encoding="utf-8"))
+                    contract_goal = contract.get("required_scene_goal", "")
+                prom_file = sd / "memory" / "promises.json"
+                if prom_file.exists():
+                    all_promises = json.loads(prom_file.read_text(encoding="utf-8"))
+                    open_promises = [p for p in all_promises if not p.get("resolved")]
+                print(f"  [OK] 故事合同: status={health['status']}, "
+                      f"合同={health['contract_count']}, 提交={health['commit_count']}, "
+                      f"角色弧线={len(char_arcs) if char_arcs else 0}")
+                log_entries.append(f"story_health({health['status']})")
+        except (OSError, json.JSONDecodeError, sqlite3.Error, TypeError, ValueError) as e:
+            log_optional_failure("pre: 故事合同读取", e)
+    return story_health_result, char_arcs, contract_goal, open_promises
+
+
+def _pre_load_genre_preset_texture(app, genre, prev_ch, project_root):
+    """加载题材约束 preset 与上章 texture 报告；返回 (genre_preset, prev_texture)。"""
+    genre_preset = {}
+    prev_texture = None
+    if genre:
+        try:
+            import yaml
+            _preset_path = project_root / "configs" / "human_texture" / "genre_presets.yaml"
+            if _preset_path.exists():
+                all_presets = yaml.safe_load(_preset_path.read_text(encoding="utf-8"))
+                genre_preset = all_presets.get(genre, all_presets.get("default", {}))
+        except (ImportError, OSError, AttributeError, ValueError, yaml.YAMLError) as e:
+            log_optional_failure("pre: genre preset load", e)
+    if prev_ch >= 1:
+        _tex_path = app.exports_root / "reports" / f"chapter_{prev_ch:03d}_texture_report.json"
+        if _tex_path.exists():
+            try:
+                prev_texture = json.loads(_tex_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
+                log_optional_failure(f"pre: chapter {prev_ch} texture report load", e)
+    return genre_preset, prev_texture
+
+
 def run_pre(
     chapter_no,
     chapter_type="normal",
@@ -179,12 +312,7 @@ def run_pre(
         # ── FTS5 健康检查 ──
         _pre_fts_health(app, log_entries)
 
-        # ── story contract 变量初始化 ──
         PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-        story_health_result = None
-        char_arcs = None
-        open_promises = None
-        contract_goal = None
         # ── 优先读取题材 genre ──
         genre = _pre_load_genre(cur, nid, log_entries)
 
@@ -198,126 +326,17 @@ def run_pre(
         # ── 卷序检查：前面各卷是否完成 ──
         _pre_check_volume_sequence(cur, nid, app, log_entries)
 
-        if prev_ch >= 1:
-            cur.execute("SELECT title, content FROM chapters WHERE novel_id=? AND chapter_no=?", (nid, prev_ch))
-            prev = cur.fetchone()
-            if not prev:
-                print(f"\n[WARN] 第{prev_ch}章不存在于数据库")
-            else:
-                prev_ending = _strip_selfcheck(prev['content'])[-800:]
-                cur.execute("SELECT short_summary FROM chapter_summaries WHERE novel_id=? AND chapter_id=(SELECT id FROM chapters WHERE novel_id=? AND chapter_no=?)", (nid, nid, prev_ch))
-                sm = cur.fetchone()
-                print(f"  [OK] 上章: 第{prev_ch}章《{prev['title']}》末400字:")
-                print(f"  {prev_ending[-400:]}")
-                log_entries.append(f"读取第{prev_ch}章结尾{len(prev_ending)}字")
-
-            # ── 读取上一章 actual chapter_brief ──
-            prev_brief_path = app.exports_root / "chapter_briefs" / f"chapter_{prev_ch:03d}_brief.json"
-            brief_data = None
-            if prev_brief_path.exists():
-                brief_data = _load_json_dict(
-                    prev_brief_path,
-                    f"chapter {prev_ch} brief load failed",
-                    log_entries,
-                ) or {}
-                if brief_data:
-                    print(f"\n  [OK] 上章 brief 已加载:")
-                    if brief_data.get('ending_state'):
-                        print(f"    实际结尾: {brief_data['ending_state'][:120]}")
-                    if brief_data.get('next_chapter_hooks'):
-                        print(f"    遗留钩子: {brief_data['next_chapter_hooks'][:120]}")
-                    diff = brief_data.get('planned_vs_actual_diff', {})
-                    if isinstance(diff, str):
-                        try:
-                            diff = json.loads(diff)
-                        except json.JSONDecodeError:
-                            diff = {}
-                    elif not isinstance(diff, dict):
-                        diff = {}
-                    if diff.get('title_match') == 'changed':
-                        print(f"    [WARN] 上章标题已变更: {diff.get('planned_title','')} → {diff.get('actual_title','')}")
-                    log_entries.append(f"读取第{prev_ch}章brief")
-            elif prev_ch > 1:
-                print(f"\n  [WARN] 第{prev_ch}章 brief 文件缺失 — 建议先执行 post")
-
-            # ── 读取上章 agent review ──
-            jury_path = PROJECT_ROOT / "reports" / "agent_reviews" / f"chapter_{prev_ch:03d}_agent_review.json"
-            jury = None
-            if jury_path.exists():
-                try:
-                    jury = _load_json_dict(
-                        jury_path,
-                        f"chapter {prev_ch} jury load failed",
-                        log_entries,
-                    )
-                    jury = jury or {}
-                    ce = jury.get("chief_editor", {})
-                    print(f"  [OK] 上章陪审团意见: score={jury.get('overall_score')}, status={jury.get('status')}, "
-                          f"must_fix={len(ce.get('must_fix', []))}, should_fix={len(ce.get('should_fix', []))}")
-                    log_entries.append(f"读取第{prev_ch}章jury({jury.get('status')})")
-                except (TypeError, ValueError) as e:
-                    log_optional_failure("pre: 上章jury读取", e)
-
-            # ── 读取上章 orchestrator 报告（更细粒度的 guard 建议）──
-            orch_path = app.exports_root / "reports" / f"chapter_{prev_ch:03d}_orchestrator_report.json"
-            orch_report = None
-            if orch_path.exists():
-                try:
-                    orch_report = _load_json_dict(
-                        orch_path,
-                        f"chapter {prev_ch} orchestrator report load failed",
-                        log_entries,
-                    )
-                    log_entries.append(f"读取第{prev_ch}章orchestrator({orch_report.get('final_status','?')})")
-                except (TypeError, ValueError) as e:
-                    log_optional_failure(f"pre: chapter {prev_ch} orchestrator report load", e)
-            # ── brief + jury 结束 ──
-        else:
-            jury = None
-            print("  [OK] 第1章，无上章")
+        # ── 读取上章结尾/brief/jury/orchestrator ──
+        prev_ending, jury = _pre_load_prev_chapter(
+            cur, nid, app, chapter_no, prev_ch, PROJECT_ROOT, log_entries)
 
         # ── 读取故事合同健康（所有章节均执行） ──
-        if story_health is not None:
-            try:
-                health = story_health.check_health(PROJECT_ROOT)
-                story_health_result = health
-                if health["status"] != "FAIL" or any("missing" not in f for f in health.get("failures", [])):
-                    sd = Path(health["story_dir"])
-                    char_arcs = load_characters(sd)
-                    contract_file = sd / "chapters" / f"chapter_{chapter_no:03d}_contract.json"
-                    if contract_file.exists():
-                        contract = json.loads(contract_file.read_text(encoding="utf-8"))
-                        contract_goal = contract.get("required_scene_goal", "")
-                    prom_file = sd / "memory" / "promises.json"
-                    if prom_file.exists():
-                        all_promises = json.loads(prom_file.read_text(encoding="utf-8"))
-                        open_promises = [p for p in all_promises if not p.get("resolved")]
-                    print(f"  [OK] 故事合同: status={health['status']}, "
-                          f"合同={health['contract_count']}, 提交={health['commit_count']}, "
-                          f"角色弧线={len(char_arcs) if char_arcs else 0}")
-                    log_entries.append(f"story_health({health['status']})")
-            except (OSError, json.JSONDecodeError, sqlite3.Error, TypeError, ValueError) as e:
-                log_optional_failure("pre: 故事合同读取", e)
+        story_health_result, char_arcs, contract_goal, open_promises = _pre_load_story_health(
+            chapter_no, PROJECT_ROOT, log_entries)
 
         # ── 加载题材约束和上章 texture 报告 ──
-        genre_preset = {}
-        prev_texture = None
-        if genre:
-            try:
-                import yaml
-                _preset_path = PROJECT_ROOT / "configs" / "human_texture" / "genre_presets.yaml"
-                if _preset_path.exists():
-                    all_presets = yaml.safe_load(_preset_path.read_text(encoding="utf-8"))
-                    genre_preset = all_presets.get(genre, all_presets.get("default", {}))
-            except (ImportError, OSError, AttributeError, ValueError, yaml.YAMLError) as e:
-                log_optional_failure("pre: genre preset load", e)
-        if prev_ch >= 1:
-            _tex_path = app.exports_root / "reports" / f"chapter_{prev_ch:03d}_texture_report.json"
-            if _tex_path.exists():
-                try:
-                    prev_texture = json.loads(_tex_path.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
-                    log_optional_failure(f"pre: chapter {prev_ch} texture report load", e)
+        genre_preset, prev_texture = _pre_load_genre_preset_texture(
+            app, genre, prev_ch, PROJECT_ROOT)
 
         # 最近3章摘要
         print("\n  [OK] 最近3章:")
