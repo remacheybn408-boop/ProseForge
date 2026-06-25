@@ -455,6 +455,318 @@ def _pre_write_context_pack(app, chapter_no, vol, ch_plan):
     return pack_path
 
 
+def _pre_print_task_card(chapter_no, chapter_type, app, ch_plan, prev_ending, jury, prev_ch):
+    # task_card (含标题骨架指引)
+    print(f"\n{'='*60}")
+    print(f"TASK CARD - 第{chapter_no}章 [{chapter_type}]")
+    print(f"  字数范围: {app.wc_default['min']}-{app.wc_default['max']} | 最佳: {app.wc_default['best_min']}-{app.wc_default['best_max']}")
+    print(f"  必须>={app.min_scenes}场景 | >=2生活细节 | >=1不完美互动")
+    print(f"  禁止: AI句式/硬科普/总结腔/空泛心理")
+    if ch_plan:
+        print(f"  ─── 标题骨架指引 ───")
+        print(f"  章节目标: {ch_plan['chapter_goal']}")
+        print(f"  核心事件: {ch_plan['main_event'] or '(自由发挥)'}")
+        print(f"  冲突点:   {ch_plan['conflict_point']}")
+        print(f"  结尾钩子: {ch_plan['ending_hook_direction']}")
+        if ch_plan['must_include']: print(f"  必须包含: {ch_plan['must_include']}")
+    if prev_ending:
+        print(f"  ─── 承接上章 ───")
+        print(f"  {prev_ending[-120:]}")
+    if jury and jury.get("chief_editor"):
+        print(f"  ─── 上章审稿意见（第{prev_ch}章）───")
+        must_fix = jury["chief_editor"].get("must_fix", [])
+        should_fix = jury["chief_editor"].get("should_fix", [])
+        if must_fix:
+            print(f"  🔴 建议优先处理 ({len(must_fix)}项):")
+            for i, item in enumerate(must_fix, 1):
+                msg = item.get("message", "")
+                sug = item.get("suggestion", "")
+                print(f"  {i}. {msg}")
+                if sug: print(f"     → {sug}")
+        if should_fix:
+            print(f"  🟡 值得关注 ({len(should_fix)}项):")
+            for i, item in enumerate(should_fix, 1):
+                msg = item.get("message", "")
+                sug = item.get("suggestion", "")
+                print(f"  {i}. {msg}")
+                if sug: print(f"     → {sug}")
+
+        # ── 质量指标摘要 ──
+        print(f"  📊 质量指标:")
+        agents = jury.get("agents", {})
+        q_metrics = []
+        if isinstance(agents, list):
+            for ag in agents:
+                if isinstance(ag, dict):
+                    score = ag.get("score")
+                    ag_name = ag.get("agent", "")
+                    if score is not None and isinstance(score, (int, float)):
+                        icon = "✅" if score >= 70 else ("⚠️" if score >= 50 else "❌")
+                        short = ag_name.replace("_agent", "").replace("_guard", "").replace("_", " ")
+                        q_metrics.append(f"{icon} {short}={score}")
+        elif isinstance(agents, dict):
+            for ag_name, ag_data in agents.items():
+                if isinstance(ag_data, dict):
+                    score = ag_data.get("score", ag_data.get("overall_score"))
+                    if score is not None and isinstance(score, (int, float)):
+                        icon = "✅" if score >= 70 else ("⚠️" if score >= 50 else "❌")
+                        short = ag_name.replace("_agent", "").replace("_guard", "").replace("_", " ")
+                        q_metrics.append(f"{icon} {short}={score}")
+        if q_metrics:
+            print(f"  {' | '.join(q_metrics)}")
+
+        if not must_fix and not should_fix:
+            print(f"  ✅ 无问题，上章质量良好")
+    elif prev_ch >= 1:
+        print(f"  [WARN] 第{prev_ch}章无审稿意见 — 建议先运行 post/review")
+
+def _pre_print_story_contract(story_health_result, char_arcs, open_promises, contract_goal, cur, nid, chapter_no):
+    # ── 故事合同区块 ──
+    if story_health_result:
+        h = story_health_result
+        status_icon = {"OK": "✅", "WARN": "⚠️", "FAIL": "❌"}.get(h["status"], "❓")
+        print(f"  ─── 故事合同 ───")
+        print(f"  {status_icon} 健康: {h['status']} | 合同: {h['contract_count']} | 提交: {h['commit_count']} | 事件: {h['event_count']}")
+        if h.get("empty_hints"):
+            for hint in h["empty_hints"][:1]:
+                print(f"  ℹ️ {hint}")
+        if h.get("warnings"):
+            for w in h["warnings"][:2]:
+                print(f"  ⚠️ {w[:100]}")
+        if h.get("failures"):
+            for f in h["failures"][:2]:
+                print(f"  ❌ {f[:100]}")
+        if char_arcs:
+            active_arcs = [c for c in char_arcs if c.get("active", True)]
+            if active_arcs:
+                print(f"  角色弧线:")
+                for c in active_arcs[:5]:
+                    name = c.get("name", "?")
+                    arc = c.get("arc", "")
+                    last_ch = c.get("last_chapter", "")
+                    last_st = c.get("last_state", "")
+                    parts = []
+                    if last_ch: parts.append(f"第{last_ch}章")
+                    if last_st: parts.append(last_st)
+                    if arc: parts.append(f"弧线:{arc}")
+                    print(f"    {name}: {' | '.join(parts)}" if parts else f"    {name}")
+        if open_promises:
+            print(f"  待兑现伏笔: {len(open_promises)}个")
+            for p in open_promises[:3]:
+                txt = p.get("promise", "")[:80]
+                ch = p.get("chapter", "?")
+                print(f"    ① {txt} (第{ch}章)")
+        if contract_goal:
+            print(f"  场景目标: {contract_goal[:120]}")
+
+        # ── 3.2 偏离检测 ──
+        sd = _resolve_story_for_deviation()
+        dev = _calc_story_deviation(cur, nid, chapter_no, sd)
+        if dev["score"] >= 30:
+            icon = "🔴" if dev["score"] >= 60 else "⚠️"
+            print(f"  {icon} 故事偏离度: {dev['score']}/100")
+            for d in dev["details"][:3]:
+                print(f"     → {d}")
+
+def _pre_print_constraints(genre, genre_preset):
+    # ── 写作约束区块 ──
+    if genre_preset:
+        print(f"  ─── 写作约束 [{genre}] ───")
+        _constraints = []
+        for key, label in [("water_density_min", "注水阈值"), ("conflict_pressure_min", "冲突压力"),
+                           ("life_texture_min", "生活质感"), ("cliche_sentence_max", "陈词上限"),
+                           ("emotion_summary_max", "情感总结上限"), ("goal_progress_min", "目标推进")]:
+            val = genre_preset.get(key)
+            if val is not None:
+                _constraints.append(f"{label}={val}")
+        if _constraints:
+            print(f"  质量阈值: {' | '.join(_constraints)}")
+        _pacing = genre_preset.get("pacing", {})
+        _focus = _pacing.get("focus_deltas", [])
+        if _focus:
+            _labels = {"conflict_delta":"冲突", "power_delta":"实力", "cost_delta":"代价",
+                       "event_delta":"事件", "hook_delta":"钩子", "decision_delta":"抉择",
+                       "relationship_delta":"关系", "clue_delta":"线索"}
+            _foci = [_labels.get(d, d) for d in _focus]
+            print(f"  节奏侧重: {' → '.join(_foci)}")
+
+def _pre_print_prev_texture(prev_texture):
+    # ── 上章纹理报告（独立于 genre_preset）──
+    if prev_texture:
+        _ts = prev_texture.get("status", "?")
+        _sc = prev_texture.get("scores", {})
+        _avg = sum(_sc.values()) / len(_sc) if _sc else 0
+        _icon = {"OK":"✅", "WARNING":"⚠️", "FAIL":"❌"}.get(_ts, "❓")
+        print(f"  ─── 上章纹理 ───")
+        print(f"  状态: {_icon} {_ts}, 平均分={_avg:.0f}/100")
+        _low = [(gn, gs) for gn, gs in sorted(_sc.items()) if gs < 70]
+        if _low:
+            for gn, gs in _low[:3]:
+                _short = gn.replace("_guard","").replace("_"," ")
+                print(f"    ⚠️ {_short:25s} {gs}/100")
+
+        # ── 4.2 质量趋势 ──
+        _trend = prev_texture.get("trend", {})
+        _deltas = _trend.get("deltas", {})
+        if _deltas:
+            _changed = {k: v for k, v in _deltas.items() if abs(v) > 3}
+            if _changed:
+                print(f"  \u2500\u2500\u2500 \u8d28\u91cf\u8d8b\u52bf \u2500\u2500\u2500")
+                for _gname, _delta in sorted(_changed.items(), key=lambda x: -abs(x[1])):
+                    _short = _gname.replace("_guard", "").replace("_", " ")
+                    _arrow = "\u2191" if _delta > 0 else "\u2193"
+                    _label = "stable" if abs(_delta) <= 3 else f"{_arrow} {_delta:+d}"
+                    print(f"  {_short:20s} {_label}")
+
+def _pre_print_mental_triggers(app, prev_ch):
+    # ── 上章精神状态触发词（仅当 slot 配置 mental_triggers.json 时 post 会写入）──
+    if prev_ch >= 1:
+        prev_state_path = app.state_dir / f"chapter_{prev_ch:03d}_state.json"
+        if prev_state_path.exists():
+            try:
+                _ps = json.loads(prev_state_path.read_text(encoding="utf-8"))
+                _trig_hits = _ps.get("mental_trigger_hits", 0)
+                _trig_detail = _ps.get("mental_trigger_detail", {})
+                if _trig_hits >= 2:
+                    if _trig_hits >= 4:
+                        print(f"  \U0001f534 上章精神触发词出现{_trig_hits}次: {_trig_detail}")
+                        print(f"     \u2192 \u5efa\u8bae\u672c\u7ae0\u5199\u4e00\u6bb5\u89e3\u538b/\u89e3\u79bb\u620f")
+                    else:
+                        print(f"  \u26a0\ufe0f 上章精神触发词出现{_trig_hits}次: {_trig_detail}")
+            except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+                log_optional_failure("pre: read prev state", exc)
+
+def _pre_print_characters_onstage(chars, char_cards, mental_states, cur, nid, chapter_no):
+    if char_cards or chars:
+        print(f"  \u2500\u2500\u2500 \u51fa\u573a\u89d2\u8272 \u2500\u2500\u2500")
+        for c in chars[:5]:
+            name = c['name']
+            card = char_cards.get(name, {})
+            voice = card.get("voice", {})
+            personality = card.get("personality", {})
+            behavior = card.get("behavior", {})
+            mental = mental_states.get(name, {})
+
+            parts = []
+            # Personality core
+            core = personality.get("core", "")
+            if core:
+                core_clean = core.replace("\uff08", "(").replace("\uff09", ")")
+                parts.append(core_clean)
+
+            # Dialect (first clause only)
+            dialect = voice.get("dialect", "")
+            if dialect:
+                dialect_short = dialect.split("\uff0c")[0].split(",")[0].strip()
+                if len(dialect_short) > 10:
+                    dialect_short = dialect_short[:10]
+                parts.append(dialect_short)
+
+            # Signature item from habits (heuristic: 用X量/记/写/带/拿/握/挂/绑)
+            habits = behavior.get("habits", [])
+            if isinstance(habits, list) and habits:
+                for h in habits:
+                    obj_match = re.search(r'\u7528([\u4e00-\u9fff]{2,4})(?:\u91cf|\u8bb0|\u5199|\u5e26|\u62ff|\u63e1|\u6302|\u7ed1|\u7f20|\u6234|\u88c5|\u653e|\u63a8|\u62c9|\u5256|\u780d|\u5288|\u70b9|\u6572)', h)
+                    if obj_match:
+                        parts.append(obj_match.group(1))
+                        break
+
+            # Mental state severity if non-zero
+            if mental:
+                active = [(k, v.get("severity", 0)) for k, v in mental.items()
+                          if isinstance(v, dict) and v.get("severity", 0) > 0]
+                if active:
+                    ms_label = ",".join(f"{k}({v})" for k, v in sorted(active, key=lambda x: -x[1])[:2])
+                    parts.append(ms_label)
+
+            if parts:
+                print(f"  {name:6s} | {' | '.join(parts)}")
+        if not chars:
+            print(f"  (无角色数据)")
+
+        # ── 连续缺场角色提醒 ──
+        absent_warnings = []
+        for c in chars:
+            cname = c['name']
+            # Check last 10 chapters for consecutive absence
+            recent_chs = cur.execute(
+                "SELECT c.chapter_no, cs.characters_involved FROM chapter_summaries cs "
+                "JOIN chapters c ON c.id=cs.chapter_id "
+                "WHERE c.novel_id=? AND c.chapter_no < ? "
+                "ORDER BY c.chapter_no DESC LIMIT 10",
+                (nid, chapter_no)).fetchall()
+            consecutive_missing = 0
+            for ch_row in recent_chs:
+                involved = ch_row['characters_involved'] or ""
+                if cname not in involved:
+                    consecutive_missing += 1
+                else:
+                    break
+            if consecutive_missing >= 3:
+                absent_warnings.append(f"\u26a0\ufe0f {cname}\u5df2\u8fde\u7eed{consecutive_missing}\u7ae0\u672a\u51fa\u573a")
+        if absent_warnings:
+            for w in absent_warnings[:3]:
+                print(f"  {w}")
+
+def _pre_character_relations(project_root, chars, chapter_no):
+    # ── 角色关系网络 ──
+    try:
+        from src.guards.human_texture.voice_diversity_guard import list_relations
+        rels = list_relations(project_root)
+        if rels:
+            char_rels = {}
+            for r in rels:
+                a, b, t = r["char_a"], r["char_b"], r["type"]
+                char_rels.setdefault(a, {}).setdefault(t, []).append(b)
+                char_rels.setdefault(b, {}).setdefault(t, []).append(a)
+            our_names = {c['name'] for c in chars}
+            relevant = {k: v for k, v in char_rels.items() if k in our_names}
+            if relevant:
+                print(f"  ─── 角色关系 ───")
+                for cname in sorted(relevant.keys()):
+                    for rtype, others in relevant[cname].items():
+                        others_str = "、".join(others)
+                        print(f"  {cname} ←{rtype}→ {others_str}")
+        elif chars and chapter_no <= 3:
+            # v0.8.0: 首次写作时自动从大纲提取角色关系
+            try:
+                from src.outline.outline_manager import OutlineManager
+                _om = OutlineManager(project_root)
+                _outline = _om.current_outline()
+                if _outline:
+                    _total_extracted = _om._auto_extract_relations(_outline.get("content", ""))
+                    if _total_extracted:
+                        # Re-display after extraction
+                        _rels = list_relations(PROJECT_ROOT)
+                        if _rels:
+                            char_rels2 = {}
+                            for r in _rels:
+                                a, b, t = r["char_a"], r["char_b"], r["type"]
+                                char_rels2.setdefault(a, {}).setdefault(t, []).append(b)
+                                char_rels2.setdefault(b, {}).setdefault(t, []).append(a)
+                            _relevant2 = {k: v for k, v in char_rels2.items() if k in our_names}
+                            if _relevant2:
+                                print(f"  ─── 角色关系 ───")
+                                for cname in sorted(_relevant2.keys()):
+                                    for rtype, others in _relevant2[cname].items():
+                                        others_str = "、".join(others)
+                                        print(f"  {cname} ←{rtype}→ {others_str}")
+            except (ImportError, AttributeError, KeyError, TypeError) as exc:
+                log_optional_failure("pre: auto-extract relations", exc)
+    except (ImportError, AttributeError, KeyError, TypeError) as exc:
+        log_optional_failure("pre: character relations skipped", exc)
+
+def _pre_autofix_rules(cur, nid, jury, prev_ch):
+    # ── 2.3 审稿建议 → writing_rules 自动固化 ──
+    if jury and jury.get("chief_editor"):
+        all_items = jury["chief_editor"].get("must_fix", []) + jury["chief_editor"].get("should_fix", [])
+        auto_rules = _extract_learnable_rules(all_items, prev_ch)
+        if auto_rules:
+            _saved = _auto_write_rules(cur, nid, auto_rules, prev_ch)
+            if _saved > 0:
+                print(f"  [LEARN] 自动写入{_saved}条写作规则")
+
+
 def run_pre(
     chapter_no,
     chapter_type="normal",
@@ -560,306 +872,27 @@ def run_pre(
             print(f"\n  📖 上下文注入\n    {context_injection}")
             log_entries.append(f"上下文注入:前{min(3, chapter_no-1)}章")
 
-        # task_card (含标题骨架指引)
-        print(f"\n{'='*60}")
-        print(f"TASK CARD - 第{chapter_no}章 [{chapter_type}]")
-        print(f"  字数范围: {app.wc_default['min']}-{app.wc_default['max']} | 最佳: {app.wc_default['best_min']}-{app.wc_default['best_max']}")
-        print(f"  必须>={app.min_scenes}场景 | >=2生活细节 | >=1不完美互动")
-        print(f"  禁止: AI句式/硬科普/总结腔/空泛心理")
-        if ch_plan:
-            print(f"  ─── 标题骨架指引 ───")
-            print(f"  章节目标: {ch_plan['chapter_goal']}")
-            print(f"  核心事件: {ch_plan['main_event'] or '(自由发挥)'}")
-            print(f"  冲突点:   {ch_plan['conflict_point']}")
-            print(f"  结尾钩子: {ch_plan['ending_hook_direction']}")
-            if ch_plan['must_include']: print(f"  必须包含: {ch_plan['must_include']}")
-        if prev_ending:
-            print(f"  ─── 承接上章 ───")
-            print(f"  {prev_ending[-120:]}")
-        if jury and jury.get("chief_editor"):
-            print(f"  ─── 上章审稿意见（第{prev_ch}章）───")
-            must_fix = jury["chief_editor"].get("must_fix", [])
-            should_fix = jury["chief_editor"].get("should_fix", [])
-            if must_fix:
-                print(f"  🔴 建议优先处理 ({len(must_fix)}项):")
-                for i, item in enumerate(must_fix, 1):
-                    msg = item.get("message", "")
-                    sug = item.get("suggestion", "")
-                    print(f"  {i}. {msg}")
-                    if sug: print(f"     → {sug}")
-            if should_fix:
-                print(f"  🟡 值得关注 ({len(should_fix)}项):")
-                for i, item in enumerate(should_fix, 1):
-                    msg = item.get("message", "")
-                    sug = item.get("suggestion", "")
-                    print(f"  {i}. {msg}")
-                    if sug: print(f"     → {sug}")
+        # print task card
+        _pre_print_task_card(chapter_no, chapter_type, app, ch_plan, prev_ending, jury, prev_ch)
+        # print story contract
+        _pre_print_story_contract(story_health_result, char_arcs, open_promises, contract_goal, cur, nid, chapter_no)
 
-            # ── 质量指标摘要 ──
-            print(f"  📊 质量指标:")
-            agents = jury.get("agents", {})
-            q_metrics = []
-            if isinstance(agents, list):
-                for ag in agents:
-                    if isinstance(ag, dict):
-                        score = ag.get("score")
-                        ag_name = ag.get("agent", "")
-                        if score is not None and isinstance(score, (int, float)):
-                            icon = "✅" if score >= 70 else ("⚠️" if score >= 50 else "❌")
-                            short = ag_name.replace("_agent", "").replace("_guard", "").replace("_", " ")
-                            q_metrics.append(f"{icon} {short}={score}")
-            elif isinstance(agents, dict):
-                for ag_name, ag_data in agents.items():
-                    if isinstance(ag_data, dict):
-                        score = ag_data.get("score", ag_data.get("overall_score"))
-                        if score is not None and isinstance(score, (int, float)):
-                            icon = "✅" if score >= 70 else ("⚠️" if score >= 50 else "❌")
-                            short = ag_name.replace("_agent", "").replace("_guard", "").replace("_", " ")
-                            q_metrics.append(f"{icon} {short}={score}")
-            if q_metrics:
-                print(f"  {' | '.join(q_metrics)}")
+        # print constraints
+        _pre_print_constraints(genre, genre_preset)
+        # print prev texture
+        _pre_print_prev_texture(prev_texture)
 
-            if not must_fix and not should_fix:
-                print(f"  ✅ 无问题，上章质量良好")
-        elif prev_ch >= 1:
-            print(f"  [WARN] 第{prev_ch}章无审稿意见 — 建议先运行 post/review")
-        # ── 故事合同区块 ──
-        if story_health_result:
-            h = story_health_result
-            status_icon = {"OK": "✅", "WARN": "⚠️", "FAIL": "❌"}.get(h["status"], "❓")
-            print(f"  ─── 故事合同 ───")
-            print(f"  {status_icon} 健康: {h['status']} | 合同: {h['contract_count']} | 提交: {h['commit_count']} | 事件: {h['event_count']}")
-            if h.get("empty_hints"):
-                for hint in h["empty_hints"][:1]:
-                    print(f"  ℹ️ {hint}")
-            if h.get("warnings"):
-                for w in h["warnings"][:2]:
-                    print(f"  ⚠️ {w[:100]}")
-            if h.get("failures"):
-                for f in h["failures"][:2]:
-                    print(f"  ❌ {f[:100]}")
-            if char_arcs:
-                active_arcs = [c for c in char_arcs if c.get("active", True)]
-                if active_arcs:
-                    print(f"  角色弧线:")
-                    for c in active_arcs[:5]:
-                        name = c.get("name", "?")
-                        arc = c.get("arc", "")
-                        last_ch = c.get("last_chapter", "")
-                        last_st = c.get("last_state", "")
-                        parts = []
-                        if last_ch: parts.append(f"第{last_ch}章")
-                        if last_st: parts.append(last_st)
-                        if arc: parts.append(f"弧线:{arc}")
-                        print(f"    {name}: {' | '.join(parts)}" if parts else f"    {name}")
-            if open_promises:
-                print(f"  待兑现伏笔: {len(open_promises)}个")
-                for p in open_promises[:3]:
-                    txt = p.get("promise", "")[:80]
-                    ch = p.get("chapter", "?")
-                    print(f"    ① {txt} (第{ch}章)")
-            if contract_goal:
-                print(f"  场景目标: {contract_goal[:120]}")
+        # print mental triggers
+        _pre_print_mental_triggers(app, prev_ch)
 
-            # ── 3.2 偏离检测 ──
-            sd = _resolve_story_for_deviation()
-            dev = _calc_story_deviation(cur, nid, chapter_no, sd)
-            if dev["score"] >= 30:
-                icon = "🔴" if dev["score"] >= 60 else "⚠️"
-                print(f"  {icon} 故事偏离度: {dev['score']}/100")
-                for d in dev["details"][:3]:
-                    print(f"     → {d}")
+        # print characters onstage
+        _pre_print_characters_onstage(chars, char_cards, mental_states, cur, nid, chapter_no)
 
-        # ── 写作约束区块 ──
-        if genre_preset:
-            print(f"  ─── 写作约束 [{genre}] ───")
-            _constraints = []
-            for key, label in [("water_density_min", "注水阈值"), ("conflict_pressure_min", "冲突压力"),
-                               ("life_texture_min", "生活质感"), ("cliche_sentence_max", "陈词上限"),
-                               ("emotion_summary_max", "情感总结上限"), ("goal_progress_min", "目标推进")]:
-                val = genre_preset.get(key)
-                if val is not None:
-                    _constraints.append(f"{label}={val}")
-            if _constraints:
-                print(f"  质量阈值: {' | '.join(_constraints)}")
-            _pacing = genre_preset.get("pacing", {})
-            _focus = _pacing.get("focus_deltas", [])
-            if _focus:
-                _labels = {"conflict_delta":"冲突", "power_delta":"实力", "cost_delta":"代价",
-                           "event_delta":"事件", "hook_delta":"钩子", "decision_delta":"抉择",
-                           "relationship_delta":"关系", "clue_delta":"线索"}
-                _foci = [_labels.get(d, d) for d in _focus]
-                print(f"  节奏侧重: {' → '.join(_foci)}")
-        # ── 上章纹理报告（独立于 genre_preset）──
-        if prev_texture:
-            _ts = prev_texture.get("status", "?")
-            _sc = prev_texture.get("scores", {})
-            _avg = sum(_sc.values()) / len(_sc) if _sc else 0
-            _icon = {"OK":"✅", "WARNING":"⚠️", "FAIL":"❌"}.get(_ts, "❓")
-            print(f"  ─── 上章纹理 ───")
-            print(f"  状态: {_icon} {_ts}, 平均分={_avg:.0f}/100")
-            _low = [(gn, gs) for gn, gs in sorted(_sc.items()) if gs < 70]
-            if _low:
-                for gn, gs in _low[:3]:
-                    _short = gn.replace("_guard","").replace("_"," ")
-                    print(f"    ⚠️ {_short:25s} {gs}/100")
+        # character relations
+        _pre_character_relations(PROJECT_ROOT, chars, chapter_no)
 
-            # ── 4.2 质量趋势 ──
-            _trend = prev_texture.get("trend", {})
-            _deltas = _trend.get("deltas", {})
-            if _deltas:
-                _changed = {k: v for k, v in _deltas.items() if abs(v) > 3}
-                if _changed:
-                    print(f"  \u2500\u2500\u2500 \u8d28\u91cf\u8d8b\u52bf \u2500\u2500\u2500")
-                    for _gname, _delta in sorted(_changed.items(), key=lambda x: -abs(x[1])):
-                        _short = _gname.replace("_guard", "").replace("_", " ")
-                        _arrow = "\u2191" if _delta > 0 else "\u2193"
-                        _label = "stable" if abs(_delta) <= 3 else f"{_arrow} {_delta:+d}"
-                        print(f"  {_short:20s} {_label}")
-
-        # ── 上章精神状态触发词（仅当 slot 配置 mental_triggers.json 时 post 会写入）──
-        if prev_ch >= 1:
-            prev_state_path = app.state_dir / f"chapter_{prev_ch:03d}_state.json"
-            if prev_state_path.exists():
-                try:
-                    _ps = json.loads(prev_state_path.read_text(encoding="utf-8"))
-                    _trig_hits = _ps.get("mental_trigger_hits", 0)
-                    _trig_detail = _ps.get("mental_trigger_detail", {})
-                    if _trig_hits >= 2:
-                        if _trig_hits >= 4:
-                            print(f"  \U0001f534 上章精神触发词出现{_trig_hits}次: {_trig_detail}")
-                            print(f"     \u2192 \u5efa\u8bae\u672c\u7ae0\u5199\u4e00\u6bb5\u89e3\u538b/\u89e3\u79bb\u620f")
-                        else:
-                            print(f"  \u26a0\ufe0f 上章精神触发词出现{_trig_hits}次: {_trig_detail}")
-                except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
-                    log_optional_failure("pre: read prev state", exc)
-
-        if char_cards or chars:
-            print(f"  \u2500\u2500\u2500 \u51fa\u573a\u89d2\u8272 \u2500\u2500\u2500")
-            for c in chars[:5]:
-                name = c['name']
-                card = char_cards.get(name, {})
-                voice = card.get("voice", {})
-                personality = card.get("personality", {})
-                behavior = card.get("behavior", {})
-                mental = mental_states.get(name, {})
-
-                parts = []
-                # Personality core
-                core = personality.get("core", "")
-                if core:
-                    core_clean = core.replace("\uff08", "(").replace("\uff09", ")")
-                    parts.append(core_clean)
-
-                # Dialect (first clause only)
-                dialect = voice.get("dialect", "")
-                if dialect:
-                    dialect_short = dialect.split("\uff0c")[0].split(",")[0].strip()
-                    if len(dialect_short) > 10:
-                        dialect_short = dialect_short[:10]
-                    parts.append(dialect_short)
-
-                # Signature item from habits (heuristic: 用X量/记/写/带/拿/握/挂/绑)
-                habits = behavior.get("habits", [])
-                if isinstance(habits, list) and habits:
-                    for h in habits:
-                        obj_match = re.search(r'\u7528([\u4e00-\u9fff]{2,4})(?:\u91cf|\u8bb0|\u5199|\u5e26|\u62ff|\u63e1|\u6302|\u7ed1|\u7f20|\u6234|\u88c5|\u653e|\u63a8|\u62c9|\u5256|\u780d|\u5288|\u70b9|\u6572)', h)
-                        if obj_match:
-                            parts.append(obj_match.group(1))
-                            break
-
-                # Mental state severity if non-zero
-                if mental:
-                    active = [(k, v.get("severity", 0)) for k, v in mental.items()
-                              if isinstance(v, dict) and v.get("severity", 0) > 0]
-                    if active:
-                        ms_label = ",".join(f"{k}({v})" for k, v in sorted(active, key=lambda x: -x[1])[:2])
-                        parts.append(ms_label)
-
-                if parts:
-                    print(f"  {name:6s} | {' | '.join(parts)}")
-            if not chars:
-                print(f"  (无角色数据)")
-
-            # ── 连续缺场角色提醒 ──
-            absent_warnings = []
-            for c in chars:
-                cname = c['name']
-                # Check last 10 chapters for consecutive absence
-                recent_chs = cur.execute(
-                    "SELECT c.chapter_no, cs.characters_involved FROM chapter_summaries cs "
-                    "JOIN chapters c ON c.id=cs.chapter_id "
-                    "WHERE c.novel_id=? AND c.chapter_no < ? "
-                    "ORDER BY c.chapter_no DESC LIMIT 10",
-                    (nid, chapter_no)).fetchall()
-                consecutive_missing = 0
-                for ch_row in recent_chs:
-                    involved = ch_row['characters_involved'] or ""
-                    if cname not in involved:
-                        consecutive_missing += 1
-                    else:
-                        break
-                if consecutive_missing >= 3:
-                    absent_warnings.append(f"\u26a0\ufe0f {cname}\u5df2\u8fde\u7eed{consecutive_missing}\u7ae0\u672a\u51fa\u573a")
-            if absent_warnings:
-                for w in absent_warnings[:3]:
-                    print(f"  {w}")
-
-        # ── 角色关系网络 ──
-        try:
-            from src.guards.human_texture.voice_diversity_guard import list_relations
-            rels = list_relations(PROJECT_ROOT)
-            if rels:
-                char_rels = {}
-                for r in rels:
-                    a, b, t = r["char_a"], r["char_b"], r["type"]
-                    char_rels.setdefault(a, {}).setdefault(t, []).append(b)
-                    char_rels.setdefault(b, {}).setdefault(t, []).append(a)
-                our_names = {c['name'] for c in chars}
-                relevant = {k: v for k, v in char_rels.items() if k in our_names}
-                if relevant:
-                    print(f"  ─── 角色关系 ───")
-                    for cname in sorted(relevant.keys()):
-                        for rtype, others in relevant[cname].items():
-                            others_str = "、".join(others)
-                            print(f"  {cname} ←{rtype}→ {others_str}")
-            elif chars and chapter_no <= 3:
-                # v0.8.0: 首次写作时自动从大纲提取角色关系
-                try:
-                    from src.outline.outline_manager import OutlineManager
-                    _om = OutlineManager(PROJECT_ROOT)
-                    _outline = _om.current_outline()
-                    if _outline:
-                        _total_extracted = _om._auto_extract_relations(_outline.get("content", ""))
-                        if _total_extracted:
-                            # Re-display after extraction
-                            _rels = list_relations(PROJECT_ROOT)
-                            if _rels:
-                                char_rels2 = {}
-                                for r in _rels:
-                                    a, b, t = r["char_a"], r["char_b"], r["type"]
-                                    char_rels2.setdefault(a, {}).setdefault(t, []).append(b)
-                                    char_rels2.setdefault(b, {}).setdefault(t, []).append(a)
-                                _relevant2 = {k: v for k, v in char_rels2.items() if k in our_names}
-                                if _relevant2:
-                                    print(f"  ─── 角色关系 ───")
-                                    for cname in sorted(_relevant2.keys()):
-                                        for rtype, others in _relevant2[cname].items():
-                                            others_str = "、".join(others)
-                                            print(f"  {cname} ←{rtype}→ {others_str}")
-                except (ImportError, AttributeError, KeyError, TypeError) as exc:
-                    log_optional_failure("pre: auto-extract relations", exc)
-        except (ImportError, AttributeError, KeyError, TypeError) as exc:
-            log_optional_failure("pre: character relations skipped", exc)
-
-        # ── 2.3 审稿建议 → writing_rules 自动固化 ──
-        if jury and jury.get("chief_editor"):
-            all_items = jury["chief_editor"].get("must_fix", []) + jury["chief_editor"].get("should_fix", [])
-            auto_rules = _extract_learnable_rules(all_items, prev_ch)
-            if auto_rules:
-                _saved = _auto_write_rules(cur, nid, auto_rules, prev_ch)
-                if _saved > 0:
-                    print(f"  [LEARN] 自动写入{_saved}条写作规则")
+        # autofix rules
+        _pre_autofix_rules(cur, nid, jury, prev_ch)
 
         print(f"{'='*60}")
 

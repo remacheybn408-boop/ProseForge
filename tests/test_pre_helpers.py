@@ -6,7 +6,11 @@ run_pre 拆出的可独立测试小函数的针对性单测。随增量抽取逐
 import sqlite3
 import types
 
-from src.pipeline.pre import _pre_load_genre, _pre_write_context_pack
+from src.pipeline.pre import (
+    _pre_load_genre,
+    _pre_write_context_pack,
+    _pre_print_constraints,
+)
 
 
 def _novels_cur(genre_value):
@@ -71,3 +75,21 @@ def test_pre_write_context_pack_no_skeleton_when_ch_plan_none(tmp_path):
     text = pack_path.read_text(encoding="utf-8")
     assert "写作上下文包-第1章" in text
     assert "标题骨架" not in text        # ch_plan 为空 → 无骨架段
+
+
+def test_pre_print_constraints_maps_thresholds_and_pacing(capsys):
+    preset = {
+        "water_density_min": 60,
+        "conflict_pressure_min": 55,
+        "pacing": {"focus_deltas": ["conflict_delta", "hook_delta"]},
+    }
+    _pre_print_constraints("xianxia", preset)
+    out = capsys.readouterr().out
+    assert "写作约束 [xianxia]" in out
+    assert "注水阈值=60" in out and "冲突压力=55" in out
+    assert "冲突 → 钩子" in out          # focus_deltas 标签映射
+
+
+def test_pre_print_constraints_empty_preset_prints_nothing(capsys):
+    _pre_print_constraints("xianxia", {})
+    assert capsys.readouterr().out == ""   # 空 preset → 整块跳过
