@@ -264,6 +264,9 @@ def ingest(chapter_no, chapter_type="normal", app_inst=None):
             log_optional_failure("ingest: 世界设定提及统计", _e)
 
         # --- chapter_run_report.json (Agent Guard 自检用) ---
+        project_root = app.project_root
+        reports_root = app.exports_root / "reports"
+        evidence_root = app.exports_root / "evidence"
         run_report = {
             "chapter_no": chapter_no,
             "title": title,
@@ -272,23 +275,23 @@ def ingest(chapter_no, chapter_type="normal", app_inst=None):
             "fts_sync_ok": not fts_sync_errors,
             "fts_sync_errors": fts_sync_errors,
             # ── Report paths (actual guard results live in these files) ──
-            "continuity_evidence_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_continuity_evidence_report.json"),
-            "hallucination_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_hallucination_report.json"),
-            "canon_evidence_map_path": str(app.exports_root / "evidence" / f"chapter_{chapter_no:03d}_canon_evidence_map.json"),
-            "scene_delta_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_scene_delta_report.json"),
-            "padding_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_padding_report.json"),
-            "character_voice_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_character_voice_report.json"),
-            "classical_register_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_classical_register_report.json"),
-            "show_dont_tell_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_show_dont_tell_report.json"),
-            "dialogue_beat_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_dialogue_beat_report.json"),
-            "qgp_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_perplexity_quality_report.json"),
-            "editor_revision_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_editor_revision_report.json"),
-            "concrete_anchor_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_concrete_anchor_report.json"),
-            "scene_causality_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_scene_causality_report.json"),
-            "dialogue_structure_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_dialogue_structure_report.json"),
-            "style_variation_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_style_variation_report.json"),
-            "compliance_selfcheck_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_compliance_selfcheck_report.json"),
-            "final_submission_report_path": str(app.exports_root / "reports" / f"chapter_{chapter_no:03d}_final_submission_report.json"),
+            "continuity_evidence_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_continuity_evidence_report.json", project_root),
+            "hallucination_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_hallucination_report.json", project_root),
+            "canon_evidence_map_path": os.path.relpath(evidence_root / f"chapter_{chapter_no:03d}_canon_evidence_map.json", project_root),
+            "scene_delta_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_scene_delta_report.json", project_root),
+            "padding_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_padding_report.json", project_root),
+            "character_voice_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_character_voice_report.json", project_root),
+            "classical_register_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_classical_register_report.json", project_root),
+            "show_dont_tell_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_show_dont_tell_report.json", project_root),
+            "dialogue_beat_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_dialogue_beat_report.json", project_root),
+            "qgp_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_perplexity_quality_report.json", project_root),
+            "editor_revision_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_editor_revision_report.json", project_root),
+            "concrete_anchor_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_concrete_anchor_report.json", project_root),
+            "scene_causality_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_scene_causality_report.json", project_root),
+            "dialogue_structure_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_dialogue_structure_report.json", project_root),
+            "style_variation_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_style_variation_report.json", project_root),
+            "compliance_selfcheck_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_compliance_selfcheck_report.json", project_root),
+            "final_submission_report_path": os.path.relpath(reports_root / f"chapter_{chapter_no:03d}_final_submission_report.json", project_root),
         }
         reports_dir = app.exports_root / "run_reports"
         reports_dir.mkdir(parents=True, exist_ok=True)

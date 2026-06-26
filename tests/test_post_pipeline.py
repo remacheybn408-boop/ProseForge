@@ -9,6 +9,7 @@ project_root/reports/。这里用 project_root=tmp_path 构造 App，避免污�
 其余报告走 app.exports_root（夹具已指向 tmp）。
 """
 import json
+import os
 import sqlite3
 
 import pytest
@@ -69,6 +70,34 @@ class TestRunPostCharacterization:
         assert (ex / "reports" / "chapter_001_orchestrator_report.json").exists()
         assert (ex / "reports" / "chapter_001_texture_report.json").exists()
         assert (ex / "reports" / "chapter_001_deduplicated_report.json").exists()
+        run_report_path = ex / "run_reports" / "chapter_001_run_report.json"
+        assert run_report_path.exists()
+
+        run_report = json.loads(run_report_path.read_text(encoding="utf-8"))
+        expected_paths = {
+            "continuity_evidence_report_path": ex / "reports" / "chapter_001_continuity_evidence_report.json",
+            "hallucination_report_path": ex / "reports" / "chapter_001_hallucination_report.json",
+            "canon_evidence_map_path": ex / "evidence" / "chapter_001_canon_evidence_map.json",
+            "scene_delta_report_path": ex / "reports" / "chapter_001_scene_delta_report.json",
+            "padding_report_path": ex / "reports" / "chapter_001_padding_report.json",
+            "character_voice_report_path": ex / "reports" / "chapter_001_character_voice_report.json",
+            "classical_register_report_path": ex / "reports" / "chapter_001_classical_register_report.json",
+            "show_dont_tell_report_path": ex / "reports" / "chapter_001_show_dont_tell_report.json",
+            "dialogue_beat_report_path": ex / "reports" / "chapter_001_dialogue_beat_report.json",
+            "qgp_report_path": ex / "reports" / "chapter_001_perplexity_quality_report.json",
+            "editor_revision_report_path": ex / "reports" / "chapter_001_editor_revision_report.json",
+            "concrete_anchor_report_path": ex / "reports" / "chapter_001_concrete_anchor_report.json",
+            "scene_causality_report_path": ex / "reports" / "chapter_001_scene_causality_report.json",
+            "dialogue_structure_report_path": ex / "reports" / "chapter_001_dialogue_structure_report.json",
+            "style_variation_report_path": ex / "reports" / "chapter_001_style_variation_report.json",
+            "compliance_selfcheck_report_path": ex / "reports" / "chapter_001_compliance_selfcheck_report.json",
+            "final_submission_report_path": ex / "reports" / "chapter_001_final_submission_report.json",
+        }
+        for field, target in expected_paths.items():
+            relpath = run_report[field]
+            assert not os.path.isabs(relpath)
+            assert relpath == os.path.relpath(target, app.project_root)
+            assert (app.project_root / relpath).resolve() == target.resolve()
 
         # 6) agent-review 写到 tmp/reports（验证 project_root 隔离生效）
         agent_review = tmp / "reports" / "agent_reviews" / "chapter_001_agent_review.json"
