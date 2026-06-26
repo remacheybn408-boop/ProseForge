@@ -41,9 +41,29 @@ def test_empty_inputs_do_not_crash():
     assert _count_character_appearances("正文", [""]) == {"": 0}
 
 
-def test_mode_b_single_char_collision_is_known_limitation():
-    # 文档化已知局限：单字名仍会撞普通词（确定性方案无法廉价覆盖）。
-    # 「李」会命中「行李」「桃李」——此断言锁定当前行为，提醒后人 Mode B 未解。
+def test_mode_b_single_char_collision_excluded():
+    # Mode B 边界启发式：单字名撞普通词（行李/桃李）被排除，不再误计为出场。
     content = "他提起行李，桃李满天下"
     counts = _count_character_appearances(content, ["李"])
-    assert counts["李"] == 2   # 误计（行李 + 桃李），非真实出场 —— 已知局限
+    assert counts["李"] == 0   # 行李 + 桃李 均为撞词，非真实出场
+
+
+def test_mode_b_real_single_char_mentions_counted():
+    # 单字名真实出场（右侧人物动词）被正确计数。
+    content = "「在吗？」李问道。李点头离开。"
+    assert _count_character_appearances(content, ["李"])["李"] == 2
+
+
+def test_mode_b_single_char_object_after_function_word():
+    # 左侧虚词（把）锚定的宾语位单字名被计数。
+    assert _count_character_appearances("我把李叫来。", ["李"])["李"] == 1
+
+
+def test_mode_b_single_char_punctuation_boundary():
+    assert _count_character_appearances("，李。", ["李"])["李"] == 1
+
+
+def test_mode_b_mixed_collision_and_real_mention():
+    # 行李 排除、李说 计入 → 净计 1。
+    content = "行李很重，李说他来拿。"
+    assert _count_character_appearances(content, ["李"])["李"] == 1

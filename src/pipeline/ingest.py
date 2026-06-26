@@ -39,17 +39,43 @@ def _resolve_chapter_title(filename, content):
     return content_m.group(1).strip() if content_m else file_title
 
 
+# ── 单字名出场判定的语境字集合（CODE_REVIEW #19 Mode B 启发式，可调）──
+_NAME_BOUNDARY = set(
+    "，。！？、；：…—·　 \t\r\n"
+    "“”‘’\"'「」『』（）《》〈〉【】"
+    ",./!?;:()[]{}<>"
+)
+# 紧贴人物主语的高信号虚词/助词/连词/介词（左或右）
+_NAME_FUNCTION = set("的了着过也又却就便是在不没都还已能会可呢吧啊吗"
+                     "和与跟对把被让向比替给朝同及")
+# 人物动作谓语（动宾如「打李」中作左邻）+ 称呼前缀（老/小李）
+_NAME_VERB = set("说道想问答笑看走点伸皱叹喊叫哭喝望听站坐拿抬转摇瞪盯抱推拉踢打骂夸劝")
+_NAME_PREFIX = set("老小大阿")
+_NAME_CONTEXT = _NAME_BOUNDARY | _NAME_FUNCTION | _NAME_VERB | _NAME_PREFIX
+
+
+def _is_single_char_mention(content, idx):
+    """单字名出场判定（Mode B 启发式）：occurrence 的**左邻**为边界/虚词/称呼前缀，或位于串首，
+    才算真实人物指称；左邻为实义字（行『李』的『行』、桃『李』的『桃』）则视为词尾撞词排除。
+    左锚定优于双侧——词尾单字也常紧跟标点（行李，），仅看右侧会误纳。
+    可调，不保证 100% 准确（确定性方案的固有上限）。"""
+    if idx == 0:
+        return True
+    return content[idx - 1] in _NAME_CONTEXT
+
+
 def _count_character_appearances(content, names):
     """统计每个角色名的出场次数，longest-first + span 掩码消除『名字套名字』误计（CODE_REVIEW #19）。
 
-    长名优先占用字符 span；短名只计入未被更长角色名占用的位置。
-    对互不为子串的常规名集，结果与 str.count 完全一致（零回归）。
-    Mode B（单字/常用字撞普通词，如 `李`↔`行李`）仍是已知局限——确定性方案无法廉价覆盖。
+    长名优先占用字符 span；短名只计入未被更长角色名占用的位置（Mode A）。
+    单字名额外过一道 `_is_single_char_mention` 边界门控，消除撞普通词的误计（Mode B，
+    如 `李`↔`行李`）；多字名分支不变，对互不为子串的常规名集结果与 str.count 一致（零回归）。
     返回 {name: count}。
     """
     counts = {n: 0 for n in names}
     consumed = [False] * len(content)
     for name in sorted((n for n in names if n), key=len, reverse=True):
+        single = len(name) == 1
         start = 0
         while True:
             idx = content.find(name, start)
@@ -57,6 +83,9 @@ def _count_character_appearances(content, names):
                 break
             end = idx + len(name)
             if not any(consumed[idx:end]):
+                if single and not _is_single_char_mention(content, idx):
+                    start = idx + 1        # 撞普通词，不计不占 span
+                    continue
                 counts[name] += 1
                 for i in range(idx, end):
                     consumed[i] = True
