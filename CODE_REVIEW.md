@@ -182,6 +182,7 @@ except Exception:
 | **Low #15** 弃用/初始化键 | **✅ 已修复** | 删除未用的 `create_slot_auto`/`get_next_slot_id`；`is_initialized` 不再依赖 `version` 键。 |
 | **Low #17** 标题正则 | **真实但被缓解** | `ingest.py:61` 下划线正则多半 None，但 `:68` 有正文 `# 第N章 标题` 兜底，标题未必退化到 stem。 |
 | **Low #18** 两条删除路径 | **✅ 已修复** | `delete_slot` 默认改走回收站（`delete_slot_safe`），仅 `force=True` 永久硬删；统一入口、消除误删风险。 |
-| **#16 / #19** | **接受报告结论** | 与所读代码一致，低优，未逐字节复验。 |
+| **Low #16** 动态 SQL | **✅ 已修复（加固）** | `fts_health.py` 加 `_safe_ident` 标识符护栏，在 `find_fts5_tables` + `safe_fts_search` 所有 f-string 插值点校验表名/列名；`voice_diversity_guard.py` 注明 `col` 由 `col_map` 白名单保证。无注入风险的隐含假设变显式断言。 |
+| **Low #19** 子串误计 | **接受（维持现状）** | `content.count(name)` 中文无词边界，真正修复需分词、成本高易回归；维持现状（短名/常见字可能误计为已知局限）。 |
 
 **净结论**：除 P0 已失效外，其余 High/Medium/Low 均在现行代码中成立。本轮不改代码，留待后续按报告「建议处理顺序」分批修复。

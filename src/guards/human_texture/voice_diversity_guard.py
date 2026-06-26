@@ -409,6 +409,8 @@ def save_char_db_field(project_root: Path, name: str, field: str, value: str) ->
 
     try:
         with closing(connect_sqlite(db_path)) as conn:
+            # {col} 来自 col_map 严格白名单（上方未命中即返回 False），是固定列名而非外部输入，
+            # 比正则校验更强——故此处 f-string 拼列名安全；值仍走占位符。
             conn.execute(f"UPDATE characters SET {col}=? WHERE name=?", (value, name))
             conn.commit()
         return True

@@ -3,11 +3,28 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from pathlib import Path
 
 from src.utils.config_utils import find_project_root, resolve_path
 from src.db._conn import connect_sqlite
+
+
+_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _safe_ident(identifier: str) -> str:
+    """校验 SQL 标识符（表名/列名，列名可逗号分隔）只含 [A-Za-z0-9_]。
+
+    本模块用 f-string 拼表名/列名（FTS5 的 MATCH 语法无法对标识符用占位符）。
+    当前调用方均来自 sqlite_master 枚举或内部白名单，无注入风险——此护栏把
+    "输入可信"的隐含假设变成显式断言，防止将来接入外部输入时被滥用。
+    """
+    for part in identifier.split(","):
+        if not _IDENT_RE.match(part.strip()):
+            raise ValueError(f"unsafe SQL identifier: {identifier!r}")
+    return identifier
 
 
 def _get_db_path(config: dict | None = None) -> Path:
@@ -20,7 +37,8 @@ def _get_db_path(config: dict | None = None) -> Path:
 def find_fts5_tables(conn: sqlite3.Connection) -> list[str]:
     cur = conn.cursor()
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND sql LIKE '%USING fts5%'")
-    return [row[0] for row in cur.fetchall()]
+    # 表名来自 sqlite_master，仍过一遍 _safe_ident 把可信假设变显式护栏（覆盖下游所有 {table} 插值）。
+    return [_safe_ident(row[0]) for row in cur.fetchall()]
 
 
 def check_fts_health(config: dict | None = None) -> dict:
@@ -155,6 +173,10 @@ def safe_fts_search(
     if not db_path.exists():
         return {"ok": False, "error": "DB not found", "results": [], "method": "db_missing"}
 
+    # table/columns 是函数参数（内部调用方传入白名单值）——拼接前显式校验。
+    _safe_ident(table)
+    _safe_ident(columns)
+
     conn = connect_sqlite(db_path)
     try:
         cur = conn.cursor()
@@ -182,14 +204,14 @@ def safe_fts_search(
     finally:
         conn.close()
 
-    content_table = {
+    content_table = _safe_ident({
         "novel_chapter_fts": "chapters",
         "novel_chunk_fts": "chapter_chunks",
         "novel_character_fts": "characters",
         "novel_world_fts": "worldbuilding",
         "novel_plot_fts": "plot_threads",
         "memory_fts": "memories",
-    }.get(table, table)
+    }.get(table, table))
 
     try:
         conn = connect_sqlite(db_path)

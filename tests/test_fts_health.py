@@ -2,7 +2,29 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.utils.fts_health import check_fts_health, ensure_fts_healthy
+import pytest
+
+from src.utils.fts_health import check_fts_health, ensure_fts_healthy, _safe_ident
+
+
+# ── CODE_REVIEW #16: 动态 SQL 标识符护栏 ──
+def test_safe_ident_accepts_valid_table_and_column_names():
+    assert _safe_ident("novel_chapter_fts") == "novel_chapter_fts"
+    assert _safe_ident("content") == "content"
+    assert _safe_ident("content, title") == "content, title"   # 逗号分隔列
+
+
+@pytest.mark.parametrize("bad", [
+    "x; DROP TABLE chapters",
+    "a b",
+    "tbl)",
+    "1table",
+    "",
+    "content,",
+])
+def test_safe_ident_rejects_injection_like(bad):
+    with pytest.raises(ValueError):
+        _safe_ident(bad)
 
 
 def test_check_fts_health_reports_healthy_state(tmp_db: Path):
