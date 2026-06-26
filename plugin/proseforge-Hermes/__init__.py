@@ -18,8 +18,7 @@ import functools
 logger = logging.getLogger(__name__)
 
 # ── 项目路径 ──────────────────────────────────────────────────────────
-PROSEFORGE_DIR = Path(r"D:\Project\ProseForge")
-PROSEFORGE_VENV_PYTHON = PROSEFORGE_DIR / ".venv" / "Scripts" / "python.exe"
+PROSEFORGE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _ensure_import() -> None:
