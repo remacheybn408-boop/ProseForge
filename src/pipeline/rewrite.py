@@ -55,9 +55,20 @@ def _revised_path(chapter_file: Path, chapter_no: int) -> Path:
     return chapter_file.parent / f"chapter_{chapter_no:03d}_revised.txt"
 
 
+def _merged_guidance(tasks) -> tuple:
+    """合并所有任务的 must_keep/avoid（各任务现在可能不同类），去重保序。"""
+    keep, avoid = [], []
+    for t in tasks:
+        keep.extend(t.get("must_keep", []))
+        avoid.extend(t.get("avoid", []))
+    return list(dict.fromkeys(keep)), list(dict.fromkeys(avoid))
+
+
 def _build_rewrite_card(chapter_no, chapter_text, tasks, chapter_file, revised_path) -> str:
-    """把任务 + 待改段落原文拼成 markdown 改写卡，供 Agent 改写。"""
-    paras = split_paragraphs(chapter_text)
+    """把任务拼成 markdown 改写卡，供 Agent 改写。
+
+    这些都是**章节级**风格问题，不再伪造段落定位——卡按类别呈现，正文 Agent 已持有全文。
+    """
     lines = [
         f"# 第{chapter_no}章 改写卡",
         "",
@@ -68,32 +79,27 @@ def _build_rewrite_card(chapter_no, chapter_text, tasks, chapter_file, revised_p
         "## 总则（每个任务都适用）",
         "",
     ]
-    if tasks:
-        for keep in tasks[0]["must_keep"]:
-            lines.append(f"- 必须保留: {keep}")
-        for avoid in tasks[0]["avoid"]:
-            lines.append(f"- 禁止: {avoid}")
+    keep, avoid = _merged_guidance(tasks)
+    for k in keep:
+        lines.append(f"- 必须保留: {k}")
+    for a in avoid:
+        lines.append(f"- 禁止: {a}")
     lines.append("")
-    lines.append("## 改写要求：只改下列段落，其余原样保留")
+    lines.append("## 改写要求：全文已在你手上，只修下列类别问题，其余原样保留")
     lines.append("")
 
     for task in tasks:
-        rng = task.get("target_range", {})
-        start = rng.get("paragraph_start", 1)
-        end = rng.get("paragraph_end", start)
         lines.extend([
             f"### {task['task_id']}（{task['type']}，置信度 {task['confidence']}）",
             "",
             f"- 问题: {task.get('problem', '')}",
             f"- 指令: {task.get('instruction', '')}",
-            f"- 段落范围: {start}–{end}",
-            "",
-            "原文段落:",
-            "",
         ])
-        for i in range(start, end + 1):
-            if 1 <= i <= len(paras):
-                lines.append(f"> [{i}] {paras[i - 1]}")
+        evidence = task.get("evidence") or []
+        if evidence:
+            lines.append("- 例句（来自门禁证据）:")
+            for ev in evidence[:3]:
+                lines.append(f"  > {ev}")
         lines.append("")
 
     lines.extend([

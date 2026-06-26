@@ -63,5 +63,32 @@ def test_max_tasks_limited():
     assert tasks["task_count"] <= 3
 
 
+def test_dedup_label_maps_to_category_and_type():
+    # merged_issue 用 ISSUE_CATEGORIES 的确切 label → 命中类别映射
+    report = {"merged_issues": [
+        {"merged_issue": "场景缺少明确代价", "revision_task": "补代价", "confidence": 0.82},
+    ], "chapter_no": 1}
+    t = generate_tasks("正文。\n\n" * 5, report)["tasks"][0]
+    assert t["category"] == "MISSING_COST"
+    assert t["type"] == "ADD_SCENE_COST"
+
+
+def test_unknown_label_falls_back_to_keyword_inference():
+    # 非确切 label → 关键词兜底，category=UNCATEGORIZED
+    report = {"top_revision_tasks": [
+        {"issue": "对白口吻偏平，缺少角色个性", "fix": "x", "confidence": 0.8},
+    ]}
+    t = generate_tasks("正文", report)["tasks"][0]
+    assert t["category"] == "UNCATEGORIZED"
+    assert t["type"] == "IMPROVE_DIALOGUE"
+
+
+def test_no_target_range_field():
+    report = {"top_revision_tasks": [{"issue": "x", "fix": "y", "confidence": 0.9}]}
+    t = generate_tasks("正文", report)["tasks"][0]
+    assert "target_range" not in t            # 已丢弃假定位
+    assert t["must_keep"] and t["avoid"]
+
+
 if __name__ == "__main__":
     import pytest; pytest.main([__file__, "-v"])

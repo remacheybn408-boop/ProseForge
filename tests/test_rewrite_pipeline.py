@@ -98,7 +98,7 @@ def test_run_rewrite_produces_card_and_tasks(rw_env):
     card = card_path.read_text(encoding="utf-8")
     assert "必须保留" in card                      # must_keep 注入
     assert "禁止" in card                          # avoid 注入
-    assert "钥匙" in card or "阳光" in card          # 含原文段落
+    assert "称呼" in card or "代价" in card          # 含任务指令/问题文案（章节尺度，不再引原文段落）
 
     tasks_path = rw_env["reports_dir"] / "chapter_001_revision_tasks.json"
     assert tasks_path.exists()
