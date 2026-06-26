@@ -34,7 +34,7 @@ def main():
 
     # 项目根目录假定为脚本所在目录
     project_root = Path(__file__).resolve().parent
-    plugin_src = Path(args.plugin_src) if args.plugin_src else project_root / "hermes-plugin" / "hermes-forgen-engine"
+    plugin_src = Path(args.plugin_src) if args.plugin_src else project_root / "plugin" / "proseforge-Hermes"
 
     if not plugin_src.exists():
         print(f"[ERROR] 插件源码不存在: {plugin_src}")
@@ -43,7 +43,7 @@ def main():
     hermes_root = find_hermes_root()
     profile_dir = hermes_root / "profiles" / args.profile
     plugins_dir = profile_dir / "plugins"
-    target_dir = plugins_dir / "hermes-forgen-engine"
+    target_dir = plugins_dir / "proseforge-engine"
 
     if not profile_dir.exists():
         print(f"[ERROR] Hermes profile '{args.profile}' 不存在: {profile_dir}")
@@ -57,14 +57,17 @@ def main():
     if target_dir.exists():
         shutil.rmtree(target_dir)
     shutil.copytree(plugin_src, target_dir)
+    # 写入项目根路径标记，供 _find_proseforge_root() 读取
+    (target_dir / ".project_root").write_text(str(project_root.resolve()), encoding="utf-8")
     print(f"[OK] 插件已安装到: {target_dir}")
+    print(f"[OK] 已写入 .project_root: {project_root.resolve()}")
 
     # 确保 profile 配置加载该插件
     config_file = profile_dir / "config.yaml"
     if config_file.exists():
         ct = config_file.read_text(encoding="utf-8")
-        if "hermes-forgen-engine" not in ct:
-            ct = ct.replace("plugins:", f"plugins:\n  enabled:\n    - hermes-forgen-engine")
+        if "proseforge-engine" not in ct:
+            ct = ct.replace("plugins:", f"plugins:\n  enabled:\n    - proseforge-engine")
             config_file.write_text(ct, encoding="utf-8")
             print(f"[OK] 已在 config.yaml 中启用插件")
 

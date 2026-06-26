@@ -18,7 +18,32 @@ import functools
 logger = logging.getLogger(__name__)
 
 # ── 项目路径 ──────────────────────────────────────────────────────────
-PROSEFORGE_DIR = Path(__file__).resolve().parent.parent
+def _find_proseforge_root() -> Path:
+    """定位项目根目录。优先级:
+    1. PROSEFORGE_DIR 环境变量（install_plugin.py 可设）
+    2. 从当前文件向上找 src/runtime.py marker
+    3. 插件目录下的 .project_root 文件（install_plugin.py 写入）"""
+    # 1. 环境变量
+    env = os.environ.get("PROSEFORGE_DIR")
+    if env:
+        return Path(env).resolve()
+    # 2. 向上找 marker
+    cursor = Path(__file__).resolve().parent
+    for _ in range(15):
+        if (cursor / "src" / "runtime.py").exists():
+            return cursor
+        parent = cursor.parent
+        if parent == cursor:
+            break
+        cursor = parent
+    # 3. 插件同目录下的 .project_root 文件
+    dot = Path(__file__).resolve().parent / ".project_root"
+    if dot.exists():
+        return Path(dot.read_text(encoding="utf-8").strip()).resolve()
+    return cursor
+
+
+PROSEFORGE_DIR = _find_proseforge_root()
 
 
 def _ensure_import() -> None:
