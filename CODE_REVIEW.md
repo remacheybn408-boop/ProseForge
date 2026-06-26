@@ -183,9 +183,9 @@ except Exception:
 | **Low #17** 标题正则 | **✅ 已修复** | 抽出 `_resolve_chapter_title(filename, content)`，文件名分隔符 `[_\s]*` 可选（`第N章标题.txt` 也能解析，不再退化 stem）；正文 `# 第N章 标题` 优先级不变。加 6 个单测。 |
 | **Low #18** 两条删除路径 | **✅ 已修复** | `delete_slot` 默认改走回收站（`delete_slot_safe`），仅 `force=True` 永久硬删；统一入口、消除误删风险。 |
 | **Low #16** 动态 SQL | **✅ 已修复（加固）** | `fts_health.py` 加 `_safe_ident` 标识符护栏，在 `find_fts5_tables` + `safe_fts_search` 所有 f-string 插值点校验表名/列名；`voice_diversity_guard.py` 注明 `col` 由 `col_map` 白名单保证。无注入风险的隐含假设变显式断言。 |
-| **Low #19** 子串误计 | **接受（维持现状）** | `content.count(name)` 中文无词边界，真正修复需分词、成本高易回归；维持现状（短名/常见字可能误计为已知局限）。 |
+| **Low #19** 子串误计 | **✅ 部分修复** | 抽出 `_count_character_appearances`（longest-first + span 掩码），消除『名字套名字』误计（Mode A，如 `王明`↔`王明月`），确定性、对合法名集零回归；改 `ingest.py` 出场统计，加 6 个单测。**Mode B**（单字/常用字撞普通词，如 `李`↔`行李`）仍是已知局限——彻底修需引入分词依赖、违背零依赖/确定性内核且易回归，按议定不做。 |
 
 **净结论**：P0 已失效（提交前已修）。其余 High/Medium/Low 已全部分批修复并推 master——
-#2/#4/#5/#6/#7/#8/#9/#11–#18 + #3 + #10（run_pre/run_post 拆分）+ #16/#17 均 ✅。
-唯一保留项是 **Low #19**（`content.count` 中文子串误计）：真正修复需分词、成本高易回归，按"接受"维持现状。
-全套测试 328 passed / 1 skipped。
+#2/#4/#5/#6/#7/#8/#9/#11–#18 + #3 + #10（run_pre/run_post 拆分）+ #16/#17 + #19（Mode A）均 ✅。
+唯一保留的已知局限是 **Low #19 的 Mode B**（`content.count` 单字/常用字撞普通词）：彻底修需分词、成本高易回归，议定维持。
+全套测试 334 passed / 1 skipped。

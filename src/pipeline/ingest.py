@@ -39,6 +39,33 @@ def _resolve_chapter_title(filename, content):
     return content_m.group(1).strip() if content_m else file_title
 
 
+def _count_character_appearances(content, names):
+    """统计每个角色名的出场次数，longest-first + span 掩码消除『名字套名字』误计（CODE_REVIEW #19）。
+
+    长名优先占用字符 span；短名只计入未被更长角色名占用的位置。
+    对互不为子串的常规名集，结果与 str.count 完全一致（零回归）。
+    Mode B（单字/常用字撞普通词，如 `李`↔`行李`）仍是已知局限——确定性方案无法廉价覆盖。
+    返回 {name: count}。
+    """
+    counts = {n: 0 for n in names}
+    consumed = [False] * len(content)
+    for name in sorted((n for n in names if n), key=len, reverse=True):
+        start = 0
+        while True:
+            idx = content.find(name, start)
+            if idx < 0:
+                break
+            end = idx + len(name)
+            if not any(consumed[idx:end]):
+                counts[name] += 1
+                for i in range(idx, end):
+                    consumed[i] = True
+                start = end            # 非重叠推进，对齐 str.count 语义
+            else:
+                start = idx + 1        # 跳过被长名占用的命中，继续扫描
+    return counts
+
+
 def ingest(chapter_no, chapter_type="normal", app_inst=None):
     if app_inst is None:
         raise RuntimeError("ingest requires app_inst/context")
@@ -204,8 +231,9 @@ def ingest(chapter_no, chapter_type="normal", app_inst=None):
                 appears = []
                 missing = []
                 appeared_names = []
+                appearance_counts = _count_character_appearances(content, all_chars)
                 for n in all_chars:
-                    cnt = content.count(n)
+                    cnt = appearance_counts[n]
                     if cnt > 0:
                         appears.append(f"{n}({cnt}次)")
                         appeared_names.append(n)
