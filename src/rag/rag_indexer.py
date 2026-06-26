@@ -6,23 +6,11 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from .rag_config import get_db_path, load_rag_config
+from .rag_config import get_db_path, get_vector_config, load_rag_config
 from .vector_retriever import HAS_VECTOR_DEPS, VectorRetriever
 from src.db._conn import connect_sqlite
 
 WORLD_BUILDING_COLLECTION = "novel_worldbuilding"
-
-
-def _get_vector_config(config: dict) -> dict:
-    vec_cfg = config.get("rag", {}).get("vector", {})
-    return {
-        "persist_dir": vec_cfg.get("persist_dir", "./data/rag_vector_store"),
-        "collection_name": vec_cfg.get("collection_name", "novel_chunks"),
-        "embedding_model": vec_cfg.get(
-            "embedding_model",
-            "paraphrase-multilingual-MiniLM-L12-v2",
-        ),
-    }
 
 
 def _query_rows(db_path: str, sql: str) -> list[dict]:

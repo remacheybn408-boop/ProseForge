@@ -5,6 +5,8 @@
 """
 import re
 
+from ._config import load_genre_presets
+
 # 有效事件标记词
 EVENT_MARKERS = [
     "决定", "发现", "失去", "改变", "打破", "推开", "冲进", "转身走",
@@ -124,11 +126,8 @@ def _resolve_genre(genre: str) -> str:
 def _get_density_threshold(genre: str, word_count: int) -> tuple:
     """按题材返回密度阈值 (warn, fail)。支持复合题材如 xianxia+爽文。"""
     try:
-        from pathlib import Path
-        import yaml
-        fp = Path(__file__).resolve().parent.parent.parent.parent / "configs" / "human_texture" / "genre_presets.yaml"
-        if fp.exists():
-            presets = yaml.safe_load(fp.read_text(encoding="utf-8"))
+        presets = load_genre_presets()
+        if presets:
             genres = [g.strip() for g in _resolve_genre(genre).split("+") if g.strip()]
             if not genres:
                 genres = ["default"]

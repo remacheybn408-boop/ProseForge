@@ -13,6 +13,8 @@ import json
 from pathlib import Path
 from typing import Optional
 
+from ._config import load_genre_presets, resolve_human_texture_project_root
+
 # ── 过度检测词库 ──
 OVERPLAY_KEYWORDS = [
     "崩溃", "失控", "幻觉", "妄想", "癫狂", "精神错乱",
@@ -41,12 +43,9 @@ def _load_genre_preset(genre: str = "default") -> dict:
     优先读 character_psychology key，向后兼容 mental_state key.
     """
     try:
-        import yaml
-        project_root = Path(__file__).resolve().parents[3]
-        gf = project_root / "configs" / "human_texture" / "genre_presets.yaml"
-        if not gf.exists():
+        data = load_genre_presets()
+        if not data:
             return {}
-        data = yaml.safe_load(gf.read_text(encoding="utf-8"))
         section = data.get("character_psychology") or data.get("mental_state") or {}
         preset = section.get(genre, section.get("default", {}))
         return preset
@@ -127,7 +126,7 @@ def run_character_psychology_check(
 
     # ── 角色心理状态数据读取 ──
     if not project_root:
-        project_root = Path(__file__).resolve().parents[3]
+        project_root = resolve_human_texture_project_root()
 
     try:
         from src.guards.human_texture.character_psychology_crud import list_character_psychologies

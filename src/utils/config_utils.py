@@ -6,6 +6,13 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
+DEFAULT_DB_PATH = "./data/novel_memory.db"
+DEFAULT_NOVELS_ROOT = "./novels"
+DEFAULT_EXPORTS_ROOT = "./exports"
+DEFAULT_REPORTS_ROOT = "./exports/reports"
+DEFAULT_OUTPUTS_ROOT = "./outputs"
+DEFAULT_TMP_ROOT = "./tmp"
+
 
 def _deepcopy_dict(d: dict) -> dict:
     return deepcopy(d) if isinstance(d, dict) else {}
@@ -28,12 +35,12 @@ def normalize_config(raw: dict | None) -> dict:
     paths = cfg.get("paths") if isinstance(cfg.get("paths"), dict) else {}
     novel = cfg.get("novel") if isinstance(cfg.get("novel"), dict) else {}
 
-    cfg.setdefault("db_path", paths.get("db_path", "./data/novel_memory.db"))
-    cfg.setdefault("novels_root", paths.get("novels_root", "./novels"))
-    cfg.setdefault("exports_root", paths.get("exports_root", "./exports"))
-    cfg.setdefault("reports_root", paths.get("reports_root", "./exports/reports"))
-    cfg.setdefault("outputs_root", paths.get("outputs_root", "./outputs"))
-    cfg.setdefault("tmp_root", paths.get("tmp_root", "./tmp"))
+    cfg.setdefault("db_path", paths.get("db_path", DEFAULT_DB_PATH))
+    cfg.setdefault("novels_root", paths.get("novels_root", DEFAULT_NOVELS_ROOT))
+    cfg.setdefault("exports_root", paths.get("exports_root", DEFAULT_EXPORTS_ROOT))
+    cfg.setdefault("reports_root", paths.get("reports_root", DEFAULT_REPORTS_ROOT))
+    cfg.setdefault("outputs_root", paths.get("outputs_root", DEFAULT_OUTPUTS_ROOT))
+    cfg.setdefault("tmp_root", paths.get("tmp_root", DEFAULT_TMP_ROOT))
 
     cfg.setdefault("allow_short_chapter", False)
     cfg.setdefault("default_novel_slug", novel.get("default_slug", "demo_novel"))

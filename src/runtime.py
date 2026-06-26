@@ -8,6 +8,12 @@ from pathlib import Path
 from typing import Any
 
 from src.utils.config_utils import (
+    DEFAULT_DB_PATH,
+    DEFAULT_EXPORTS_ROOT,
+    DEFAULT_NOVELS_ROOT,
+    DEFAULT_OUTPUTS_ROOT,
+    DEFAULT_REPORTS_ROOT,
+    DEFAULT_TMP_ROOT,
     find_project_root,
     load_json_config,
     resolve_path,
@@ -100,7 +106,7 @@ def resolve_slot_db_path(cfg: dict[str, Any], project_root: str | Path | None = 
         slot_db = paths.workspace_root / active_slot / "novel.db"
         if slot_db.exists():
             return slot_db
-    return resolve_path(paths.project_root, cfg.get("db_path", "./data/novel_memory.db"))
+    return resolve_path(paths.project_root, cfg.get("db_path", DEFAULT_DB_PATH))
 
 
 def build_pipeline_context(
@@ -130,11 +136,11 @@ def build_pipeline_context(
     if slot_word_count:
         wc_rules = slot_word_count
 
-    novels_root = resolve_path(paths.project_root, cfg.get("novels_root", "./novels"))
-    exports_root = resolve_path(paths.project_root, cfg.get("exports_root", "./exports"))
-    reports_root = resolve_path(paths.project_root, cfg.get("reports_root", "./exports/reports"))
-    outputs_root = resolve_path(paths.project_root, cfg.get("outputs_root", "./outputs"))
-    tmp_root = resolve_path(paths.project_root, cfg.get("tmp_root", "./tmp"))
+    novels_root = resolve_path(paths.project_root, cfg.get("novels_root", DEFAULT_NOVELS_ROOT))
+    exports_root = resolve_path(paths.project_root, cfg.get("exports_root", DEFAULT_EXPORTS_ROOT))
+    reports_root = resolve_path(paths.project_root, cfg.get("reports_root", DEFAULT_REPORTS_ROOT))
+    outputs_root = resolve_path(paths.project_root, cfg.get("outputs_root", DEFAULT_OUTPUTS_ROOT))
+    tmp_root = resolve_path(paths.project_root, cfg.get("tmp_root", DEFAULT_TMP_ROOT))
 
     if chapters_dir:
         resolved_chapters_dir = resolve_path(paths.project_root, chapters_dir)

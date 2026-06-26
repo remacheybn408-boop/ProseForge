@@ -6,7 +6,12 @@ import json
 from pathlib import Path
 
 from src.pipeline._base import load_config
-from src.utils.config_utils import normalize_config
+from src.utils.config_utils import (
+    DEFAULT_DB_PATH,
+    DEFAULT_EXPORTS_ROOT,
+    DEFAULT_REPORTS_ROOT,
+    normalize_config,
+)
 
 
 class TestConfigLoad:
@@ -60,3 +65,12 @@ class TestConfigLoad:
         assert "word_count" not in payload.get("gates", {})
         assert isinstance(payload.get("word_count"), dict)
         assert payload["allow_short_chapter"] is True
+
+    def test_example_config_default_paths_match_code_constants(self):
+        """config.example.json and code fallbacks should stay aligned."""
+        cfg_path = Path(__file__).resolve().parents[1] / "config.example.json"
+        payload = normalize_config(json.loads(cfg_path.read_text(encoding="utf-8")))
+
+        assert payload["db_path"] == DEFAULT_DB_PATH
+        assert payload["exports_root"] == DEFAULT_EXPORTS_ROOT
+        assert payload["reports_root"] == DEFAULT_REPORTS_ROOT

@@ -3,8 +3,8 @@
 支持复合题材（如 "xianxia+爽文"），弹性加权评分而非刚硬阈值。
 """
 import re
-import json
-from pathlib import Path
+
+from ._config import load_genre_presets
 
 # ── 进度增量定义 ──
 PROGRESS_DELTAS = {
@@ -74,11 +74,9 @@ def _resolve_genre(genre: str) -> str:
 def _load_genre_pacing(genre: str) -> dict:
     """从 genre_presets.yaml 加载某个题材的 pacing 规则，支持复合题材如 xianxia+爽文."""
     try:
-        fp = Path(__file__).resolve().parent.parent.parent.parent / "configs" / "human_texture" / "genre_presets.yaml"
-        if not fp.exists():
+        presets = load_genre_presets()
+        if not presets:
             return _default_pacing()
-        import yaml
-        presets = yaml.safe_load(fp.read_text(encoding="utf-8"))
 
         # 解析复合题材：xianxia+爽文 → ["xianxia", "爽文"]
         genres = [g.strip() for g in _resolve_genre(genre).split("+") if g.strip()]

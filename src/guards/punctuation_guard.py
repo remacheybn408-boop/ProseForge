@@ -19,6 +19,14 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from src.utils.config_utils import (
+    DEFAULT_REPORTS_ROOT,
+    find_project_root,
+    load_json_config,
+    normalize_config,
+    resolve_path,
+)
+
 
 # ---------------------------------------------------------------------------
 # 配置
@@ -358,7 +366,23 @@ def _compute_score(findings: List[Dict]) -> int:
 # 公开入口
 # ---------------------------------------------------------------------------
 
-def run_punctuation_check(content: str, chapter_no: int = 0) -> Dict:
+def _resolve_report_dir(
+    *,
+    project_root: str | Path | None = None,
+    config: dict | None = None,
+) -> Path:
+    root = find_project_root(project_root or Path(__file__).resolve())
+    cfg = normalize_config(config) if config is not None else load_json_config(None, root)
+    return resolve_path(root, cfg.get("reports_root", DEFAULT_REPORTS_ROOT)) / "punctuation_guard"
+
+
+def run_punctuation_check(
+    content: str,
+    chapter_no: int = 0,
+    *,
+    project_root: str | Path | None = None,
+    config: dict | None = None,
+) -> Dict:
     """对章节文本执行标点节奏门禁检查 (guard 兼容入口)。
 
     Args:
@@ -439,12 +463,17 @@ def run_punctuation_check(content: str, chapter_no: int = 0) -> Dict:
     }
 
     # 生成 JSON 报告
-    _generate_report(result, chapter_no)
+    _generate_report(result, chapter_no, project_root=project_root, config=config)
 
     return result
 
 
-def analyze_chapter(filepath: str) -> Dict:
+def analyze_chapter(
+    filepath: str,
+    *,
+    project_root: str | Path | None = None,
+    config: dict | None = None,
+) -> Dict:
     """从文件读取章节并分析。
 
     Args:
@@ -478,12 +507,23 @@ def analyze_chapter(filepath: str) -> Dict:
     if numbers:
         chapter_no = int(numbers[-1])
 
-    return run_punctuation_check(content, chapter_no)
+    return run_punctuation_check(
+        content,
+        chapter_no,
+        project_root=project_root,
+        config=config,
+    )
 
 
-def _generate_report(result: Dict, chapter_no: int) -> None:
+def _generate_report(
+    result: Dict,
+    chapter_no: int,
+    *,
+    project_root: str | Path | None = None,
+    config: dict | None = None,
+) -> None:
     """将检查结果输出为 JSON 报告。"""
-    report_dir = Path("exports/reports/punctuation_guard")
+    report_dir = _resolve_report_dir(project_root=project_root, config=config)
     report_dir.mkdir(parents=True, exist_ok=True)
 
     filename = f"chapter_{chapter_no:03d}_punctuation_report.json"
@@ -510,4 +550,3 @@ def _generate_report(result: Dict, chapter_no: int) -> None:
 # ---------------------------------------------------------------------------
 # 命令行入口
 # ---------------------------------------------------------------------------
-

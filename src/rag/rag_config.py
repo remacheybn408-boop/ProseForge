@@ -10,13 +10,19 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from src.utils.config_utils import DEFAULT_DB_PATH
+
 
 # ============================================================
 # 默认配置
 # ============================================================
 
+DEFAULT_VECTOR_PERSIST_DIR = "./data/rag_vector_store"
+DEFAULT_VECTOR_COLLECTION_NAME = "novel_chunks"
+DEFAULT_VECTOR_EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
+
 DEFAULT_RAG_CONFIG = {
-    "db_path": "./data/novel_memory.db",
+    "db_path": DEFAULT_DB_PATH,
     "rag": {
         "default_mode": "fts5",
         "top_k": 8,
@@ -26,9 +32,9 @@ DEFAULT_RAG_CONFIG = {
             "chunk_limit": 20,
         },
         "vector": {
-            "persist_dir": "./data/rag_vector_store",
-            "collection_name": "novel_chunks",
-            "embedding_model": "paraphrase-multilingual-MiniLM-L12-v2",
+            "persist_dir": DEFAULT_VECTOR_PERSIST_DIR,
+            "collection_name": DEFAULT_VECTOR_COLLECTION_NAME,
+            "embedding_model": DEFAULT_VECTOR_EMBEDDING_MODEL,
             "top_k": 16,
         },
         "hybrid": {
@@ -128,3 +134,14 @@ def get_db_path(config: dict) -> str:
     except Exception:
         pass
     return config.get("db_path", DEFAULT_RAG_CONFIG["db_path"])
+
+
+def get_vector_config(config: dict | None = None) -> dict:
+    """Return vector config with centralized defaults applied."""
+    vec_cfg = (config or {}).get("rag", {}).get("vector", {})
+    return {
+        "persist_dir": vec_cfg.get("persist_dir", DEFAULT_VECTOR_PERSIST_DIR),
+        "collection_name": vec_cfg.get("collection_name", DEFAULT_VECTOR_COLLECTION_NAME),
+        "embedding_model": vec_cfg.get("embedding_model", DEFAULT_VECTOR_EMBEDDING_MODEL),
+        "top_k": vec_cfg.get("top_k", DEFAULT_RAG_CONFIG["rag"]["vector"]["top_k"]),
+    }

@@ -9,6 +9,7 @@ from typing import Optional
 
 from .base_agent import BaseAgent
 from src.db._conn import connect_sqlite
+from src.utils.config_utils import DEFAULT_DB_PATH, find_project_root
 from src.utils.character_mentions import find_character_mention_positions
 
 LQ = "\u201c"
@@ -325,7 +326,7 @@ class CharacterAgent(BaseAgent):
     def _load_character_psychologies() -> list:
         try:
             from src.guards.human_texture.character_psychology_crud import list_character_psychologies
-            project_root = Path(__file__).resolve().parents[2]
+            project_root = find_project_root(Path(__file__).resolve())
             return list_character_psychologies(project_root)
         except Exception:
             return []
@@ -398,7 +399,7 @@ def load_voice_context(
     profiles = []
     packs = {}
     source = "none"
-    db_path = db_path or config.get("db_path", "./data/novel_memory.db")
+    db_path = db_path or config.get("db_path", DEFAULT_DB_PATH)
 
     # 1. Try database
     if voice_cfg.get("use_database_profiles", True) and Path(db_path).exists():

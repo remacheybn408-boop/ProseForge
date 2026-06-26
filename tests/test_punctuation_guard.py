@@ -1,6 +1,6 @@
 """test_punctuation_guard.py — 标点节奏门禁测试"""
 
-from src.guards.punctuation_guard import run_punctuation_check
+from src.guards.punctuation_guard import _resolve_report_dir, run_punctuation_check
 
 
 def _make_dash_text(n):
@@ -77,3 +77,19 @@ class TestEdgeCases:
         text = "林观澜走到井边，打了一桶水。水面在桶里晃了几下，慢慢平静下来。他盯着水面看了一会儿。"
         result = run_punctuation_check(text)
         assert result["status"] == "PASS", f"normal text should PASS, got {result['status']}"
+
+    def test_report_dir_respects_reports_root_config(self, tmp_path):
+        report_dir = _resolve_report_dir(
+            project_root=tmp_path,
+            config={"reports_root": "./custom_reports"},
+        )
+        assert report_dir == tmp_path / "custom_reports" / "punctuation_guard"
+
+        run_punctuation_check(
+            "杩欐槸涓€娈垫甯哥殑鏂囨湰銆傚畠鐢ㄦ潵楠岃瘉鎶ュ憡璺緞閬靛惊 reports_root 閰嶇疆銆?",
+            chapter_no=7,
+            project_root=tmp_path,
+            config={"reports_root": "./custom_reports"},
+        )
+
+        assert (report_dir / "chapter_007_punctuation_report.json").exists()

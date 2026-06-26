@@ -60,6 +60,7 @@ pip install -e .                 # RAG 可选：pip install -e .[rag]
 ```
 
 > 仓库未提供 `install.bat`；Windows 用上面的手动步骤。
+> `src/` 是唯一源码入口；`build/`、`*.egg-info/` 都是本地构建残留，可安全删除，不参与运行、调试或 review。
 
 ## 第四步：初始化工作区
 

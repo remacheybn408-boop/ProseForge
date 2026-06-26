@@ -29,10 +29,7 @@ import sqlite3
 import argparse
 from pathlib import Path
 from datetime import datetime
-try:
-    from src.utils.config_utils import normalize_config
-except Exception:
-    def normalize_config(cfg): return cfg
+from src.utils.config_utils import DEFAULT_DB_PATH, normalize_config
 from src.pipeline._base import _find_chapter_file
 from src.db._conn import connect_sqlite
 
@@ -69,7 +66,7 @@ def get_db_path(config: dict) -> str:
     except Exception:
         pass
     # Fallback to config.json db_path
-    db = config.get("db_path", str(PROJECT_ROOT / "data" / "novel_memory.db"))
+    db = config.get("db_path", DEFAULT_DB_PATH)
     p = Path(db)
     if not p.is_absolute():
         p = PROJECT_ROOT / db
@@ -351,5 +348,3 @@ def export_novel(
         "format": fmt,
         "chapter_range": f"{chapters[0]['chapter_no']}-{chapters[-1]['chapter_no']}",
     }
-
-

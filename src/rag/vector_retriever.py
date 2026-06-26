@@ -6,6 +6,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
+from .rag_config import get_vector_config
+
 try:
     import chromadb
     from chromadb.config import Settings as ChromaSettings
@@ -41,17 +43,12 @@ def _distance_to_score(distance) -> float:
 
 
 def _get_vector_settings(config: Optional[dict] = None) -> tuple[str, str, str]:
-    persist_dir = "./data/rag_vector_store"
-    collection_name = "novel_chunks"
-    embedding_model = "paraphrase-multilingual-MiniLM-L12-v2"
-
-    if config:
-        vec_cfg = config.get("rag", {}).get("vector", {})
-        persist_dir = vec_cfg.get("persist_dir", persist_dir)
-        collection_name = vec_cfg.get("collection_name", collection_name)
-        embedding_model = vec_cfg.get("embedding_model", embedding_model)
-
-    return persist_dir, collection_name, embedding_model
+    vec_cfg = get_vector_config(config)
+    return (
+        vec_cfg["persist_dir"],
+        vec_cfg["collection_name"],
+        vec_cfg["embedding_model"],
+    )
 
 
 class VectorRetriever:
@@ -59,13 +56,14 @@ class VectorRetriever:
 
     def __init__(
         self,
-        persist_dir: str = "./data/rag_vector_store",
-        collection_name: str = "novel_chunks",
-        embedding_model: str = "paraphrase-multilingual-MiniLM-L12-v2",
+        persist_dir: str | None = None,
+        collection_name: str | None = None,
+        embedding_model: str | None = None,
     ):
-        self.persist_dir = persist_dir
-        self.collection_name = collection_name
-        self.embedding_model = embedding_model
+        defaults = get_vector_config()
+        self.persist_dir = persist_dir or defaults["persist_dir"]
+        self.collection_name = collection_name or defaults["collection_name"]
+        self.embedding_model = embedding_model or defaults["embedding_model"]
         self._client = None
         self._collection = None
         self._model = None

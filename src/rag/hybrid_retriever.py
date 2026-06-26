@@ -13,6 +13,7 @@ from typing import Optional
 # 同包导入
 from .fts5_retriever import search_chapters as fts5_search_chapters
 from .fts5_retriever import search_chunks as fts5_search_chunks
+from .rag_config import get_vector_config
 from .vector_retriever import VectorRetriever, HAS_VECTOR_DEPS
 
 
@@ -129,13 +130,10 @@ def hybrid_search(
     # ---- Vector 检索 ----
     if HAS_VECTOR_DEPS:
         try:
-            persist_dir = "./data/rag_vector_store"
-            collection_name = "novel_chunks"
-            embedding_model = "paraphrase-multilingual-MiniLM-L12-v2"
-            if vector_config:
-                persist_dir = vector_config.get("persist_dir", persist_dir)
-                collection_name = vector_config.get("collection_name", collection_name)
-                embedding_model = vector_config.get("embedding_model", embedding_model)
+            resolved_vector_config = get_vector_config({"rag": {"vector": vector_config or {}}})
+            persist_dir = resolved_vector_config["persist_dir"]
+            collection_name = resolved_vector_config["collection_name"]
+            embedding_model = resolved_vector_config["embedding_model"]
 
             retriever = VectorRetriever(
                 persist_dir=persist_dir,

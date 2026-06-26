@@ -11,6 +11,7 @@ from .cliche_sentence_guard import run_cliche_check
 from .prompt_specificity_guard import run_prompt_check
 from .water_density_guard import run_water_density_check
 from .plot_pacing_controller import run_plot_pacing_check
+from ._config import load_genre_presets
 
 
 # 题材中文名 ↔ YAML key 映射
@@ -35,12 +36,9 @@ def _resolve_genre_key(genre: str) -> str:
 def _load_genre_preset(genre: str = "default") -> dict:
     """Load genre texture thresholds from YAML, support composite genres like 'xianxia+爽文'."""
     try:
-        from pathlib import Path
-        import yaml
-        fp = Path(__file__).resolve().parent.parent.parent.parent / "configs" / "human_texture" / "genre_presets.yaml"
-        if not fp.exists():
+        presets = load_genre_presets()
+        if not presets:
             return {}
-        presets = yaml.safe_load(fp.read_text(encoding="utf-8"))
 
         # Parse composite genres: "xianxia+爽文" -> ["xianxia", "爽文"]
         genres = [g.strip() for g in _resolve_genre_key(genre).split("+") if g.strip()]

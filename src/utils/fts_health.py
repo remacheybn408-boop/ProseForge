@@ -7,7 +7,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from src.utils.config_utils import find_project_root, resolve_path
+from src.utils.config_utils import DEFAULT_DB_PATH, find_project_root, resolve_path
 from src.db._conn import connect_sqlite
 
 
@@ -31,7 +31,7 @@ def _get_db_path(config: dict | None = None) -> Path:
     if config and config.get("db_path"):
         return Path(config["db_path"])
     project_root = find_project_root(Path(__file__).resolve())
-    return resolve_path(project_root, "./data/novel_memory.db")
+    return resolve_path(project_root, DEFAULT_DB_PATH)
 
 
 def find_fts5_tables(conn: sqlite3.Connection) -> list[str]:

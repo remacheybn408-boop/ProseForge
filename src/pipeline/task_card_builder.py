@@ -16,7 +16,7 @@ from contextlib import closing
 from pathlib import Path
 
 from version import get_version
-from src.utils.config_utils import load_json_config, resolve_path
+from src.utils.config_utils import DEFAULT_DB_PATH, load_json_config, resolve_path
 from src.db._conn import connect_sqlite
 
 
@@ -32,7 +32,7 @@ def load_config(config_path: str | None) -> dict:
 
 
 def get_db_path(config: dict) -> str:
-    return str(resolve_path(PROJECT_ROOT, config.get("db_path", "./data/novel_memory.db")))
+    return str(resolve_path(PROJECT_ROOT, config.get("db_path", DEFAULT_DB_PATH)))
 
 
 def get_novel_id(conn: sqlite3.Connection, slug: str) -> int | None:
