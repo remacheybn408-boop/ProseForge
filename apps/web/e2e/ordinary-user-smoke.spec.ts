@@ -47,4 +47,6 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByPlaceholder(/Ask your companion/i).fill("Give me one continuity check.");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("Mock provider response")).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Fork branch" }).click();
+  await expect(page.getByText("Alternative branch created.")).toBeVisible();
 });
