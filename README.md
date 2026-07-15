@@ -1,8 +1,12 @@
 # ProseForge
 
-ProseForge is a local, Docker-first engineering workflow for long-form fiction: outline management, pre-writing context, post-writing quality gates, revision validation, versioned ingestion, and export.
+ProseForge is a local, Docker-first writing workspace for long-form fiction: outline management, context, durable writing workflows, quality gates, revision validation, versioned chapters, and export.
 
-The core system does not call an LLM. External agents such as Codex, Hermes, or Claude provide writing and semantic review; ProseForge provides project context, deterministic checks, state management, and persistence.
+The Web v1 application owns the writing workflow and connects model vendors through native provider adapters. The legacy CLI remains available during migration.
+
+## Web v1 migration
+
+External Codex, Hermes, and Claude Code plugin surfaces have been removed. The supported entrypoints are the compatibility CLI and the Web API.
 
 ## Quick start
 
@@ -89,9 +93,8 @@ Each slot is an isolated novel project. Runtime contexts can bind explicitly to 
 
 - `src.interfaces.cli`: formal JSON-producing CLI
 - `src.application`: application services shared by CLI and agent adapters
-- `plugin/proseforge-codex`: Codex wrappers
-- `plugin/proseforge-Hermes`: Hermes tools and skills
-- `plugin/proseforge-claude`: Claude workflow skill
+- `proseforge`: Web v1 application package
+- `src.interfaces.cli`: compatibility CLI during migration
 
 ## License
 
