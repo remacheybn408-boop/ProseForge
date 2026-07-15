@@ -46,6 +46,11 @@ services:
       - proseforge-blobs:/data/blobs
       - proseforge-backups:/data/backups
     command: ["uvicorn", "proseforge.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
 
   worker:
     build:
@@ -63,6 +68,11 @@ services:
       - proseforge-blobs:/data/blobs
       - proseforge-backups:/data/backups
     command: ["celery", "-A", "proseforge.workflows.celery_app", "worker", "--loglevel=INFO"]
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A proseforge.workflows.celery_app inspect ping --timeout=3 | grep -q pong"]
+      interval: 15s
+      timeout: 8s
+      retries: 4
 
   scheduler:
     build:
@@ -77,6 +87,11 @@ services:
       redis:
         condition: service_healthy
     command: ["celery", "-A", "proseforge.workflows.celery_app", "beat", "--loglevel=INFO"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"from proseforge.workflows.celery_app import celery; assert celery.main == 'proseforge'\""]
+      interval: 15s
+      timeout: 8s
+      retries: 4
 
   web:
     build:
@@ -86,6 +101,11 @@ services:
       - api
     ports:
       - "3000:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost/ >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
 
 volumes:
   postgres-data:
