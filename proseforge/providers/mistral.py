@@ -1,5 +1,6 @@
-from .http_base import HttpJsonProvider
+from .chat_completions import ChatCompletionsProvider
 
 
-class MistralProvider(HttpJsonProvider):
+class MistralProvider(ChatCompletionsProvider):
     provider_id = "mistral"
+    default_base_url = "https://api.mistral.ai/v1"

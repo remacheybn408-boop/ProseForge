@@ -1,5 +1,6 @@
-from .http_base import HttpJsonProvider
+from .chat_completions import ChatCompletionsProvider
 
 
-class TencentProvider(HttpJsonProvider):
+class TencentProvider(ChatCompletionsProvider):
     provider_id = "tencent"
+    default_base_url = "https://api.hunyuan.cloud.tencent.com/v1"

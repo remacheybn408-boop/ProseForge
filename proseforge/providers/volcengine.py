@@ -1,5 +1,6 @@
-from .http_base import HttpJsonProvider
+from .chat_completions import ChatCompletionsProvider
 
 
-class VolcEngineProvider(HttpJsonProvider):
+class VolcEngineProvider(ChatCompletionsProvider):
     provider_id = "volcengine"
+    default_base_url = "https://ark.cn-beijing.volces.com/api/v3"

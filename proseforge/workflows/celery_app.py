@@ -45,9 +45,7 @@ async def _generate_chat(payload: dict[str, object]) -> str:
     from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
     from proseforge.infrastructure.events.database import DatabaseEventStream
     from proseforge.infrastructure.security.credential_cipher import CredentialCipher
-    from proseforge.providers.anthropic import AnthropicProvider
-    from proseforge.providers.google import GoogleProvider
-    from proseforge.providers.openai import OpenAIProvider
+    from proseforge.providers.factory import build_provider
     from proseforge.settings import get_settings
 
     settings = get_settings()
@@ -76,10 +74,10 @@ async def _generate_chat(payload: dict[str, object]) -> str:
             associated = f"{user_id}:{provider_id}:{credential.id}".encode()
             secret = json.loads(CredentialCipher(raw).decrypt(base64.b64decode(credential.encrypted_payload), associated_data=associated))
         base_url = secret.get("base_url")
-        factory = {"openai": OpenAIProvider, "anthropic": AnthropicProvider, "google": GoogleProvider}.get(provider_id)
-        if factory is None:
+        try:
+            provider = build_provider(provider_id, secret["api_key"], base_url=base_url)
+        except KeyError:
             return "provider-not-supported"
-        provider = factory(secret["api_key"], base_url=base_url) if base_url else factory(secret["api_key"])
         request = GenerationRequest(model=model, system_blocks=(), input_blocks=(({"role": "user", "text": user_message.content}),))
         await GenerateReply(lambda: SqlAlchemyUnitOfWork(session_factory), provider, DatabaseEventStream(session_factory)).execute(message_id=message_id, request=request)
         return "completed"

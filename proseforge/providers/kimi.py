@@ -1,5 +1,6 @@
-from .http_base import HttpJsonProvider
+from .chat_completions import ChatCompletionsProvider
 
 
-class KimiProvider(HttpJsonProvider):
+class KimiProvider(ChatCompletionsProvider):
     provider_id = "kimi"
+    default_base_url = "https://api.moonshot.cn/v1"

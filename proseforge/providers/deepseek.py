@@ -1,5 +1,6 @@
-from .http_base import HttpJsonProvider
+from .chat_completions import ChatCompletionsProvider
 
 
-class DeepSeekProvider(HttpJsonProvider):
+class DeepSeekProvider(ChatCompletionsProvider):
     provider_id = "deepseek"
+    default_base_url = "https://api.deepseek.com"

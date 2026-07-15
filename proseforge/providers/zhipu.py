@@ -1,5 +1,6 @@
-from .http_base import HttpJsonProvider
+from .chat_completions import ChatCompletionsProvider
 
 
-class ZhipuProvider(HttpJsonProvider):
+class ZhipuProvider(ChatCompletionsProvider):
     provider_id = "zhipu"
+    default_base_url = "https://open.bigmodel.cn/api/paas/v4"

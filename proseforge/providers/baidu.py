@@ -1,5 +1,6 @@
-from .http_base import HttpJsonProvider
+from .chat_completions import ChatCompletionsProvider
 
 
-class BaiduProvider(HttpJsonProvider):
+class BaiduProvider(ChatCompletionsProvider):
     provider_id = "baidu"
+    default_base_url = "https://qianfan.baidubce.com/v2"
