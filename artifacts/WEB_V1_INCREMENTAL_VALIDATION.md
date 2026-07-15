@@ -16,6 +16,8 @@ All commands below were executed in Docker containers.
 - Native Cohere V2 contract: `1 passed`; Settings connection probe is covered by browser E2E
 - Capability validation: `3 passed` for modality, structured output, reasoning, max output, and context overflow
 - Fault injection and interrupted-stream recovery: `2 passed`; unavailable PostgreSQL/Redis returns readiness `503`
+- Workflow recovery migration and repository tests: `13 passed`; leases, checkpoints, cost limits, and expired-run recovery verified
+- Docker API/unit/provider/fault regression after workflow changes: `38 passed`; backup/recovery suite: `4 passed`
 - Docker E2E was rerun after forced recreation of API/worker/web against the isolated test volume: `1 passed`
 - Production readiness after returning to the base Compose stack: API/blob/backup/database/redis all `ok`; Celery `inspect ping` returned `pong`
 - After API container recreation, the Web/Nginx proxy still served `/api/v1/health/live` successfully via Docker DNS resolution
