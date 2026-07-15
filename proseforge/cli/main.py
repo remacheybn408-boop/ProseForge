@@ -21,6 +21,7 @@ def main(argv: list[str] | None = None) -> int:
     backup.add_argument("--source", default="/data")
     backup.add_argument("--root", default="/data/backups")
     backup.add_argument("--destination")
+    backup.add_argument("--database-dump")
     args = parser.parse_args(argv)
     if args.version:
         print("1.0.0.dev0")
@@ -31,7 +32,8 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "backup":
         service = BackupService(args.root)
         if args.action == "create":
-            print(service.create(args.source))
+            dump = open(args.database_dump, "rb").read() if args.database_dump else None
+            print(service.create(args.source, database_dump=dump))
         elif args.action == "list":
             for archive in service.list():
                 print(archive)

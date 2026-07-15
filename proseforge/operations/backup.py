@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import tarfile
 from dataclasses import dataclass
@@ -13,13 +14,21 @@ class BackupVerification:
     archive: str
     files: int
     sha256: str
+    metadata: dict[str, object] | None = None
 
 
 class BackupService:
     def __init__(self, backup_root: str | Path):
         self.backup_root = Path(backup_root)
 
-    def create(self, source_root: str | Path) -> BackupVerification:
+    def create(
+        self,
+        source_root: str | Path,
+        *,
+        database_dump: bytes | None = None,
+        application_version: str = "unknown",
+        migration_revision: str = "unknown",
+    ) -> BackupVerification:
         source = Path(source_root).resolve()
         if not source.is_dir():
             raise ValueError("backup source does not exist")
@@ -27,15 +36,29 @@ class BackupService:
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         archive = self.backup_root / f"proseforge-{stamp}.tar.gz"
         files = 0
+        manifest_entries: list[dict[str, object]] = []
         with tarfile.open(archive, "w:gz") as tar:
             for path in sorted(source.rglob("*")):
                 if path.is_file() and not path.is_symlink():
                     tar.add(path, arcname=path.relative_to(source))
                     files += 1
+                    manifest_entries.append({"path": str(path.relative_to(source)), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "bytes": path.stat().st_size})
+            if database_dump is not None:
+                info = tarfile.TarInfo("database.dump")
+                info.size = len(database_dump)
+                tar.addfile(info, io.BytesIO(database_dump))
+                files += 1
+                manifest_entries.append({"path": "database.dump", "sha256": hashlib.sha256(database_dump).hexdigest(), "bytes": len(database_dump)})
+            metadata = {"archive": archive.name, "files": files, "sha256": "", "application_version": application_version, "migration_revision": migration_revision, "entries": manifest_entries}
+            raw_metadata = json.dumps(metadata, ensure_ascii=False).encode()
+            info = tarfile.TarInfo("backup-manifest.json")
+            info.size = len(raw_metadata)
+            tar.addfile(info, io.BytesIO(raw_metadata))
         digest = hashlib.sha256(archive.read_bytes()).hexdigest()
         manifest = archive.with_suffix(archive.suffix + ".json")
-        manifest.write_text(json.dumps({"archive": archive.name, "files": files, "sha256": digest}), encoding="utf-8")
-        return BackupVerification(str(archive), files, digest)
+        metadata["sha256"] = digest
+        manifest.write_text(json.dumps(metadata, ensure_ascii=False), encoding="utf-8")
+        return BackupVerification(str(archive), len(manifest_entries), digest, metadata)
 
     def verify(self, archive: str | Path) -> BackupVerification:
         path = Path(archive)
@@ -45,7 +68,19 @@ class BackupService:
             members = [member for member in tar.getmembers() if member.isfile()]
             if any(Path(member.name).is_absolute() or ".." in Path(member.name).parts for member in members):
                 raise ValueError("backup contains unsafe path")
-        return BackupVerification(str(path), len(members), hashlib.sha256(path.read_bytes()).hexdigest())
+            manifest_member = next((member for member in members if member.name == "backup-manifest.json"), None)
+            metadata = json.loads(tar.extractfile(manifest_member).read()) if manifest_member else None
+            if metadata:
+                member_map = {member.name: member for member in members}
+                for entry in metadata.get("entries", []):
+                    member = member_map.get(str(entry["path"]))
+                    if member is None:
+                        raise ValueError(f"backup is missing {entry['path']}")
+                    content = tar.extractfile(member).read()
+                    if hashlib.sha256(content).hexdigest() != entry["sha256"]:
+                        raise ValueError(f"backup checksum mismatch: {entry['path']}")
+        logical_files = len(metadata.get("entries", [])) if metadata else len(members)
+        return BackupVerification(str(path), logical_files, hashlib.sha256(path.read_bytes()).hexdigest(), metadata)
 
     def list(self) -> list[Path]:
         self.backup_root.mkdir(parents=True, exist_ok=True)
