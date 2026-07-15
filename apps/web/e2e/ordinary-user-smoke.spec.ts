@@ -16,6 +16,7 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Projects", exact: true }).click();
   await expect(page.locator("h2", { hasText: "Projects" })).toBeVisible();
 
   await page.getByRole("button", { name: /new project/i }).click();
@@ -49,4 +50,6 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await expect(page.getByText("Mock provider response")).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Fork branch" }).click();
   await expect(page.getByText("Alternative branch created.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: /Chapter 1/i })).toBeVisible();
 });

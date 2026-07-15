@@ -33,7 +33,7 @@ All commands below were executed in Docker containers.
 - Structured Editor review gate and rewrite-loop integration: `5 passed`; invalid review output cannot commit a chapter; Ruff passed
 - Legacy database migration repair: API upgraded an existing database missing workflow tables and reached healthy state; migration coverage `2 passed`
 - Concurrent chapter version allocation: `3 passed`; PostgreSQL advisory locking prevents duplicate version numbers
-- Full rebuilt Docker browser flow: Playwright `1 passed` in `5.3s`; frontend now waits for durable chat completion
+- Full rebuilt Docker browser flow: Playwright `1 passed` in `5.3s`; frontend now waits for durable chat completion and restores the selected project after refresh
 - Startup health round-trip, migration, and workflow-table checks: recovery `2 passed`, API health `3 passed`; BlobStore probe is removed after verification
 - Export request contract and Writing Studio Markdown download control: Web Vitest `2 passed` + Vite build; API/unit regression `10 passed`
 - Manual future-model registration and catalog retention: `3 passed`; custom models are marked manual and protected from sync disappearance
