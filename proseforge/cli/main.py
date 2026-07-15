@@ -15,6 +15,7 @@ def main(argv: list[str] | None = None) -> int:
     legacy = migrate_subparsers.add_parser("legacy")
     legacy.add_argument("--workspace", required=True)
     legacy.add_argument("--archive-root", default="/data/backups/legacy-import")
+    legacy.add_argument("--owner-id", help="Web user ID that will own imported projects")
     backup = subparsers.add_parser("backup")
     backup.add_argument("action", choices=("create", "list", "verify", "restore"))
     backup.add_argument("archive", nargs="?")
@@ -26,7 +27,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.version:
         print("1.0.0.dev0")
     elif args.command == "migrate" and args.migration == "legacy":
-        report = asyncio.run(LegacyImporter(args.archive_root).import_workspace(args.workspace))
+        session_factory = None
+        if args.owner_id:
+            from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
+            from proseforge.settings import get_settings
+            _, session_factory = create_engine_and_sessionmaker(get_settings())
+        report = asyncio.run(LegacyImporter(args.archive_root, session_factory, args.owner_id).import_workspace(args.workspace))
         print(report)
         return 0 if report.status == "COMPLETED" else 1
     elif args.command == "backup":

@@ -8,6 +8,8 @@ from pathlib import Path
 from .mapper import map_chapters, map_project
 from .scanner import scan_workspace
 from .sqlite_reader import read_legacy_slot
+from proseforge.domain.project.entity import Project
+from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
 
 @dataclass(frozen=True)
@@ -20,8 +22,10 @@ class LegacyImportReport:
 
 
 class LegacyImporter:
-    def __init__(self, archive_root: str | Path = "/data/backups/legacy-import"):
+    def __init__(self, archive_root: str | Path = "/data/backups/legacy-import", session_factory=None, owner_id: str | None = None):
         self.archive_root = Path(archive_root)
+        self.session_factory = session_factory
+        self.owner_id = owner_id
 
     async def import_workspace(self, workspace: str | Path) -> LegacyImportReport:
         imported_projects = imported_chapters = 0
@@ -32,7 +36,22 @@ class LegacyImporter:
             try:
                 snapshot = read_legacy_slot(slot.root, slot.database)
                 project = map_project(slot)
-                map_chapters(project, snapshot)
+                if self.owner_id:
+                    project = Project.create(owner_id=self.owner_id, slug=project.slug, title=project.title, genre=project.genre, style=project.style)
+                chapters = map_chapters(project, snapshot)
+                if self.session_factory:
+                    async with SqlAlchemyUnitOfWork(self.session_factory) as uow:
+                        existing = await uow.projects.get_by_slug(project.owner_id, project.slug)
+                        if existing is None:
+                            await uow.projects.add(project)
+                            for legacy_chapter, chapter in zip(snapshot.chapters, chapters, strict=True):
+                                await uow.chapters.add(chapter)
+                                for content in legacy_chapter.versions:
+                                    version = await uow.chapters.append_version(chapter_id=chapter.id, content=content)
+                                    await uow.chapters.set_active_version(chapter.id, version.id)
+                            await uow.commit()
+                        else:
+                            project = existing
                 imported_projects += 1
                 imported_chapters += len(snapshot.chapters)
                 destination = self.archive_root / timestamp / slot.root.name
