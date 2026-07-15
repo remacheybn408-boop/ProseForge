@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from redis.asyncio import Redis
+from sqlalchemy import text
 
 from proseforge.operations.startup_check import run_startup_check
 
@@ -14,8 +16,24 @@ async def live() -> dict[str, str]:
 @router.get("/ready")
 async def ready(request: Request) -> dict[str, object]:
     report = run_startup_check(request.app.state.settings.blob_root, request.app.state.settings.backup_root)
-    payload = {"status": "ready" if report.ready else "not_ready", "checks": {"api": "ok", **report.checks}}
-    if not report.ready:
+    checks = {"api": "ok", **report.checks}
+    try:
+        async with request.app.state.engine.connect() as connection:
+            await connection.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception:
+        checks["database"] = "error"
+    redis_client = Redis.from_url(request.app.state.settings.redis_url)
+    try:
+        await redis_client.ping()
+        checks["redis"] = "ok"
+    except Exception:
+        checks["redis"] = "error"
+    finally:
+        await redis_client.aclose()
+    ready_state = all(value == "ok" for value in checks.values())
+    payload = {"status": "ready" if ready_state else "not_ready", "checks": checks}
+    if not ready_state:
         return JSONResponse(status_code=503, content=payload)
     return payload
 
