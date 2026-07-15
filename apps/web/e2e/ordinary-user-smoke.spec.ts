@@ -41,6 +41,8 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByLabel("Base URL (optional)").fill("http://provider-mock:8080/v1");
   await page.getByRole("button", { name: "Save provider" }).click();
   await expect(page.getByText("Saved securely. The key is now masked.")).toBeVisible();
+  await page.getByRole("button", { name: "Test connection" }).last().click();
+  await expect(page.getByText("openai connection is healthy.")).toBeVisible();
   await page.getByRole("button", { name: "Writing Studio" }).click();
   await page.getByPlaceholder(/Ask your companion/i).fill("Give me one continuity check.");
   await page.getByRole("button", { name: "Send" }).click();
