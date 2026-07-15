@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from proseforge.api.dependencies import current_user, unit_of_work
@@ -32,6 +34,15 @@ def _response(item) -> dict[str, object]:
         "id": item.id, "project_id": item.project_id, "source_type": item.source_type,
         "source_id": item.source_id, "content": item.content, "pinned": item.pinned,
         "priority": item.priority, "excluded": item.excluded, "provenance": json.loads(item.provenance or "{}"),
+    }
+
+
+def _snapshot_response(snapshot) -> dict[str, object]:
+    return {
+        "id": snapshot.id,
+        "project_id": snapshot.project_id,
+        "snapshot_hash": snapshot.snapshot_hash,
+        "payload": json.loads(snapshot.payload),
     }
 
 
@@ -88,3 +99,33 @@ async def compile_context(project_id: str, user: Annotated[AuthUser, Depends(cur
         snapshot = await uow.context.snapshot(project_id, items)
         await uow.commit()
         return {"id": snapshot.id, "snapshot_hash": snapshot.snapshot_hash, "item_count": len(items)}
+
+
+@router.get("/context/snapshots/{snapshot_id}")
+async def get_context_snapshot(snapshot_id: str, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> dict[str, object]:
+    async with uow:
+        snapshot = await uow.context.get_snapshot_owned(snapshot_id, user.id)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="context snapshot not found")
+        return _snapshot_response(snapshot)
+
+
+@router.post("/context/snapshots/{snapshot_id}/validate")
+async def validate_context_snapshot(snapshot_id: str, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> dict[str, object]:
+    async with uow:
+        snapshot = await uow.context.get_snapshot_owned(snapshot_id, user.id)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="context snapshot not found")
+        encoded = json.dumps(json.loads(snapshot.payload), ensure_ascii=False, sort_keys=True)
+        actual_hash = hashlib.sha256(encoded.encode()).hexdigest()
+        return {"id": snapshot.id, "valid": actual_hash == snapshot.snapshot_hash, "snapshot_hash": snapshot.snapshot_hash, "actual_hash": actual_hash}
+
+
+@router.get("/context/snapshots/{snapshot_id}/download")
+async def download_context_snapshot(snapshot_id: str, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> Response:
+    async with uow:
+        snapshot = await uow.context.get_snapshot_owned(snapshot_id, user.id)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="context snapshot not found")
+        body = json.dumps(_snapshot_response(snapshot), ensure_ascii=False, indent=2)
+    return Response(content=body, media_type="application/json", headers={"content-disposition": f'attachment; filename="context-{snapshot_id}.json"'})

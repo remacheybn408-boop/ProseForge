@@ -43,3 +43,10 @@ class SqlAlchemyContextRepository:
         self.session.add(snapshot)
         await self.session.flush()
         return snapshot
+
+    async def get_snapshot_owned(self, snapshot_id: str, owner_id: str) -> ContextSnapshotModel | None:
+        return await self.session.scalar(
+            select(ContextSnapshotModel)
+            .join(ProjectModel, ProjectModel.id == ContextSnapshotModel.project_id)
+            .where(ContextSnapshotModel.id == snapshot_id, ProjectModel.owner_id == owner_id)
+        )
