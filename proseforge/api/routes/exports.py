@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.application.auth.service import AuthUser
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
+from proseforge.application.writing.export_service import render_docx, render_epub
 
 router = APIRouter(prefix="/api/v1", tags=["exports"])
 
@@ -21,12 +22,16 @@ async def export_project(
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
 ) -> Response:
     format_name = format_name.lower()
-    if format_name not in {"txt", "md", "json"}:
-        raise HTTPException(status_code=501, detail="export format is not available yet")
+    if format_name not in {"txt", "md", "json", "docx", "epub"}:
+        raise HTTPException(status_code=400, detail="unsupported export format")
     async with uow:
         if await uow.projects.get_by_id(user.id, project_id) is None:
             raise HTTPException(status_code=404, detail="project not found")
         chapters = await uow.chapters.active_contents(project_id, user.id)
+    if format_name == "docx":
+        return Response(content=render_docx(chapters), media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", headers={"content-disposition": f'attachment; filename="proseforge-{project_id}.docx"'})
+    if format_name == "epub":
+        return Response(content=render_epub(f"ProseForge {project_id}", chapters), media_type="application/epub+zip", headers={"content-disposition": f'attachment; filename="proseforge-{project_id}.epub"'})
     if format_name == "json":
         body = json.dumps(
             [{"chapter_no": chapter.chapter_no, "title": chapter.title, "content": content} for chapter, content in chapters],
