@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Float, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from proseforge.infrastructure.database.base import Base
@@ -108,6 +108,12 @@ class WorkflowRunModel(Base):
     project_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     workflow_type: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
+    lease_owner: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    lease_expires_at: Mapped[object | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    heartbeat_at: Mapped[object | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    checkpoint: Mapped[str | None] = mapped_column(Text, nullable=True)
+    estimated_cost: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default="0")
+    cost_limit: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default="0")
 
 
 class WorkflowStepModel(Base):

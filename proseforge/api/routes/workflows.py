@@ -18,6 +18,7 @@ router = APIRouter(prefix="/api/v1", tags=["workflows"])
 
 class NovelWorkflowRequest(BaseModel):
     chapter_numbers: list[int] = Field(default_factory=list, min_length=1)
+    cost_limit: float = Field(default=0.0, ge=0)
 
 
 def _response(run) -> dict[str, str]:
@@ -39,7 +40,7 @@ async def create_workflow(
         for chapter_no in payload.chapter_numbers:
             if chapter_no not in existing:
                 await uow.chapters.add(Chapter.create(project_id=project.id, chapter_no=chapter_no, title=f"Chapter {chapter_no}"))
-        return_value = await uow.workflows.create(project.id, "NOVEL")
+        return_value = await uow.workflows.create(project.id, "NOVEL", cost_limit=payload.cost_limit)
         await uow.commit()
         return _response(return_value)
 
