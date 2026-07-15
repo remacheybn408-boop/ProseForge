@@ -53,6 +53,16 @@ class SqlAlchemyProjectRepository:
         await self.session.flush()
         return self._entity(row)
 
+    async def set_status(self, owner_id: str, project_id: str, status: str) -> Project | None:
+        row = await self.session.scalar(
+            select(ProjectModel).where(ProjectModel.owner_id == owner_id, ProjectModel.id == project_id)
+        )
+        if row is None:
+            return None
+        row.status = status
+        await self.session.flush()
+        return self._entity(row)
+
     async def delete(self, owner_id: str, project_id: str) -> bool:
         result = await self.session.execute(
             delete(ProjectModel).where(ProjectModel.owner_id == owner_id, ProjectModel.id == project_id)

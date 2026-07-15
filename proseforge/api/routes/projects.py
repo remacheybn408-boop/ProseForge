@@ -106,3 +106,22 @@ async def delete_project(
         if not await uow.projects.delete(user.id, project_id):
             raise HTTPException(status_code=404, detail="project not found")
         await uow.commit()
+
+
+async def _set_project_status(project_id: str, status_value: str, user: AuthUser, uow: SqlAlchemyUnitOfWork) -> ProjectResponse:
+    async with uow:
+        project = await uow.projects.set_status(user.id, project_id, status_value)
+        if project is None:
+            raise HTTPException(status_code=404, detail="project not found")
+        await uow.commit()
+        return _response(project)
+
+
+@router.post("/{project_id}/archive")
+async def archive_project(project_id: str, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> dict[str, object]:
+    return await _set_project_status(project_id, "ARCHIVED", user, uow)
+
+
+@router.post("/{project_id}/restore")
+async def restore_project(project_id: str, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> dict[str, object]:
+    return await _set_project_status(project_id, "ACTIVE", user, uow)
