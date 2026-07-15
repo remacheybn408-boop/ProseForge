@@ -6,7 +6,6 @@ import respx
 
 from proseforge.domain.ports.model_provider import GenerationRequest
 from proseforge.providers.baidu import BaiduProvider
-from proseforge.providers.cohere import CohereProvider
 from proseforge.providers.dashscope import DashScopeProvider
 from proseforge.providers.deepseek import DeepSeekProvider
 from proseforge.providers.kimi import KimiProvider
@@ -22,7 +21,6 @@ from proseforge.providers.zhipu import ZhipuProvider
     "factory",
     [
         BaiduProvider,
-        CohereProvider,
         DashScopeProvider,
         DeepSeekProvider,
         KimiProvider,
