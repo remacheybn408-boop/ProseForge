@@ -2,7 +2,6 @@
 
 from alembic import op
 from proseforge.infrastructure.database.base import Base
-from proseforge.infrastructure.database.models import remaining
 
 revision = "0002_remaining_schema"
 down_revision = "0001_web_core"
@@ -25,6 +24,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
     for name in reversed(_TABLES):
         op.execute(f"DROP TABLE IF EXISTS {name} CASCADE")

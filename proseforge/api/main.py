@@ -10,6 +10,8 @@ from proseforge.api.routes.files import router as files_router
 from proseforge.api.routes.chapters import router as chapters_router
 from proseforge.api.routes.exports import router as exports_router
 from proseforge.api.routes.credentials import router as credentials_router
+from proseforge.api.routes.outlines import router as outlines_router
+from proseforge.api.routes.context import router as context_router
 from proseforge.application.auth.service import AuthService
 from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
 from proseforge.infrastructure.events.database import DatabaseEventStream
@@ -39,6 +41,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(chapters_router)
     application.include_router(exports_router)
     application.include_router(credentials_router)
+    application.include_router(outlines_router)
+    application.include_router(context_router)
     return application
 
 

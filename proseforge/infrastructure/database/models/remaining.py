@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Float, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from proseforge.infrastructure.database.base import Base
@@ -56,6 +56,10 @@ class ContextItemModel(Base):
     source_type: Mapped[str] = mapped_column(String(64), nullable=False)
     source_id: Mapped[str] = mapped_column(String(64), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    provenance: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
 
 
 class ContextSnapshotModel(Base):
@@ -63,6 +67,26 @@ class ContextSnapshotModel(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     project_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     snapshot_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class OutlineModel(Base):
+    __tablename__ = "outlines"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="UPLOADED")
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    missing_questions: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class OutlineVersionModel(Base):
+    __tablename__ = "outline_versions"
+    __table_args__ = (UniqueConstraint("outline_id", "version_no", name="uq_outline_versions_outline_id_version_no"),)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    outline_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    version_no: Mapped[int] = mapped_column(Integer, nullable=False)
     payload: Mapped[str] = mapped_column(Text, nullable=False)
 
 

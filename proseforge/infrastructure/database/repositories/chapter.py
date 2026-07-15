@@ -63,6 +63,17 @@ class SqlAlchemyChapterRepository:
         await self.session.flush()
         return self._to_domain(row)
 
+    async def list_versions(self, chapter_id: str, owner_id: str) -> list[ChapterVersion]:
+        owned = await self.get_owned(chapter_id, owner_id)
+        if owned is None:
+            return []
+        rows = await self.session.scalars(
+            select(ChapterVersionModel)
+            .where(ChapterVersionModel.chapter_id == chapter_id)
+            .order_by(ChapterVersionModel.version_no.desc())
+        )
+        return [self._to_domain(row) for row in rows]
+
     async def set_active_version(self, chapter_id: str, version_id: str) -> None:
         row = await self.session.get(ChapterModel, chapter_id)
         if row is None:

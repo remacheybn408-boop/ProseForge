@@ -1,7 +1,6 @@
 """Add durable assistant message status."""
 
 from alembic import op
-import sqlalchemy as sa
 
 revision = "0003_message_status"
 down_revision = "0002_remaining_schema"
