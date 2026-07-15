@@ -8,6 +8,15 @@ on:
   workflow_dispatch:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Ruff in Docker
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm api-test ruff check proseforge tests
+      - name: Check formatting boundaries
+        run: git diff --check
+
   test:
     runs-on: ubuntu-latest
 
@@ -18,7 +27,7 @@ jobs:
         run: docker compose -f compose.yaml -f compose.test.yaml config --quiet
 
       - name: Build Docker test images
-        run: docker compose -f compose.yaml -f compose.test.yaml build api-test contract-test migration-test recovery-test web-test
+        run: docker compose -f compose.yaml -f compose.test.yaml build legacy-test api-test contract-test migration-test recovery-test web-test
 
       - name: Run legacy regression suite in Docker
         run: docker compose -f compose.yaml -f compose.test.yaml run --rm legacy-test
@@ -26,5 +35,28 @@ jobs:
       - name: Run API and contract suites in Docker
         run: docker compose -f compose.yaml -f compose.test.yaml run --rm api-test && docker compose -f compose.yaml -f compose.test.yaml run --rm contract-test
 
+      - name: Run migration and recovery suites in Docker
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm migration-test && docker compose -f compose.yaml -f compose.test.yaml run --rm recovery-test
+
       - name: Run frontend tests and build in Docker
         run: docker compose -f compose.yaml -f compose.test.yaml run --rm web-test
+
+      - name: Build production services
+        run: docker compose -f compose.yaml build api worker scheduler web
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: proseforge-test-reports
+          path: artifacts/
+          if-no-files-found: ignore
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit Python dependencies in Docker
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm api-test sh -lc "python -m pip install --no-cache-dir pip-audit && pip-audit"
+      - name: Audit frontend dependencies in Docker
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm web-test pnpm audit --audit-level high
