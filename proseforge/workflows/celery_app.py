@@ -158,7 +158,11 @@ async def _generate_chat(payload: dict[str, object]) -> str:
             provider = build_provider(provider_id, secret["api_key"], base_url=base_url)
         except KeyError:
             return "provider-not-supported"
-        request = GenerationRequest(model=model, system_blocks=(), input_blocks=(({"role": "user", "text": user_message.content}),))
+        input_blocks = [{"role": "user", "text": user_message.content}]
+        if message is not None and message.status == "PARTIAL" and message.content:
+            input_blocks.append({"role": "assistant", "text": message.content})
+            input_blocks.append({"role": "user", "text": "Continue from the saved partial response without repeating existing text."})
+        request = GenerationRequest(model=model, system_blocks=(), input_blocks=tuple(input_blocks))
         await GenerateReply(lambda: SqlAlchemyUnitOfWork(session_factory), provider, DatabaseEventStream(session_factory)).execute(message_id=message_id, request=request)
         return "completed"
     finally:
