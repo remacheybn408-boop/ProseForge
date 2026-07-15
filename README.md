@@ -1,100 +1,82 @@
-# ProseForge
+# ProseForge Web v1
 
-ProseForge is a local, Docker-first writing workspace for long-form fiction: outline management, context, durable writing workflows, quality gates, revision validation, versioned chapters, and export.
+ProseForge 是一个 Docker-first 的长篇小说写作工作台：项目管理、章节版本、AI 对话、上下文、质量门禁、可恢复工作流和导出都在同一套 Web/API 架构中。
 
-The Web v1 application owns the writing workflow and connects model vendors through native provider adapters. The legacy CLI remains available during migration.
+## 运行方式
 
-## Web v1 migration
-
-External Codex, Hermes, and Claude Code plugin surfaces have been removed. The supported entrypoints are the compatibility CLI and the Web API.
-
-## Quick start
-
-Requirements:
-
-- Docker Desktop with Compose
-- Git
-
-Clone the repository and build the application image:
+只需要 Docker Desktop 和 Git。项目测试、构建和运行都通过 Docker 完成，宿主机不需要安装 Python、Node 或 pytest。
 
 ```bash
 git clone https://github.com/remacheybn408-boop/ProseForge.git
 cd ProseForge
-docker compose build proseforge
+copy .env.example .env
+docker compose up -d postgres redis
+docker compose run --rm migration-test alembic upgrade head
+docker compose up --build api worker scheduler web
 ```
 
-Initialize a project and inspect its health:
-
-```bash
-docker compose run --rm proseforge -m src.interfaces.cli project init
-docker compose run --rm proseforge -m src.interfaces.cli project create --slug my_novel --title "我的小说"
-docker compose run --rm proseforge -m src.interfaces.cli doctor
-```
-
-The default genre and style are intentionally empty. Configure them per project instead of inheriting a hard-coded genre.
-
-## Writing workflow
-
-The normal chapter lifecycle is:
+打开 <http://localhost:3000> 使用 Web 界面；API 健康检查：
 
 ```text
-pre → write chapter text → post → ingest/version → export
+GET http://localhost:8000/api/v1/health/live
+GET http://localhost:8000/api/v1/health/ready
 ```
 
-Run the chapter pipeline inside the container:
+首次部署请修改 `.env` 中的 JWT secret、master key 和管理员密码。生产环境会拒绝默认占位值。
+
+## Docker 测试
+
+运行完整 legacy regression：
 
 ```bash
-docker compose run --rm proseforge -m src.interfaces.cli chapter pre 1
-docker compose run --rm proseforge -m src.interfaces.cli chapter post 1
+docker compose -f compose.yaml -f compose.test.yaml run --rm legacy-test
 ```
 
-Use `--slot` when a task must explicitly bind to a project rather than the interactive active project:
+运行 API、迁移、恢复和前端测试：
 
 ```bash
-docker compose run --rm proseforge -m src.interfaces.cli chapter pre 1 --slot my_novel
-docker compose run --rm proseforge -m src.interfaces.cli chapter post 1 --slot my_novel
+docker compose -f compose.yaml -f compose.test.yaml run --rm api-test
+docker compose -f compose.yaml -f compose.test.yaml run --rm migration-test
+docker compose -f compose.yaml -f compose.test.yaml run --rm recovery-test
+docker compose -f compose.yaml -f compose.test.yaml run --rm web-test
 ```
 
-`post` requires a valid `pre` state. It blocks when the project, chapter type, context pack, or state does not match. Short-chapter merging uses staging and restores both source files if a later check fails.
+当前 Web v1 分支已在 Docker 中通过 458 个 Python 测试，以及前端 Vitest 和 Vite production build。
 
-## Testing
+## 主要功能
 
-Tests must run in Docker; the host does not need Python, pytest, or RAG dependencies:
+- Projects / Writing Studio / Context / Workflow 工作区
+- JWT 登录与项目 ownership 隔离
+- PostgreSQL + Alembic 持久化，Redis/Celery worker 拓扑
+- 会话分支、消息幂等、流式 chunk、SSE 重连
+- Provider registry、OpenAI Responses 适配器、模型目录和加密凭据
+- 内容寻址 BlobStore、安全上传检查、备份校验和恢复状态
+- 大纲 intake、章节规划、规则质量门禁、rewrite limit 和整书暂停/恢复
+- Legacy SQLite workspace 安全导入
+
+## 兼容旧 CLI
+
+旧 CLI 仅用于迁移期间的兼容操作：
 
 ```bash
-docker compose run --rm test
+docker compose -f compose.yaml -f compose.test.yaml run --rm legacy-test proseforge-legacy doctor
 ```
 
-The JUnit report is written to `artifacts/pytest.xml`. Run a focused test file with:
+外部 Codex、Hermes、Claude Code plugin surfaces 已移除；Web/API 是主入口。
 
-```bash
-docker compose run --rm test -m pytest tests/test_quality_gate_enforcement.py -q
-```
-
-The current merged branch has 413 passing tests in the Docker test service.
-
-More Docker commands and volume details are documented in [docs/DOCKER_TESTING.md](docs/DOCKER_TESTING.md).
-
-## Project layout
+## 目录
 
 ```text
-workspace/<slot>/
-├── project.json
-├── novel.db
-├── chapters/
-├── outlines/
-├── reports/
-└── exports/
+proseforge/                 Web v1 domain/application/API
+apps/web/                   React + Vite frontend
+docker/                     API、worker、web、test images
+compose.yaml                production-like topology
+compose.test.yaml           Docker-only test services
+docs/plans/                 Codex execution plan
+src/                        legacy compatibility core
 ```
 
-Each slot is an isolated novel project. Runtime contexts can bind explicitly to a slot, so background tasks do not depend on a changing global active-slot selection.
-
-## Interfaces
-
-- `src.interfaces.cli`: formal JSON-producing CLI
-- `src.application`: application services shared by CLI and agent adapters
-- `proseforge`: Web v1 application package
-- `src.interfaces.cli`: compatibility CLI during migration
+详细 Docker 说明见 [docs/DOCKER_TESTING.md](docs/DOCKER_TESTING.md)，完整实施计划见 [docs/plans/PROSEFORGE_WEB_V1_CODEX_PLAN.md](docs/plans/PROSEFORGE_WEB_V1_CODEX_PLAN.md)。
 
 ## License
 
