@@ -61,6 +61,10 @@ class SqlAlchemyConversationRepository:
             return self._chunk(existing)
         chunk = MessageChunk(id=new_id(), message_id=message_id, chunk_index=chunk_index, event_type=event_type, content=content)
         self.session.add(MessageChunkModel(**chunk.__dict__))
+        message = await self.session.get(MessageModel, message_id)
+        if message is None:
+            raise ValueError("message does not exist")
+        message.content = f"{message.content}{content}"
         await self.session.flush()
         return chunk
 

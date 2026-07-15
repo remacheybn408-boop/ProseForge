@@ -35,6 +35,8 @@ def generate_chat(self, payload: dict[str, object]) -> str:
 
 async def _generate_chat(payload: dict[str, object]) -> str:
     import base64
+    import binascii
+    import hashlib
     import json
 
     from proseforge.application.conversations.generate_reply import GenerateReply
@@ -65,9 +67,11 @@ async def _generate_chat(payload: dict[str, object]) -> str:
                     await uow.conversations.set_message_status(message_id, "PARTIAL")
                     await uow.commit()
                 return "provider-not-configured"
-            raw = base64.b64decode(settings.master_key.get_secret_value(), validate=False)
+            try:
+                raw = base64.b64decode(settings.master_key.get_secret_value(), validate=True)
+            except (ValueError, binascii.Error):
+                raw = b""
             if len(raw) != 32:
-                import hashlib
                 raw = hashlib.sha256(settings.master_key.get_secret_value().encode()).digest()
             associated = f"{user_id}:{provider_id}:{credential.id}".encode()
             secret = json.loads(CredentialCipher(raw).decrypt(base64.b64decode(credential.encrypted_payload), associated_data=associated))

@@ -35,4 +35,14 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByRole("textbox", { name: "" }).first().fill("A first draft written through the browser.");
   await page.getByRole("button", { name: "Save version" }).click();
   await expect(page.getByText(/Saved version 1/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByLabel("API key").fill("mock-api-key");
+  await page.getByLabel("Base URL (optional)").fill("http://provider-mock:8080/v1");
+  await page.getByRole("button", { name: "Save provider" }).click();
+  await expect(page.getByText("Saved securely. The key is now masked.")).toBeVisible();
+  await page.getByRole("button", { name: "Writing Studio" }).click();
+  await page.getByPlaceholder(/Ask your companion/i).fill("Give me one continuity check.");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("Mock provider response")).toBeVisible({ timeout: 15_000 });
 });
