@@ -13,6 +13,7 @@ All commands below were executed in Docker containers.
 - `proseforge --version` works inside the rebuilt API image
 - API, Worker, and Scheduler run as UID/GID `10001`
 - Provider contracts: `17 passed` including domestic Chat Completions adapters and native Ollama NDJSON
+- Native Cohere V2 contract: `1 passed`; Settings connection probe is covered by browser E2E
 - Capability validation: `3 passed` for modality, structured output, reasoning, max output, and context overflow
 - Fault injection and interrupted-stream recovery: `2 passed`; unavailable PostgreSQL/Redis returns readiness `503`
 - Docker E2E was rerun after forced recreation of API/worker/web against the isolated test volume: `1 passed`
