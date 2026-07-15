@@ -41,7 +41,7 @@ docker compose -f compose.yaml -f compose.test.yaml run --rm recovery-test
 docker compose -f compose.yaml -f compose.test.yaml run --rm web-test
 ```
 
-当前 Web v1 分支已在 Docker 中通过 483 个 Python 测试，以及前端 Vitest、Playwright E2E 和 Vite production build。
+当前 Web v1 分支已在 Docker 中通过 legacy 回归 408 个测试、API 517 个测试（另 1 个可选 RAG 测试跳过）、contract 17 个、migration 22 个、recovery 2 个，以及前端 Vitest 2 个、Playwright E2E 1 个和 Vite production build。
 
 ## 主要功能
 
