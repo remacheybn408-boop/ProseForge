@@ -13,7 +13,7 @@ class CohereProvider(ModelProvider):
 
     provider_id = "cohere"
 
-    def __init__(self, api_key: str, base_url: str = "https://api.cohere.com", timeout: float = 30.0):
+    def __init__(self, api_key: str = "", base_url: str = "https://api.cohere.com", timeout: float = 30.0):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
