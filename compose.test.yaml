@@ -47,7 +47,7 @@ services:
     volumes:
       - .:/app
       - web-node-modules:/app/apps/web/node_modules
-    command: ["sh", "-lc", "corepack enable && pnpm install --frozen-lockfile && pnpm test -- --run"]
+    command: ["sh", "-lc", "corepack enable && pnpm install --frozen-lockfile && pnpm test -- --run && pnpm build"]
 
 volumes:
   web-node-modules:

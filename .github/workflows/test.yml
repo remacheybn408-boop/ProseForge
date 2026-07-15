@@ -14,8 +14,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Docker test image
-        run: docker compose build proseforge
+      - name: Validate Compose topology
+        run: docker compose -f compose.yaml -f compose.test.yaml config --quiet
 
-      - name: Run tests in Docker
-        run: docker compose run --rm test
+      - name: Build Docker test images
+        run: docker compose -f compose.yaml -f compose.test.yaml build api-test contract-test migration-test recovery-test web-test
+
+      - name: Run legacy regression suite in Docker
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm legacy-test
+
+      - name: Run API and contract suites in Docker
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm api-test && docker compose -f compose.yaml -f compose.test.yaml run --rm contract-test
+
+      - name: Run frontend tests and build in Docker
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm web-test
