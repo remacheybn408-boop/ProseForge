@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.api.sse.encoder import encode_sse
 from proseforge.application.auth.service import AuthUser
+from proseforge.domain.chapter.entity import Chapter
 from proseforge.domain.workflow.state import ALLOWED_TRANSITIONS
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
@@ -30,11 +31,14 @@ async def create_workflow(
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
 ) -> dict[str, str]:
-    del payload
     async with uow:
         project = await uow.projects.get_by_id(user.id, project_id)
         if project is None:
             raise HTTPException(status_code=404, detail="project not found")
+        existing = {chapter.chapter_no for chapter in await uow.chapters.list_owned(project.id, user.id)}
+        for chapter_no in payload.chapter_numbers:
+            if chapter_no not in existing:
+                await uow.chapters.add(Chapter.create(project_id=project.id, chapter_no=chapter_no, title=f"Chapter {chapter_no}"))
         return_value = await uow.workflows.create(project.id, "NOVEL")
         await uow.commit()
         return _response(return_value)
