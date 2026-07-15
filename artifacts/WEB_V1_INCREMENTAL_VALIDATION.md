@@ -47,6 +47,7 @@ All commands below were executed in Docker containers.
 - Final Docker frontend validation: Vitest `3 passed`, Vite production build passed, and Playwright E2E `1 passed`
 - Frontend draft durability and reconnectable conversation SSE: Vitest `3 passed`; browser E2E remained green after the streaming client change
 - Writing Studio now reloads the active chapter version from PostgreSQL after project/chapter navigation; Docker build and E2E remained green after the persistence fix
+- E2E test volume repair was verified: forcing API bootstrap recreated missing application tables when an old volume had only `alembic_version`; login and browser flow then passed
 - Readiness now verifies master-key validity, pgvector availability, partial-message visibility, and expired workflow leases; bootstrap repairs missing PostgreSQL extensions idempotently
 - Live Docker fault injection: stopping Redis made `/api/v1/health/ready` return `503`; restarting Redis restored `200` and all readiness checks to `ok`
 - Rebuilt production API/worker/scheduler/web images after health changes; production readiness returned `200` with `pgvector`, `master_key`, `partial_messages`, and `expired_workflows` checks
