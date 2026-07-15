@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 from proseforge.operations.startup_check import run_startup_check
 
@@ -13,7 +14,10 @@ async def live() -> dict[str, str]:
 @router.get("/ready")
 async def ready(request: Request) -> dict[str, object]:
     report = run_startup_check(request.app.state.settings.blob_root, request.app.state.settings.backup_root)
-    return {"status": "ready" if report.ready else "not_ready", "checks": {"api": "ok", **report.checks}}
+    payload = {"status": "ready" if report.ready else "not_ready", "checks": {"api": "ok", **report.checks}}
+    if not report.ready:
+        return JSONResponse(status_code=503, content=payload)
+    return payload
 
 
 @router.get("/report")
