@@ -36,6 +36,7 @@ All commands below were executed in Docker containers.
 - Full rebuilt Docker browser flow: Playwright `1 passed` in `5.3s`; frontend now waits for durable chat completion
 - Startup health round-trip, migration, and workflow-table checks: recovery `2 passed`, API health `3 passed`; BlobStore probe is removed after verification
 - Export request contract and Writing Studio Markdown download control: Web Vitest `2 passed` + Vite build; API/unit regression `10 passed`
+- Manual future-model registration and catalog retention: `3 passed`; custom models are marked manual and protected from sync disappearance
 - Final rebuilt API/worker/scheduler production stack: all services healthy, readiness `ok`, Celery `pong`
 - Docker E2E was rerun after forced recreation of API/worker/web against the isolated test volume: `1 passed`
 - Production readiness after returning to the base Compose stack: API/blob/backup/database/redis all `ok`; Celery `inspect ping` returned `pong`
