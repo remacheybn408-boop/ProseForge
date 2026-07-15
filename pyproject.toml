@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proseforge"
-version = "1.0.0.dev0"
+version = "1.0.0"
 description = "AI-powered long-form novel engineering pipeline"
 requires-python = ">=3.12"
 dependencies = [

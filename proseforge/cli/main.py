@@ -6,6 +6,7 @@ import os
 import subprocess
 from proseforge.infrastructure.legacy_import.importer import LegacyImporter
 from proseforge.operations.backup import BackupService
+from version import get_version
 
 
 def _database_dump(database_url: str | None = None) -> bytes:
@@ -41,7 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     backup.add_argument("--restore-database-url")
     args = parser.parse_args(argv)
     if args.version:
-        print("1.0.0.dev0")
+        print(get_version())
     elif args.command == "migrate" and args.migration == "legacy":
         session_factory = None
         if args.owner_id:
