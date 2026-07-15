@@ -23,6 +23,10 @@ class SqlAlchemyCredentialRepository:
         )
         return list(rows)
 
+    async def list_all(self) -> list[ProviderCredentialModel]:
+        rows = await self.session.scalars(select(ProviderCredentialModel).order_by(ProviderCredentialModel.user_id, ProviderCredentialModel.provider))
+        return list(rows)
+
     async def get_for_user(self, user_id: str, provider: str) -> ProviderCredentialModel | None:
         return await self.session.scalar(
             select(ProviderCredentialModel).where(

@@ -18,12 +18,65 @@ celery.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    beat_schedule={
+        "sync-provider-model-catalog-daily": {
+            "task": "proseforge.providers.sync_all_models",
+            "schedule": 24 * 60 * 60,
+        }
+    },
 )
 
 
 @celery.task(name="proseforge.healthcheck")
 def healthcheck() -> str:
     return "ok"
+
+
+@celery.task(name="proseforge.providers.sync_all_models", bind=True, max_retries=0)
+def sync_all_provider_models(self) -> dict[str, int]:
+    del self
+    return asyncio.run(_sync_all_provider_models())
+
+
+async def _sync_all_provider_models() -> dict[str, int]:
+    import base64
+    import binascii
+    import hashlib
+    import json
+
+    from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
+    from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
+    from proseforge.infrastructure.security.credential_cipher import CredentialCipher
+    from proseforge.providers.factory import build_provider
+    from proseforge.settings import get_settings
+
+    settings = get_settings()
+    engine, session_factory = create_engine_and_sessionmaker(settings)
+    synced = 0
+    failed = 0
+    try:
+        raw_key = settings.master_key.get_secret_value()
+        try:
+            key = base64.b64decode(raw_key, validate=True)
+        except (ValueError, binascii.Error):
+            key = b""
+        if len(key) != 32:
+            key = hashlib.sha256(raw_key.encode()).digest()
+        async with SqlAlchemyUnitOfWork(session_factory) as uow:
+            for credential in await uow.credentials.list_all():
+                try:
+                    associated = f"{credential.user_id}:{credential.provider}:{credential.id}".encode()
+                    secret = json.loads(CredentialCipher(key).decrypt(base64.b64decode(credential.encrypted_payload), associated_data=associated))
+                    provider = build_provider(credential.provider, secret["api_key"], secret.get("base_url"))
+                    models = await provider.list_models()
+                    await uow.model_catalog.upsert(models)
+                    synced += 1
+                except Exception:
+                    failed += 1
+            await uow.commit()
+    finally:
+        await engine.dispose()
+    return {"synced": synced, "failed": failed}
 
 
 @celery.task(name="proseforge.chat.generate", bind=True, autoretry_for=(), max_retries=0)
