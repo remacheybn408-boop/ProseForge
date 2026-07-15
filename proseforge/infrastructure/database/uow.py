@@ -7,6 +7,7 @@ from proseforge.infrastructure.database.repositories.conversation import SqlAlch
 from proseforge.infrastructure.database.repositories.project import SqlAlchemyProjectRepository
 from proseforge.infrastructure.database.repositories.model_catalog import SqlAlchemyModelCatalogRepository
 from proseforge.infrastructure.database.repositories.workflow import SqlAlchemyWorkflowRepository
+from proseforge.infrastructure.database.repositories.attachment import SqlAlchemyAttachmentRepository
 
 
 class SqlAlchemyUnitOfWork:
@@ -19,6 +20,7 @@ class SqlAlchemyUnitOfWork:
         self.conversations = None
         self.messages = None
         self.workflows = None
+        self.attachments = None
         self.model_catalog = None
 
     async def __aenter__(self) -> "SqlAlchemyUnitOfWork":
@@ -29,6 +31,7 @@ class SqlAlchemyUnitOfWork:
         self.conversations = SqlAlchemyConversationRepository(self.session)
         self.model_catalog = SqlAlchemyModelCatalogRepository(self.session)
         self.workflows = SqlAlchemyWorkflowRepository(self.session)
+        self.attachments = SqlAlchemyAttachmentRepository(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
