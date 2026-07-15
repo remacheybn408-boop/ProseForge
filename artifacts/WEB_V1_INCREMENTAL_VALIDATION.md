@@ -42,10 +42,11 @@ All commands below were executed in Docker containers.
 - Production readiness after returning to the base Compose stack: API/blob/backup/database/redis all `ok`; Celery `inspect ping` returned `pong`
 - After API container recreation, the Web/Nginx proxy still served `/api/v1/health/live` successfully via Docker DNS resolution
 - Compose services were healthy after rebuild/restart
-- Final Docker API regression: `517 passed, 1 skipped`; test entrypoint now runs Alembic plus schema bootstrap before pytest
-- Final Docker contract/migration/recovery suites: `17 passed`, `22 passed`, and `2 passed`
+- Final Docker API regression: `522 passed, 1 skipped`; test entrypoint now runs Alembic plus schema bootstrap before pytest
+- Final Docker contract/migration/recovery suites: `17 passed`, `22 passed`, and `5 passed`
 - Final Docker frontend validation: Vitest `2 passed`, Vite production build passed, and Playwright E2E `1 passed`
 - Frontend draft durability and reconnectable conversation SSE: Vitest `3 passed`; browser E2E remained green after the streaming client change
+- Readiness now verifies master-key validity, pgvector availability, partial-message visibility, and expired workflow leases; bootstrap repairs missing PostgreSQL extensions idempotently
 - Backup restore regression: `3 passed`; tampered members are rejected and database restore requires an explicit staging target
 - Runtime container contract: `2 passed`; API/worker/scheduler run as UID/GID `10001` and Nginx SSE buffering is disabled
 - Same-production-Compose `down`/`up` persistence probe preserved PostgreSQL data; the temporary probe table was removed afterward

@@ -15,6 +15,8 @@ def ensure_schema(settings: Settings | None = None) -> list[str]:
     engine = create_engine(url, pool_pre_ping=True)
     try:
         with engine.begin() as connection:
+            connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
             before = set(inspect(connection).get_table_names())
             Base.metadata.create_all(connection, checkfirst=True)
             after = set(inspect(connection).get_table_names())
