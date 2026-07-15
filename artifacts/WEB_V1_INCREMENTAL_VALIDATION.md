@@ -5,9 +5,9 @@ Date: 2026-07-16
 All commands below were executed in Docker containers.
 
 - Playwright browser smoke: `1 passed`
-- API/contract/unit regression: `37 passed`
+- API/contract/unit regression: final Docker API `522 passed, 1 skipped`; contract `17 passed`
 - Legacy top-level regression isolated from Web/API integration tests: `408 passed in 209.28s`
-- Frontend Vitest: `2 passed`; Vite production build passed
+- Frontend Vitest: `3 passed`; Vite production build passed
 - Backup archive verification passed
 - Backup database restore completed into PostgreSQL `proseforge_staging`; `alembic_version` exists and application tables were created
 - `proseforge --version` works inside the rebuilt API image
@@ -44,11 +44,12 @@ All commands below were executed in Docker containers.
 - Compose services were healthy after rebuild/restart
 - Final Docker API regression: `522 passed, 1 skipped`; test entrypoint now runs Alembic plus schema bootstrap before pytest
 - Final Docker contract/migration/recovery suites: `17 passed`, `22 passed`, and `5 passed`
-- Final Docker frontend validation: Vitest `2 passed`, Vite production build passed, and Playwright E2E `1 passed`
+- Final Docker frontend validation: Vitest `3 passed`, Vite production build passed, and Playwright E2E `1 passed`
 - Frontend draft durability and reconnectable conversation SSE: Vitest `3 passed`; browser E2E remained green after the streaming client change
 - Readiness now verifies master-key validity, pgvector availability, partial-message visibility, and expired workflow leases; bootstrap repairs missing PostgreSQL extensions idempotently
 - Live Docker fault injection: stopping Redis made `/api/v1/health/ready` return `503`; restarting Redis restored `200` and all readiness checks to `ok`
 - Rebuilt production API/worker/scheduler/web images after health changes; production readiness returned `200` with `pgvector`, `master_key`, `partial_messages`, and `expired_workflows` checks
+- Final Docker gate rerun: legacy `408 passed`; API `522 passed, 1 skipped`; contract `17 passed`; migration `22 passed`; recovery `5 passed`; web `3 passed`; E2E `1 passed`
 - Backup restore regression: `3 passed`; tampered members are rejected and database restore requires an explicit staging target
 - Runtime container contract: `2 passed`; API/worker/scheduler run as UID/GID `10001` and Nginx SSE buffering is disabled
 - Same-production-Compose `down`/`up` persistence probe preserved PostgreSQL data; the temporary probe table was removed afterward
