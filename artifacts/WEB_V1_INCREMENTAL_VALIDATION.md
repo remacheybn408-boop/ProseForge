@@ -50,6 +50,7 @@ All commands below were executed in Docker containers.
 - Live Docker fault injection: stopping Redis made `/api/v1/health/ready` return `503`; restarting Redis restored `200` and all readiness checks to `ok`
 - Rebuilt production API/worker/scheduler/web images after health changes; production readiness returned `200` with `pgvector`, `master_key`, `partial_messages`, and `expired_workflows` checks
 - Final Docker gate rerun: legacy `408 passed`; API `522 passed, 1 skipped`; contract `17 passed`; migration `22 passed`; recovery `5 passed`; web `3 passed`; E2E `1 passed`
+- Full repository Ruff gate: `All checks passed` for `proseforge` and `tests` inside the Docker test image
 - Backup restore regression: `3 passed`; tampered members are rejected and database restore requires an explicit staging target
 - Runtime container contract: `2 passed`; API/worker/scheduler run as UID/GID `10001` and Nginx SSE buffering is disabled
 - Same-production-Compose `down`/`up` persistence probe preserved PostgreSQL data; the temporary probe table was removed afterward
