@@ -9,6 +9,7 @@ from proseforge.infrastructure.database.repositories.model_catalog import SqlAlc
 from proseforge.infrastructure.database.repositories.workflow import SqlAlchemyWorkflowRepository
 from proseforge.infrastructure.database.repositories.attachment import SqlAlchemyAttachmentRepository
 from proseforge.infrastructure.database.repositories.user import SqlAlchemyUserRepository
+from proseforge.infrastructure.database.repositories.credential import SqlAlchemyCredentialRepository
 
 
 class SqlAlchemyUnitOfWork:
@@ -24,6 +25,7 @@ class SqlAlchemyUnitOfWork:
         self.attachments = None
         self.model_catalog = None
         self.users = None
+        self.credentials = None
 
     async def __aenter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self.session_factory()
@@ -35,6 +37,7 @@ class SqlAlchemyUnitOfWork:
         self.workflows = SqlAlchemyWorkflowRepository(self.session)
         self.attachments = SqlAlchemyAttachmentRepository(self.session)
         self.users = SqlAlchemyUserRepository(self.session)
+        self.credentials = SqlAlchemyCredentialRepository(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
