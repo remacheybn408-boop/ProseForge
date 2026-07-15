@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import difflib
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -99,3 +100,41 @@ async def list_versions(
              "content": version.content, "word_count": version.word_count}
             for version in await uow.chapters.list_versions(chapter_id, user.id)
         ]
+
+
+@router.post("/chapters/{chapter_id}/activate-version")
+async def activate_version(
+    chapter_id: str,
+    version_id: str,
+    user: Annotated[AuthUser, Depends(current_user)],
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+) -> dict[str, object]:
+    async with uow:
+        if await uow.chapters.get_owned(chapter_id, user.id) is None:
+            raise HTTPException(status_code=404, detail="chapter not found")
+        version = await uow.chapters.get_version_owned(chapter_id, version_id, user.id)
+        if version is None:
+            raise HTTPException(status_code=404, detail="version not found")
+        await uow.chapters.set_active_version(chapter_id, version.id)
+        await uow.commit()
+        return {"chapter_id": chapter_id, "active_version_id": version.id, "version_no": version.version_no}
+
+
+@router.get("/chapters/{chapter_id}/diff")
+async def chapter_diff(
+    chapter_id: str,
+    from_version: int,
+    to_version: int,
+    user: Annotated[AuthUser, Depends(current_user)],
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+) -> dict[str, object]:
+    async with uow:
+        if await uow.chapters.get_owned(chapter_id, user.id) is None:
+            raise HTTPException(status_code=404, detail="chapter not found")
+        versions = await uow.chapters.list_versions(chapter_id, user.id)
+    source = next((version for version in versions if version.version_no == from_version), None)
+    target = next((version for version in versions if version.version_no == to_version), None)
+    if source is None or target is None:
+        raise HTTPException(status_code=404, detail="version not found")
+    diff = list(difflib.unified_diff(source.content.splitlines(), target.content.splitlines(), fromfile=f"v{from_version}", tofile=f"v{to_version}", lineterm=""))
+    return {"chapter_id": chapter_id, "from_version": from_version, "to_version": to_version, "changed": source.content != target.content, "diff": diff}

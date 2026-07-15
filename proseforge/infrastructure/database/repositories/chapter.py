@@ -74,6 +74,19 @@ class SqlAlchemyChapterRepository:
         )
         return [self._to_domain(row) for row in rows]
 
+    async def get_version_owned(self, chapter_id: str, version_id: str, owner_id: str) -> ChapterVersion | None:
+        row = await self.session.scalar(
+            select(ChapterVersionModel)
+            .join(ChapterModel, ChapterModel.id == ChapterVersionModel.chapter_id)
+            .join(ProjectModel, ProjectModel.id == ChapterModel.project_id)
+            .where(
+                ChapterVersionModel.id == version_id,
+                ChapterVersionModel.chapter_id == chapter_id,
+                ProjectModel.owner_id == owner_id,
+            )
+        )
+        return None if row is None else self._to_domain(row)
+
     async def set_active_version(self, chapter_id: str, version_id: str) -> None:
         row = await self.session.get(ChapterModel, chapter_id)
         if row is None:
