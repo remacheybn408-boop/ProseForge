@@ -29,6 +29,7 @@ All commands below were executed in Docker containers.
 - Chat stop/retry/continue and partial-stream continuation: `5 passed`; recovery resumes at the next durable chunk index
 - Worker continuation request compilation passed in Docker; saved partial assistant text is included as continuation context
 - Writer/Editor profile roles and frontend settings build: Vitest `2 passed`; Vite production build passed
+- Durable Novel Writer task and streamed chapter collection: `5 passed`; empty provider output is rejected and successful chapters activate only after persistence
 - Final rebuilt API/worker/scheduler production stack: all services healthy, readiness `ok`, Celery `pong`
 - Docker E2E was rerun after forced recreation of API/worker/web against the isolated test volume: `1 passed`
 - Production readiness after returning to the base Compose stack: API/blob/backup/database/redis all `ok`; Celery `inspect ping` returned `pong`
