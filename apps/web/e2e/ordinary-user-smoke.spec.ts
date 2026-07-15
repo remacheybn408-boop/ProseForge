@@ -23,6 +23,14 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByLabel("Project title").fill(`E2E Project ${Date.now()}`);
   await page.getByRole("button", { name: "Create project" }).click();
   await expect(page.getByRole("heading", { name: /start from your story idea/i })).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByLabel("API key").fill("mock-api-key");
+  await page.getByLabel("Base URL (optional)").fill("http://provider-mock:8080/v1");
+  await page.getByRole("button", { name: "Save provider" }).click();
+  await expect(page.getByText("Saved securely. The key is now masked.")).toBeVisible();
+  await page.getByRole("button", { name: "Test connection" }).last().click();
+  await expect(page.getByText("openai connection is healthy.")).toBeVisible();
+  await page.getByRole("button", { name: "Outline intake" }).click();
   await page.getByLabel("Outline title").fill("E2E Outline");
   await page.getByLabel("Outline or story notes").fill("A complete story about a cartographer who returns home and chooses hope.");
   await page.getByRole("button", { name: "Import and analyze" }).click();
@@ -33,18 +41,11 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await expect(page.getByRole("heading", { name: "Chapter workflow" })).toBeVisible();
   await page.getByRole("button", { name: "Writing Studio" }).click();
   await expect(page.getByRole("button", { name: /Chapter 1/i })).toBeVisible();
+  await expect(page.locator("textarea.editor")).toHaveValue("Mock provider response", { timeout: 15_000 });
   await page.getByRole("textbox", { name: "" }).first().fill("A first draft written through the browser.");
   await page.getByRole("button", { name: "Save version" }).click();
   await expect(page.getByText(/Saved version \d+/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByLabel("API key").fill("mock-api-key");
-  await page.getByLabel("Base URL (optional)").fill("http://provider-mock:8080/v1");
-  await page.getByRole("button", { name: "Save provider" }).click();
-  await expect(page.getByText("Saved securely. The key is now masked.")).toBeVisible();
-  await page.getByRole("button", { name: "Test connection" }).last().click();
-  await expect(page.getByText("openai connection is healthy.")).toBeVisible();
-  await page.getByRole("button", { name: "Writing Studio" }).click();
   await page.getByPlaceholder(/Ask your companion/i).fill("Give me one continuity check.");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("Mock provider response")).toBeVisible({ timeout: 15_000 });
