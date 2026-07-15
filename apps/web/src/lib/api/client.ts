@@ -6,6 +6,7 @@ export type Chapter = { id: string; project_id: string; chapter_no: number; titl
 export type ChapterVersion = { id: string; chapter_id: string; version_no: number; content: string; word_count: number };
 export type Workflow = { id: string; project_id: string; workflow_type: string; status: string };
 export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; status: string };
+export type ModelProfile = { id: string; name: string; config: Record<string, unknown> };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...init, credentials: "include", headers: { "content-type": "application/json", ...(init?.headers ?? {}) } });
@@ -18,6 +19,8 @@ export function listProjects() { return request<Project[]>("/api/v1/projects"); 
 export function listCredentials() { return request<Credential[]>("/api/v1/credentials"); }
 export function saveCredential(payload: { provider: string; api_key: string; base_url?: string }) { return request<Credential>("/api/v1/credentials", { method: "POST", body: JSON.stringify(payload) }); }
 export function probeProvider(provider: string) { return request<{ provider: string; valid: boolean }>(`/api/v1/providers/${provider}/probe`, { method: "POST" }); }
+export function listModelProfiles() { return request<ModelProfile[]>("/api/v1/model-profiles"); }
+export function saveModelProfile(payload: { name: string; config: Record<string, unknown> }) { return request<ModelProfile>("/api/v1/model-profiles", { method: "POST", body: JSON.stringify(payload) }); }
 export function login(payload: { email: string; password: string }) { return request<{ access_token: string; token_type: string }>("/api/v1/auth/login", { method: "POST", body: JSON.stringify(payload) }); }
 export function setupAdmin(payload: { email: string; password: string }) { return request<{ id: string; email: string }>("/api/v1/auth/setup", { method: "POST", body: JSON.stringify(payload) }); }
 export function createProject(payload: { slug: string; title: string; genre?: string; style?: string }) { return request<Project>("/api/v1/projects", { method: "POST", body: JSON.stringify(payload) }); }
