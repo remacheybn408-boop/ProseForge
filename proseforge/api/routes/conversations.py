@@ -91,9 +91,9 @@ async def fork_branch(
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
 ) -> dict[str, str]:
     async with uow:
-        if not await uow.conversations.belongs_to_owner(conversation_id, user.id):
-            raise HTTPException(status_code=404, detail="conversation not found")
-        branch = await uow.conversations.fork(conversation_id, payload.message_id, payload.name)
+        branch = await uow.conversations.fork_owned(conversation_id, payload.message_id, payload.name, user.id)
+        if branch is None:
+            raise HTTPException(status_code=404, detail="conversation or fork point not found")
         await uow.commit()
         return {"id": branch.id, "name": branch.name}
 

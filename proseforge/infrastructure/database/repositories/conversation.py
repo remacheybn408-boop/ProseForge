@@ -58,6 +58,27 @@ class SqlAlchemyConversationRepository:
         await self.session.flush()
         return branch
 
+    async def fork_owned(self, conversation_id: str, forked_from_message_id: str, name: str, owner_id: str) -> ConversationBranch | None:
+        from proseforge.infrastructure.database.models.project import ProjectModel
+
+        source = await self.session.scalar(
+            select(MessageModel)
+            .join(ConversationBranchModel, ConversationBranchModel.id == MessageModel.branch_id)
+            .join(ConversationModel, ConversationModel.id == ConversationBranchModel.conversation_id)
+            .join(ProjectModel, ProjectModel.id == ConversationModel.project_id)
+            .where(
+                MessageModel.id == forked_from_message_id,
+                ConversationModel.id == conversation_id,
+                ProjectModel.owner_id == owner_id,
+            )
+        )
+        if source is None:
+            return None
+        branch = ConversationBranch(id=new_id(), conversation_id=conversation_id, name=name, parent_branch_id=source.branch_id, forked_from_message_id=forked_from_message_id)
+        self.session.add(ConversationBranchModel(**branch.__dict__))
+        await self.session.flush()
+        return branch
+
     async def list_visible_messages(self, branch_id: str) -> list[Message]:
         branch = await self.session.get(ConversationBranchModel, branch_id)
         if branch is None:
