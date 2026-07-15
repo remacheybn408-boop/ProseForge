@@ -21,6 +21,8 @@ All commands below were executed in Docker containers.
 - Conversation idempotency and branch persistence: `3 passed`; duplicate client requests reuse the existing assistant task
 - Durable SSE replay and concurrent event publication: `2 passed`; per-conversation event IDs remain unique and ordered
 - Affected API/provider/fault regression after event-stream changes: `33 passed`
+- Context snapshot persistence/control and file ownership flows: `2 + 10 passed`; snapshot validation/download and file download/delete paths are covered
+- Auth session controls and project archive/restore: `10 + 3 passed`; CLI reports release version `1.0.0`
 - Final rebuilt API/worker/scheduler production stack: all services healthy, readiness `ok`, Celery `pong`
 - Docker E2E was rerun after forced recreation of API/worker/web against the isolated test volume: `1 passed`
 - Production readiness after returning to the base Compose stack: API/blob/backup/database/redis all `ok`; Celery `inspect ping` returned `pong`
