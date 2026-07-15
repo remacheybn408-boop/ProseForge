@@ -3,6 +3,7 @@
 from .chapter import ChapterModel, ChapterVersionModel
 from .conversation import ConversationBranchModel, ConversationEventModel, ConversationModel, MessageChunkModel, MessageModel
 from .project import ProjectModel
+from .auth import UserModel
 from .remaining import *
 
-__all__ = ["ChapterModel", "ChapterVersionModel", "ProjectModel", "ConversationModel", "ConversationBranchModel", "MessageModel", "MessageChunkModel", "ConversationEventModel"]
+__all__ = ["ChapterModel", "ChapterVersionModel", "ProjectModel", "UserModel", "ConversationModel", "ConversationBranchModel", "MessageModel", "MessageChunkModel", "ConversationEventModel"]

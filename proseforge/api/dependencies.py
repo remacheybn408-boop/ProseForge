@@ -15,10 +15,11 @@ async def current_user(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
 ) -> AuthUser:
-    if credentials is None:
+    token = credentials.credentials if credentials else request.cookies.get("proseforge_session")
+    if not token:
         raise HTTPException(status_code=401, detail="authentication required")
     try:
-        return request.app.state.auth.decode_token(credentials.credentials)
+        return request.app.state.auth.decode_token(token)
     except Exception as exc:
         raise HTTPException(status_code=401, detail="invalid session token") from exc
 
