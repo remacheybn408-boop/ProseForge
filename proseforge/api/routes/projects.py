@@ -30,6 +30,12 @@ class ProjectResponse(BaseModel):
     status: str
 
 
+class ProjectUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=500)
+    genre: str | None = Field(default=None, max_length=200)
+    style: str | None = Field(default=None, max_length=200)
+
+
 def _response(project: Project) -> ProjectResponse:
     return ProjectResponse(
         id=project.id, slug=project.slug, title=project.title, genre=project.genre,
@@ -53,6 +59,15 @@ async def create_project(
         return _response(project)
 
 
+@router.get("", response_model=list[ProjectResponse])
+async def list_projects(
+    user: Annotated[AuthUser, Depends(current_user)],
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+) -> list[ProjectResponse]:
+    async with uow:
+        return [_response(project) for project in await uow.projects.list_for_owner(user.id)]
+
+
 @router.get("/{slug}", response_model=ProjectResponse)
 async def get_project(
     slug: str,
@@ -64,3 +79,30 @@ async def get_project(
         if project is None:
             raise HTTPException(status_code=404, detail="project not found")
         return _response(project)
+
+
+@router.patch("/{project_id}", response_model=ProjectResponse)
+async def update_project(
+    project_id: str,
+    payload: ProjectUpdateRequest,
+    user: Annotated[AuthUser, Depends(current_user)],
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+) -> ProjectResponse:
+    async with uow:
+        project = await uow.projects.update(user.id, project_id, **payload.model_dump(exclude_unset=True))
+        if project is None:
+            raise HTTPException(status_code=404, detail="project not found")
+        await uow.commit()
+        return _response(project)
+
+
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_project(
+    project_id: str,
+    user: Annotated[AuthUser, Depends(current_user)],
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+) -> None:
+    async with uow:
+        if not await uow.projects.delete(user.id, project_id):
+            raise HTTPException(status_code=404, detail="project not found")
+        await uow.commit()

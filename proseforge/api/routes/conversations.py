@@ -39,7 +39,9 @@ async def create_conversation(
 ) -> dict[str, str]:
     async with uow:
         # The project repository lookup is the ownership boundary.
-        project = await uow.projects.get_by_slug(user.id, payload.project_id)
+        project = await uow.projects.get_by_id(user.id, payload.project_id)
+        if project is None:
+            project = await uow.projects.get_by_slug(user.id, payload.project_id)
         if project is None:
             raise HTTPException(status_code=404, detail="project not found")
         from proseforge.domain.conversation.entity import Conversation
@@ -56,7 +58,9 @@ async def send_message(
     request: Request,
     user: Annotated[AuthUser, Depends(current_user)],
 ) -> dict[str, str]:
-    del conversation_id, user
+    async with unit_of_work(request) as uow:
+        if not await uow.conversations.branch_belongs_to_conversation(payload.branch_id, conversation_id, user.id):
+            raise HTTPException(status_code=404, detail="conversation or branch not found")
     result = await SendMessage(
         lambda: unit_of_work(request), request.app.state.queue,
     ).execute(branch_id=payload.branch_id, content=payload.content, client_request_id=payload.client_request_id)
@@ -70,8 +74,9 @@ async def list_messages(
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
 ) -> list[dict[str, object]]:
-    del conversation_id, user
     async with uow:
+        if not await uow.conversations.branch_belongs_to_conversation(branch_id, conversation_id, user.id):
+            raise HTTPException(status_code=404, detail="conversation or branch not found")
         messages = await uow.conversations.list_visible_messages(branch_id)
         return [{"id": item.id, "role": item.role, "content": item.content, "status": item.status} for item in messages]
 
@@ -83,8 +88,9 @@ async def fork_branch(
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
 ) -> dict[str, str]:
-    del user
     async with uow:
+        if not await uow.conversations.belongs_to_owner(conversation_id, user.id):
+            raise HTTPException(status_code=404, detail="conversation not found")
         branch = await uow.conversations.fork(conversation_id, payload.message_id, payload.name)
         await uow.commit()
         return {"id": branch.id, "name": branch.name}
@@ -92,7 +98,9 @@ async def fork_branch(
 
 @router.get("/conversations/{conversation_id}/events")
 async def stream_events(conversation_id: str, request: Request, user: Annotated[AuthUser, Depends(current_user)]):
-    del user
+    async with unit_of_work(request) as uow:
+        if not await uow.conversations.belongs_to_owner(conversation_id, user.id):
+            raise HTTPException(status_code=404, detail="conversation not found")
     last_id = request.headers.get("last-event-id")
 
     async def body():
