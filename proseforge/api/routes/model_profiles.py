@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -15,6 +15,7 @@ router = APIRouter(prefix="/api/v1/model-profiles", tags=["model-profiles"])
 class ModelProfileRequest(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     config: dict[str, object] = Field(default_factory=dict)
+    role: Literal["writer", "editor"] = "writer"
 
 
 class ModelProfilePatch(BaseModel):
@@ -31,7 +32,8 @@ async def list_profiles(user: Annotated[AuthUser, Depends(current_user)], uow: A
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_profile(payload: ModelProfileRequest, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> dict[str, object]:
     async with uow:
-        profile = await uow.model_profiles.create(user.id, payload.name, payload.config)
+        config = {**payload.config, "role": payload.role}
+        profile = await uow.model_profiles.create(user.id, payload.name, config)
         await uow.commit()
         return profile
 
