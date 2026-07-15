@@ -45,6 +45,7 @@ All commands below were executed in Docker containers.
 - Final Docker API regression: `517 passed, 1 skipped`; test entrypoint now runs Alembic plus schema bootstrap before pytest
 - Final Docker contract/migration/recovery suites: `17 passed`, `22 passed`, and `2 passed`
 - Final Docker frontend validation: Vitest `2 passed`, Vite production build passed, and Playwright E2E `1 passed`
+- Frontend draft durability and reconnectable conversation SSE: Vitest `3 passed`; browser E2E remained green after the streaming client change
 - Backup restore regression: `3 passed`; tampered members are rejected and database restore requires an explicit staging target
 - Runtime container contract: `2 passed`; API/worker/scheduler run as UID/GID `10001` and Nginx SSE buffering is disabled
 - Same-production-Compose `down`/`up` persistence probe preserved PostgreSQL data; the temporary probe table was removed afterward

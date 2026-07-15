@@ -41,3 +41,12 @@ export function sendMessage(conversationId: string, payload: { branch_id: string
 export function listMessages(conversationId: string, branchId: string) { return request<ChatMessage[]>(`/api/v1/conversations/${conversationId}/branches/${branchId}/messages`); }
 export function forkConversation(conversationId: string, messageId: string, name: string) { return request<{ id: string; name: string }>(`/api/v1/conversations/${conversationId}/branches`, { method: "POST", body: JSON.stringify({ message_id: messageId, name }) }); }
 export function requestExport(projectId: string, format: "txt" | "md" | "json" | "docx" | "epub") { return request<{ status: string; format: string; download_url: string }>(`/api/v1/projects/${projectId}/exports`, { method: "POST", body: JSON.stringify({ format }) }); }
+
+export function subscribeConversationEvents(conversationId: string, onEvent: (event: { event?: string; message_id?: string; text?: string }) => void) {
+  const source = new EventSource(`/api/v1/conversations/${conversationId}/events`);
+  const handle = (event: MessageEvent<string>) => {
+    try { onEvent(JSON.parse(event.data) as { event?: string; message_id?: string; text?: string }); } catch { /* reconnect will replay the durable event */ }
+  };
+  source.addEventListener("content.delta", handle);
+  return () => source.close();
+}
