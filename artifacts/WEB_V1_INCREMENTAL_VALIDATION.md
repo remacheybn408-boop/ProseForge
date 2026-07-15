@@ -27,6 +27,7 @@ All commands below were executed in Docker containers.
 - Reversible context deduplication, structured summary validation, and compiler fallback coverage: `4 passed`; raw source blocks remain available
 - Conversation branch isolation: `4 passed`; fork points are now constrained to the requested conversation and owner
 - Chat stop/retry/continue and partial-stream continuation: `5 passed`; recovery resumes at the next durable chunk index
+- Worker continuation request compilation passed in Docker; saved partial assistant text is included as continuation context
 - Final rebuilt API/worker/scheduler production stack: all services healthy, readiness `ok`, Celery `pong`
 - Docker E2E was rerun after forced recreation of API/worker/web against the isolated test volume: `1 passed`
 - Production readiness after returning to the base Compose stack: API/blob/backup/database/redis all `ok`; Celery `inspect ping` returned `pong`
