@@ -48,7 +48,7 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
     from proseforge.infrastructure.security.credential_cipher import CredentialCipher
     from proseforge.providers.factory import build_provider
     from proseforge.settings import get_settings
-    from proseforge.workflows.novel_generation import generate_chapter_content
+    from proseforge.workflows.novel_generation import run_writer_editor_loop
 
     settings = get_settings()
     engine, session_factory = create_engine_and_sessionmaker(settings)
@@ -102,14 +102,14 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                 await uow.workflows.heartbeat(run, lease_owner)
                 await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_DRAFTING")
                 await uow.commit()
-            content = await generate_chapter_content(provider, model=model_id, project_title=project.title, chapter_title=chapter.title)
+            content, rewrite_rounds, _review = await run_writer_editor_loop(provider, writer_model=model_id, editor_model=str(payload.get("editor_model", model_id)), project_title=project.title, chapter_title=chapter.title)
             async with SqlAlchemyUnitOfWork(session_factory) as uow:
                 run = await uow.workflows.get_owned(workflow_id, owner_id)
                 if run is None:
                     return "workflow-not-found"
                 version = await uow.chapters.append_version(chapter_id=chapter.id, content=content)
                 await uow.chapters.set_active_version(chapter.id, version.id)
-                await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_COMMITTED")
+                await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_COMMITTED_REWRITES_{rewrite_rounds}")
                 await uow.commit()
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             run = await uow.workflows.get_owned(workflow_id, owner_id)
