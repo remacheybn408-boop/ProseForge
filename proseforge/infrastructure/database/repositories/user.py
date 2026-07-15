@@ -17,6 +17,9 @@ class SqlAlchemyUserRepository:
     async def get_by_email(self, email: str) -> UserModel | None:
         return await self.session.scalar(select(UserModel).where(func.lower(UserModel.email) == email.lower()))
 
+    async def get_by_id(self, user_id: str) -> UserModel | None:
+        return await self.session.get(UserModel, user_id)
+
     async def create(self, email: str, password_hash: str, role: str = "USER") -> UserModel:
         user = UserModel(id=new_id(), email=email.lower(), password_hash=password_hash, role=role)
         self.session.add(user)

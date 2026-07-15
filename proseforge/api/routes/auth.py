@@ -5,7 +5,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
-from proseforge.api.dependencies import unit_of_work
+from proseforge.api.dependencies import current_user, unit_of_work
+from proseforge.application.auth.service import AuthUser
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -19,6 +20,11 @@ class LoginRequest(BaseModel):
 class SetupRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=12)
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=12)
 
 
 @router.post("/setup", status_code=status.HTTP_201_CREATED)
@@ -61,3 +67,28 @@ async def login(
     token = http_request.app.state.auth.issue_token(AuthUser(user_id, email))
     response.set_cookie("proseforge_session", token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
     return {"access_token": token, "token_type": "bearer"}
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(response: Response) -> None:
+    response.delete_cookie("proseforge_session", path="/")
+
+
+@router.get("/me")
+async def me(user: Annotated[AuthUser, Depends(current_user)]) -> dict[str, str]:
+    return {"id": user.id, "email": user.email}
+
+
+@router.put("/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    payload: PasswordChangeRequest,
+    user: Annotated[AuthUser, Depends(current_user)],
+    http_request: Request,
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+) -> None:
+    async with uow:
+        record = await uow.users.get_by_id(user.id)
+        if record is None or not http_request.app.state.auth.verify_password(payload.current_password, record.password_hash):
+            raise HTTPException(status_code=401, detail="invalid current password")
+        record.password_hash = http_request.app.state.auth.hash_password(payload.new_password)
+        await uow.commit()
