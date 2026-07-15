@@ -47,4 +47,15 @@ exports/
 
 # Local agent reviews
 reports/
-AGENTS.md
+.env
+.env.*
+!.env.example
+data/
+backups/
+artifacts/
+apps/web/node_modules/
+apps/web/dist/
+playwright-report/
+test-results/
+.coverage
+htmlcov/
