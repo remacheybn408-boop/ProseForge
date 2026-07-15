@@ -7,6 +7,7 @@ import hashlib
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
 
 from proseforge.api.dependencies import current_user
 from proseforge.api.dependencies import unit_of_work
@@ -16,6 +17,13 @@ from proseforge.infrastructure.security.credential_cipher import CredentialCiphe
 from proseforge.providers.factory import build_provider
 
 router = APIRouter(prefix="/api/v1", tags=["providers"])
+
+
+class CustomModelRequest(BaseModel):
+    provider: str = Field(min_length=1, max_length=64)
+    model_id: str = Field(min_length=1, max_length=200)
+    display_name: str | None = None
+    capabilities: dict[str, object] = Field(default_factory=dict)
 
 
 @router.get("/providers")
@@ -33,6 +41,22 @@ async def list_models(
     del request, user
     async with uow:
         return [model.__dict__ for model in await uow.model_catalog.list()]
+
+
+@router.post("/models", status_code=201)
+async def add_custom_model(
+    payload: CustomModelRequest,
+    user: Annotated[AuthUser, Depends(current_user)],
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+) -> dict[str, object]:
+    del user
+    capabilities = {**payload.capabilities, "manual": True, "availability": "available"}
+    from proseforge.domain.ports.model_provider import ProviderModel
+    model = ProviderModel(payload.provider, payload.model_id, payload.display_name or payload.model_id, capabilities)
+    async with uow:
+        await uow.model_catalog.upsert([model])
+        await uow.commit()
+        return {"provider": model.provider, "model_id": model.model_id, "display_name": model.display_name, "capabilities": capabilities}
 
 
 @router.post("/providers/{provider_id}/sync-models")
