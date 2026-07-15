@@ -26,3 +26,10 @@ class SqlAlchemyAttachmentRepository:
             .order_by(AttachmentModel.filename, AttachmentModel.id)
         )
         return list(rows)
+
+    async def get_owned(self, attachment_id: str, owner_id: str) -> AttachmentModel | None:
+        return await self.session.scalar(
+            select(AttachmentModel)
+            .join(ProjectModel, ProjectModel.id == AttachmentModel.project_id)
+            .where(AttachmentModel.id == attachment_id, ProjectModel.owner_id == owner_id)
+        )
