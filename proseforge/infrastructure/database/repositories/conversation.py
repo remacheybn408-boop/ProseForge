@@ -19,13 +19,13 @@ class SqlAlchemyConversationRepository:
         await self.session.flush()
         return branch
 
-    async def append_message(self, branch_id: str, role: str, content: str, client_request_id: str | None = None) -> Message:
+    async def append_message(self, branch_id: str, role: str, content: str, client_request_id: str | None = None, status: str = "COMPLETED") -> Message:
         if client_request_id:
             existing = await self.session.scalar(select(MessageModel).where(MessageModel.client_request_id == client_request_id))
             if existing:
                 return self._message(existing)
         next_sequence = (await self.session.scalar(select(func.coalesce(func.max(MessageModel.sequence_no), 0)).where(MessageModel.branch_id == branch_id))) + 1
-        message = Message(id=new_id(), branch_id=branch_id, role=role, content=content, client_request_id=client_request_id)
+        message = Message(id=new_id(), branch_id=branch_id, role=role, content=content, client_request_id=client_request_id, status=status)
         self.session.add(MessageModel(**message.__dict__, sequence_no=next_sequence))
         await self.session.flush()
         return message
@@ -64,9 +64,20 @@ class SqlAlchemyConversationRepository:
         await self.session.flush()
         return chunk
 
+    async def get_message(self, message_id: str) -> Message | None:
+        row = await self.session.get(MessageModel, message_id)
+        return self._message(row) if row else None
+
+    async def set_message_status(self, message_id: str, status: str) -> None:
+        row = await self.session.get(MessageModel, message_id)
+        if row is None:
+            raise ValueError("message does not exist")
+        row.status = status
+        await self.session.flush()
+
     @staticmethod
     def _message(item: MessageModel) -> Message:
-        return Message(id=item.id, branch_id=item.branch_id, role=item.role, content=item.content, client_request_id=item.client_request_id)
+        return Message(id=item.id, branch_id=item.branch_id, role=item.role, content=item.content, client_request_id=item.client_request_id, status=item.status)
 
     @staticmethod
     def _chunk(item: MessageChunkModel) -> MessageChunk:

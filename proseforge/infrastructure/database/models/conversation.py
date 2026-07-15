@@ -31,6 +31,7 @@ class MessageModel(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     client_request_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="COMPLETED")
 
 
 class MessageChunkModel(Base):

@@ -19,7 +19,6 @@ def upgrade() -> None:
         sa.Column("genre", sa.String(200), nullable=False),
         sa.Column("style", sa.String(200), nullable=False),
         sa.Column("language", sa.String(32), nullable=False),
-        sa.Column("status", sa.String(32), nullable=False),
         sa.UniqueConstraint("owner_id", "slug", name="uq_projects_owner_id_slug"),
     )
     op.create_table(
@@ -69,6 +68,7 @@ def upgrade() -> None:
         sa.Column("content", sa.Text, nullable=False),
         sa.Column("client_request_id", sa.String(128)),
         sa.Column("sequence_no", sa.Integer, nullable=False),
+        sa.Column("status", sa.String(32), nullable=False),
         sa.UniqueConstraint("client_request_id", name="uq_messages_client_request_id"),
     )
     op.create_index("ix_messages_branch_id", "messages", ["branch_id"])

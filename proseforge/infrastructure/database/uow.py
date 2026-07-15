@@ -15,7 +15,6 @@ class SqlAlchemyUnitOfWork:
         self.projects = None
         self.chapters = None
         self.conversations = None
-        self.conversations = None
         self.messages = None
         self.workflows = None
 

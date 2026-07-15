@@ -32,6 +32,7 @@ class Message:
     role: str
     content: str
     client_request_id: str | None = None
+    status: str = "COMPLETED"
 
 
 @dataclass(frozen=True)
