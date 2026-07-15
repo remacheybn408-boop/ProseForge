@@ -1,0 +1,12 @@
+from proseforge.operations.backup import BackupService
+
+
+def test_backup_can_be_verified(tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "chapter.txt").write_text("content", encoding="utf-8")
+    service = BackupService(tmp_path / "backups")
+    created = service.create(source)
+    verified = service.verify(created.archive)
+    assert verified.files == 1
+    assert verified.sha256 == created.sha256
