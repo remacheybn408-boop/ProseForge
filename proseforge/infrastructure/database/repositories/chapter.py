@@ -71,6 +71,22 @@ class SqlAlchemyChapterRepository:
         row.status = "DRAFTED"
         await self.session.flush()
 
+    async def active_contents(self, project_id: str, owner_id: str) -> list[tuple[Chapter, str]]:
+        chapters = await self.session.scalars(
+            select(ChapterModel)
+            .join(ProjectModel, ProjectModel.id == ChapterModel.project_id)
+            .where(ChapterModel.project_id == project_id, ProjectModel.owner_id == owner_id)
+            .order_by(ChapterModel.chapter_no)
+        )
+        result: list[tuple[Chapter, str]] = []
+        for row in chapters:
+            if row.active_version_id is None:
+                result.append((self._chapter(row), ""))
+                continue
+            version = await self.session.get(ChapterVersionModel, row.active_version_id)
+            result.append((self._chapter(row), version.content if version else ""))
+        return result
+
     @staticmethod
     def _chapter(row: ChapterModel) -> Chapter:
         return Chapter(
