@@ -90,10 +90,10 @@ class AnthropicProvider(ModelProvider):
                     if not line.startswith("data:"):
                         continue
                     data = json.loads(line[5:].strip())
-                    event_type = str(data.get("type", "message.delta"))
                     text = (
                         str(data.get("delta", {}).get("text", ""))
                         if isinstance(data.get("delta"), dict)
                         else ""
                     )
+                    event_type = "content.delta" if text else str(data.get("type", "message.delta"))
                     yield GenerationEvent(event_type, text, data)

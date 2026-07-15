@@ -24,6 +24,8 @@ class MessageRequest(BaseModel):
     branch_id: str
     content: str = Field(min_length=1)
     client_request_id: str = Field(min_length=1, max_length=128)
+    provider: str = "openai"
+    model: str = "gpt-4.1-mini"
 
 
 class BranchRequest(BaseModel):
@@ -63,7 +65,7 @@ async def send_message(
             raise HTTPException(status_code=404, detail="conversation or branch not found")
     result = await SendMessage(
         lambda: unit_of_work(request), request.app.state.queue,
-    ).execute(branch_id=payload.branch_id, content=payload.content, client_request_id=payload.client_request_id)
+    ).execute(branch_id=payload.branch_id, content=payload.content, client_request_id=payload.client_request_id, user_id=user.id, provider=payload.provider, model=payload.model)
     return {"user_message_id": result[0].id, "assistant_message_id": result[1].id, "task_id": result[2]}
 
 

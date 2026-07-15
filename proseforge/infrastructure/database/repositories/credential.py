@@ -22,3 +22,11 @@ class SqlAlchemyCredentialRepository:
             select(ProviderCredentialModel).where(ProviderCredentialModel.user_id == user_id).order_by(ProviderCredentialModel.provider)
         )
         return list(rows)
+
+    async def get_for_user(self, user_id: str, provider: str) -> ProviderCredentialModel | None:
+        return await self.session.scalar(
+            select(ProviderCredentialModel).where(
+                ProviderCredentialModel.user_id == user_id,
+                ProviderCredentialModel.provider == provider,
+            ).order_by(ProviderCredentialModel.id.desc())
+        )
