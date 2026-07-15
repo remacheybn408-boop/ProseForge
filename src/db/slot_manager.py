@@ -154,7 +154,7 @@ class SlotManager:
         return self.init_workspace(force=force)
 
     def create_slot(self, slot_id: str, ensure_registry: bool = True,
-                    name: str = "", description: str = "") -> Dict:
+                    name: str = "", description: str = "", slug: str | None = None) -> Dict:
         """
         Create a new slot directory and its structure.
         Returns dict with slot info.
@@ -174,6 +174,7 @@ class SlotManager:
         proj_data = {
             "name": slot_name,
             "title": slot_name,
+            "slug": slug or slot_id,
             "active_outline": None,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),

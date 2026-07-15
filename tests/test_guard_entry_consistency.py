@@ -28,3 +28,34 @@ def test_guard_registry_validation_passes():
     assert result["registered_count"] == 10, (
         f"expected 10 guards (4 L1 + 5 L2 aggregators + 1 L3); got {result['registered_count']}"
     )
+
+
+def test_legacy_entry_preserves_chapter_type(monkeypatch):
+    import src.guards.guard_registry as registry
+
+    captured = {}
+
+    class FakeSummary:
+        version = "test"
+        executed_guards = []
+        skipped_guards = []
+        blocked_by = []
+        crashed_guards = []
+        warn_count = 0
+        fail_count = 0
+        overall_status = "PASS"
+        results = []
+
+        @staticmethod
+        def get_warnings():
+            return []
+
+    def fake_run_standard_guards(**kwargs):
+        captured["chapter_type"] = kwargs["chapter_type"]
+        return FakeSummary()
+
+    monkeypatch.setattr(registry, "run_standard_guards", fake_run_standard_guards)
+
+    registry.run_orchestrated("text", chapter_no=1, chapter_type="climax")
+
+    assert captured["chapter_type"] == "climax"

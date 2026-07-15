@@ -33,6 +33,8 @@ database/*.db
 database/*.sqlite
 database/*.sqlite3
 workspace/
+artifacts/
+data/
 tmp/
 configs/scc_menu.json
 

@@ -169,7 +169,7 @@ def index_all(config: dict | None = None, rebuild: bool = False) -> dict:
             "skipped": 0,
         }
 
-    vec_cfg = _get_vector_config(config)
+    vec_cfg = get_vector_config(config)
     retriever = VectorRetriever(
         persist_dir=vec_cfg["persist_dir"],
         collection_name=vec_cfg["collection_name"],
@@ -220,7 +220,7 @@ def index_worldbuilding(config: dict | None = None, rebuild: bool = False) -> di
             "skipped": 0,
         }
 
-    vec_cfg = _get_vector_config(config)
+    vec_cfg = get_vector_config(config)
     retriever = VectorRetriever(
         persist_dir=vec_cfg["persist_dir"],
         collection_name=WORLD_BUILDING_COLLECTION,
@@ -261,7 +261,7 @@ def index_status(config: dict | None = None) -> dict:
     if not HAS_VECTOR_DEPS:
         return {"status": "unavailable", "error": "向量依赖未安装"}
 
-    vec_cfg = _get_vector_config(config)
+    vec_cfg = get_vector_config(config)
     retriever = VectorRetriever(
         persist_dir=vec_cfg["persist_dir"],
         collection_name=vec_cfg["collection_name"],

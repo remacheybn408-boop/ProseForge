@@ -74,6 +74,8 @@ class TestRunPostCharacterization:
         assert run_report_path.exists()
 
         run_report = json.loads(run_report_path.read_text(encoding="utf-8"))
+        canonical_run = ex / "run_reports" / "chapter_001" / run_report["run_id"] / "run_report.json"
+        assert canonical_run.exists()
         expected_paths = {
             "continuity_evidence_report_path": ex / "reports" / "chapter_001_continuity_evidence_report.json",
             "hallucination_report_path": ex / "reports" / "chapter_001_hallucination_report.json",

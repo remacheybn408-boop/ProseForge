@@ -145,27 +145,14 @@ def get_open_promises(conn: sqlite3.Connection, novel_id: int) -> list[str]:
     return [row["promise_title"] for row in rows if row["promise_title"]]
 
 
-def get_character_relations() -> list[dict]:
-    """Read character relationships from the active workspace slot when available."""
-    ws_dir = PROJECT_ROOT / "workspace"
-    registry_path = ws_dir / "registry.json"
-    if not registry_path.exists():
-        return []
-
-    registry = json.loads(registry_path.read_text(encoding="utf-8"))
-    active_slot = registry.get("active_slot", "")
-    if not active_slot:
-        return []
-
-    db_path = ws_dir / active_slot / "novel.db"
-    if not db_path.exists():
-        return []
-
+def get_character_relations(conn, novel_id: int) -> list[dict]:
+    """Read relationships belonging to the requested novel only."""
     try:
-        with closing(connect_sqlite(db_path)) as conn:
-            rows = conn.execute(
-                "SELECT char_a, char_b, relation_type FROM character_relationships"
-            ).fetchall()
+        rows = conn.execute(
+            "SELECT char_a, char_b, relation_type FROM character_relationships "
+            "WHERE novel_id=?",
+            (novel_id,),
+        ).fetchall()
     except sqlite3.Error:
         return []
     return [{"char_a": row[0], "char_b": row[1], "type": row[2]} for row in rows]
@@ -208,9 +195,9 @@ def build_task_card(
         anti_rules = get_anti_ai_rules(conn, novel_id)
         plot_threads = get_open_plot_threads(conn, novel_id)
         promises = get_open_promises(conn, novel_id)
+        relations = get_character_relations(conn, novel_id)
 
     jury = get_jury_feedback(chapter_no)
-    relations = get_character_relations()
     title_line = plan["planned_title"] if plan and plan.get("planned_title") else f"Chapter {chapter_no}"
 
     lines: list[str] = [

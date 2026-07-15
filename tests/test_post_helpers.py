@@ -23,20 +23,21 @@ def _state_app(tmp_path):
     return types.SimpleNamespace(state_dir=tmp_path / "state")
 
 
-def test_resolve_state_bootstraps_when_missing(tmp_path):
+def test_resolve_state_requires_pre_when_missing(tmp_path):
     app = _state_app(tmp_path)
-    state, state_path = _post_resolve_state(app, 1)
-    assert state["allowed_to_write"] is True
-    assert state["_bootstrapped"] is True
+    with pytest.raises(RuntimeError, match="pre"):
+        _post_resolve_state(app, 1)
+    return
+    assert not (app.state_dir / "chapter_001_state.json").exists()
     assert state_path.exists()                         # 写盘
-    assert state_path.name == "chapter_001_state.json"
 
 
 def test_resolve_state_reads_existing(tmp_path):
     app = _state_app(tmp_path)
     sp = app.state_dir / "chapter_002_state.json"
     sp.parent.mkdir(parents=True, exist_ok=True)
-    write_json_atomic(sp, {"allowed_to_write": True, "genre": "scifi", "timestamp": "t0"})
+    write_json_atomic(sp, {"allowed_to_write": True, "pre_done": True, "chapter_no": 2,
+                           "chapter_type": "normal", "genre": "scifi", "timestamp": "t0"})
     state, state_path = _post_resolve_state(app, 2)
     assert state["genre"] == "scifi"
     assert "_bootstrapped" not in state                # 走已存在分支

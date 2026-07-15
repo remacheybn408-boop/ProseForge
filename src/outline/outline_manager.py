@@ -16,6 +16,8 @@ import time
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List, Tuple
+from src.db.registry import Registry
+from src.utils.json_io import write_json_atomic
 
 
 class OutlineManager:
@@ -24,6 +26,7 @@ class OutlineManager:
     def __init__(self, project_root: Path):
         self.project_root = Path(project_root)
         self.workspace_dir = self.project_root / "workspace"
+        self.registry = Registry(self.project_root)
 
     # ──────────────────────────────────────────────
     #  内部工具方法
@@ -31,17 +34,21 @@ class OutlineManager:
 
     def _get_registry(self) -> Dict:
         """读取 workspace/registry.json"""
+        return self.registry.load()
         rf = self.workspace_dir / "registry.json"
         if not rf.exists():
             return {"active_slot": "", "slots": []}
         return json.loads(rf.read_text(encoding="utf-8"))
 
     def _save_registry(self, data: Dict) -> None:
+        self.registry.save(data)
+        return
         rf = self.workspace_dir / "registry.json"
         rf.parent.mkdir(parents=True, exist_ok=True)
         rf.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def _get_active_slot(self) -> Optional[str]:
+        return self.registry.get_active_slot()
         reg = self._get_registry()
         return reg.get("active_slot", "")
 
@@ -63,6 +70,8 @@ class OutlineManager:
 
     def _save_project_json(self, data: Dict, slot_id: str = None) -> None:
         sf = self._get_slot_dir(slot_id) / "project.json"
+        write_json_atomic(sf, data)
+        return
         sf.parent.mkdir(parents=True, exist_ok=True)
         sf.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -79,6 +88,8 @@ class OutlineManager:
 
     def _write_outline_file(self, outline_id: str, data: Dict, slot_id: str = None) -> None:
         fp = self._outlines_dir(slot_id) / f"{outline_id}.json"
+        write_json_atomic(fp, data)
+        return
         fp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def _delete_outline_file(self, outline_id: str, slot_id: str = None) -> bool:
@@ -103,6 +114,16 @@ class OutlineManager:
         base = base[:20] if base else "outline"
         ts = datetime.now().strftime("%Y%m%d%H%M%S")
         return f"{base}_{ts}"
+
+    def _count_outline_structure(self, content: str) -> tuple[int, int]:
+        """Count explicit Chinese volume/chapter headings in outline text."""
+        import re
+
+        volume_pattern = re.compile(r"^\s*第\s*[0-9一二三四五六七八九十百千万零〇]+\s*卷", re.MULTILINE)
+        chapter_pattern = re.compile(r"^\s*第\s*[0-9一二三四五六七八九十百千万零〇]+\s*章", re.MULTILINE)
+        volume_count = len(volume_pattern.findall(content))
+        chapter_count = len(chapter_pattern.findall(content))
+        return chapter_count, max(volume_count, 1)
 
     def _title_to_slug(self, title: str) -> str:
         """将标题转为 slug。委托 src.utils.slug.title_to_slug（全仓库唯一来源）。"""
@@ -188,6 +209,8 @@ class OutlineManager:
                     pass
                 if "章" in line:
                     chapter_count += 1
+
+        chapter_count, volume_count = self._count_outline_structure(content)
 
         data = {
             "id": outline_id,
@@ -617,7 +640,7 @@ class OutlineManager:
 
         proj["active_outline"] = prev_id
         proj["updated_at"] = datetime.now().isoformat()
-        proj_file.write_text(json.dumps(proj, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_atomic(proj_file, proj)
 
         prev_data = json.loads(prev_file.read_text(encoding="utf-8"))
         return {

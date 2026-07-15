@@ -1,0 +1,27 @@
+services:
+  proseforge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: proseforge:dev
+    working_dir: /app
+    volumes:
+      - .:/app
+      - ./workspace:/app/workspace
+      - ./artifacts:/artifacts
+      - proseforge-data:/app/data
+      - proseforge-model-cache:/root/.cache
+    environment:
+      PROSEFORGE_HOME: /app
+      PROSEFORGE_ARTIFACTS: /artifacts
+    stdin_open: true
+    tty: true
+
+  test:
+    extends:
+      service: proseforge
+    command: ["-m", "pytest", "-q", "--junitxml=/artifacts/pytest.xml"]
+
+volumes:
+  proseforge-data:
+  proseforge-model-cache:

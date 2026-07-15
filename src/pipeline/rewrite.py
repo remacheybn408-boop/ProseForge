@@ -388,8 +388,12 @@ def run_accept(
             result["ingest_skipped_reason"] = f"recommendation={diff['recommendation']}，未入库。"
             return result
         # 提升 revised 为 canonical；旧稿已在 post 阶段进 chapter_versions 快照。
-        chapter_file.write_text(revised_text, encoding="utf-8")
-        ingest_result = ingest_chapter(chapter_no, chapter_type, app_inst=app)
+        ingest_result = ingest_chapter(
+            chapter_no,
+            chapter_type,
+            app_inst=app,
+            content_override=revised_text,
+        )
         if ingest_result is None:
             result["status"] = "error"
             result["message"] = "ingest 失败"

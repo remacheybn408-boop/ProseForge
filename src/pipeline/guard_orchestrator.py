@@ -16,7 +16,8 @@ def run_orchestrated(content: str, chapter_no: int, mode: str = "standard",
                      config: Optional[dict] = None,
                      custom_guards: Optional[list] = None,
                      reports_dir: str = "",
-                     extra_context: Optional[dict] = None) -> dict:
+                     extra_context: Optional[dict] = None,
+                     chapter_type: str = "normal") -> dict:
     """
     Orchestrate all guards — thin wrapper around guard_registry.
 
@@ -26,4 +27,5 @@ def run_orchestrated(content: str, chapter_no: int, mode: str = "standard",
     return _run(content, chapter_no, mode=mode,
                 prev_tail=prev_tail, prev_brief=prev_brief,
                 config=config, custom_guards=custom_guards,
-                reports_dir=reports_dir, extra_context=extra_context)
+                reports_dir=reports_dir, extra_context=extra_context,
+                chapter_type=chapter_type)

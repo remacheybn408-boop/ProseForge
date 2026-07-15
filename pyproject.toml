@@ -17,6 +17,9 @@ rag = [
     "sentence-transformers>=2.2.0",
 ]
 
+[project.scripts]
+proseforge = "src.interfaces.cli:main"
+
 [project.urls]
 Repository = "https://github.com/remacheybn408-boop/ProseForge"
 

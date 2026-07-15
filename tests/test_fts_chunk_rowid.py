@@ -112,6 +112,22 @@ def test_reingest_no_orphan_or_dup_fts(ingest_env):
     assert fts == base
 
 
+def test_reingest_same_content_is_idempotent(ingest_env):
+    env = ingest_env
+    f = env["chapters_dir"] / "第1章_测试.txt"
+    f.write_text(_chapter_text(), encoding="utf-8")
+    ingest(1, "normal", app_inst=env["app"])
+    result = ingest(1, "normal", app_inst=env["app"])
+
+    assert result["status"] == "noop"
+    conn = connect_sqlite(str(env["app"].db_path))
+    versions = conn.execute(
+        "SELECT COUNT(*) FROM chapter_versions WHERE chapter_no=1"
+    ).fetchone()[0]
+    conn.close()
+    assert versions == 1
+
+
 def test_registry_slot_json_atomic_no_tmp(tmp_path, project_root):
     """#4: SlotManager 经 write_json_atomic 写 registry/project.json，无残留 .tmp。"""
     from src.db.slot_manager import SlotManager

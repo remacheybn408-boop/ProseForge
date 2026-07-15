@@ -45,8 +45,8 @@ def normalize_config(raw: dict | None) -> dict:
     cfg.setdefault("allow_short_chapter", False)
     cfg.setdefault("default_novel_slug", novel.get("default_slug", "demo_novel"))
     cfg.setdefault("default_novel_title", novel.get("default_title", "Demo Novel"))
-    cfg.setdefault("default_genre", cfg.get("default_genre", "xianxia"))
-    cfg.setdefault("default_style", cfg.get("default_style", "webnovel"))
+    cfg.setdefault("default_genre", cfg.get("default_genre", ""))
+    cfg.setdefault("default_style", cfg.get("default_style", ""))
 
     wc = cfg.get("word_count") if isinstance(cfg.get("word_count"), dict) else {}
     normal = wc.get("normal") if isinstance(wc.get("normal"), dict) else {}

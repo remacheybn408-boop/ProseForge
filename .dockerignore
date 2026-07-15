@@ -1,0 +1,14 @@
+.git
+.gitignore
+.claude
+.codex
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+workspace
+data
+artifacts
+dist
+build
+*.egg-info
