@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .tokenizer import ConservativeTokenizer
+from .deduplication import deduplicate_blocks
 
 
 @dataclass(frozen=True)
@@ -17,7 +18,7 @@ class CompiledContext:
 
 def compile_context(snapshot_id: str, blocks: list[dict[str, object]], input_budget: int) -> CompiledContext:
     tokenizer = ConservativeTokenizer()
-    ordered = sorted(blocks, key=lambda item: (not bool(item.get("pinned", False)), int(item.get("priority", 100))))
+    ordered = sorted(deduplicate_blocks(blocks), key=lambda item: (not bool(item.get("pinned", False)), int(item.get("priority", 100))))
     selected: list[dict[str, object]] = []
     excluded: list[str] = []
     used = 0
@@ -28,5 +29,6 @@ def compile_context(snapshot_id: str, blocks: list[dict[str, object]], input_bud
             selected.append(block)
             used += tokens
         else:
-            excluded.append(block_id)
-    return CompiledContext(snapshot_id, tuple(selected), used, tuple(str(item.get("id", "")) for item in selected), tuple(excluded))
+            excluded.extend(str(source_id) for source_id in block.get("source_ids", [block_id]))
+    source_ids = tuple(str(source_id) for item in selected for source_id in item.get("source_ids", [item.get("id", "")]))
+    return CompiledContext(snapshot_id, tuple(selected), used, source_ids, tuple(excluded))
