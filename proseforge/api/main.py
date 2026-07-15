@@ -4,10 +4,12 @@ from proseforge.api.routes.health import router as health_router
 from proseforge.api.routes.auth import router as auth_router
 from proseforge.api.routes.projects import router as projects_router
 from proseforge.api.routes.conversations import router as conversations_router
+from proseforge.api.routes.providers import router as providers_router
 from proseforge.application.auth.service import AuthService
 from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
 from proseforge.infrastructure.events.memory import InMemoryEventStream
 from proseforge.infrastructure.tasks.memory import InMemoryTaskQueue
+from proseforge.providers.registry import ProviderRegistry
 
 from proseforge.settings import Settings, get_settings
 
@@ -20,10 +22,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.engine, application.state.session_factory = create_engine_and_sessionmaker(resolved)
     application.state.event_stream = InMemoryEventStream()
     application.state.queue = InMemoryTaskQueue()
+    application.state.provider_registry = ProviderRegistry()
+    application.state.model_catalog = {}
     application.include_router(health_router)
     application.include_router(auth_router)
     application.include_router(projects_router)
     application.include_router(conversations_router)
+    application.include_router(providers_router)
     return application
 
 
