@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.application.auth.service import AuthUser
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
+from proseforge.context_engine.tokenizer import ConservativeTokenizer
 
 router = APIRouter(prefix="/api/v1", tags=["context"])
 
@@ -40,7 +41,10 @@ async def list_context(project_id: str, user: Annotated[AuthUser, Depends(curren
         if await uow.projects.get_by_id(user.id, project_id) is None:
             raise HTTPException(status_code=404, detail="project not found")
         items = await uow.context.list_owned(project_id, user.id)
-        return {"items": [_response(item) for item in items], "used_tokens": sum(len(item.content) // 2 for item in items if not item.excluded), "context_window": 128000}
+        tokenizer = ConservativeTokenizer()
+        used_tokens = sum(tokenizer.count(item.content) for item in items if not item.excluded)
+        context_window = 128000
+        return {"items": [_response(item) for item in items], "used_tokens": used_tokens, "context_window": context_window, "available_tokens": max(0, context_window - used_tokens)}
 
 
 @router.post("/projects/{project_id}/context/items", status_code=status.HTTP_201_CREATED)
