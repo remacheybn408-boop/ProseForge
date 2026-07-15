@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 
 ALLOWED_TRANSITIONS = {
@@ -23,3 +24,40 @@ class WorkflowState:
         if target not in ALLOWED_TRANSITIONS.get(self.status, set()):
             raise InvalidWorkflowTransition(f"{self.status} -> {target}")
         self.status = target
+
+
+@dataclass
+class WorkflowRun:
+    id: str
+    state: WorkflowState = None  # type: ignore[assignment]
+    lease_owner: str | None = None
+    lease_expires_at: datetime | None = None
+    heartbeat_at: datetime | None = None
+    checkpoint: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.state is None:
+            self.state = WorkflowState()
+
+    def acquire_lease(self, owner: str, ttl_seconds: int = 60, now: datetime | None = None) -> bool:
+        current = now or datetime.now(UTC)
+        if self.lease_owner and self.lease_expires_at and self.lease_expires_at > current:
+            return False
+        self.lease_owner = owner
+        self.lease_expires_at = current + timedelta(seconds=ttl_seconds)
+        self.heartbeat_at = current
+        return True
+
+    def heartbeat(self, owner: str, ttl_seconds: int = 60, now: datetime | None = None) -> None:
+        if self.lease_owner != owner or not self.lease_expires_at:
+            raise PermissionError("workflow lease is not owned by caller")
+        current = now or datetime.now(UTC)
+        self.heartbeat_at = current
+        self.lease_expires_at = current + timedelta(seconds=ttl_seconds)
+
+    def recover_if_expired(self, now: datetime | None = None) -> None:
+        current = now or datetime.now(UTC)
+        if self.lease_expires_at and self.lease_expires_at <= current and self.state.status == "RUNNING":
+            self.state.transition("RECOVERING")
+            self.lease_owner = None
+            self.lease_expires_at = None

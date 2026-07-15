@@ -11,4 +11,7 @@ data
 artifacts
 dist
 build
+.pnpm-store
+apps/web/node_modules
+apps/web/dist
 *.egg-info
