@@ -10,3 +10,17 @@ def test_backup_can_be_verified(tmp_path):
     verified = service.verify(created.archive)
     assert verified.files == 1
     assert verified.sha256 == created.sha256
+
+
+def test_backup_restore_is_staged_and_safe(tmp_path):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "project.json").write_text('{"title":"Moonlit Archive"}', encoding="utf-8")
+    service = BackupService(tmp_path / "backups")
+
+    created = service.create(source)
+    restored = tmp_path / "staging"
+    result = service.restore(created.archive, restored)
+
+    assert result.files == 1
+    assert (restored / "project.json").read_text(encoding="utf-8") == '{"title":"Moonlit Archive"}'

@@ -46,3 +46,20 @@ class BackupService:
             if any(Path(member.name).is_absolute() or ".." in Path(member.name).parts for member in members):
                 raise ValueError("backup contains unsafe path")
         return BackupVerification(str(path), len(members), hashlib.sha256(path.read_bytes()).hexdigest())
+
+    def list(self) -> list[Path]:
+        self.backup_root.mkdir(parents=True, exist_ok=True)
+        return sorted(self.backup_root.glob("proseforge-*.tar.gz"), reverse=True)
+
+    def restore(self, archive: str | Path, destination: str | Path) -> BackupVerification:
+        """Restore into a staging directory after validating every archive member."""
+        verified = self.verify(archive)
+        target = Path(destination).resolve()
+        target.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(verified.archive, "r:gz") as tar:
+            for member in tar.getmembers():
+                member_path = (target / member.name).resolve()
+                if target != member_path and target not in member_path.parents:
+                    raise ValueError("backup contains unsafe path")
+            tar.extractall(target, filter="data")
+        return verified
