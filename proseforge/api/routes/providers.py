@@ -60,6 +60,7 @@ async def sync_models(
             raise HTTPException(status_code=404, detail=f"provider not registered: {provider_id}") from exc
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"provider model discovery failed: {type(exc).__name__}") from exc
-        await uow.model_catalog.upsert(models)
+        await uow.model_catalog.upsert([model for model in models])
+        await uow.model_catalog.mark_unavailable(provider_id, {model.model_id for model in models})
         await uow.commit()
         return {"provider": provider_id, "count": len(models), "models": [model.model_id for model in models]}

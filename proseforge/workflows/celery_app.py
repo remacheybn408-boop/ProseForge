@@ -70,6 +70,7 @@ async def _sync_all_provider_models() -> dict[str, int]:
                     provider = build_provider(credential.provider, secret["api_key"], secret.get("base_url"))
                     models = await provider.list_models()
                     await uow.model_catalog.upsert(models)
+                    await uow.model_catalog.mark_unavailable(credential.provider, {model.model_id for model in models})
                     synced += 1
                 except Exception:
                     failed += 1

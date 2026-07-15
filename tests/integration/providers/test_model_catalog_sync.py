@@ -13,5 +13,16 @@ class FakeProvider:
 
 @pytest.mark.asyncio
 async def test_sync_adds_new_vendor_model_without_code_change():
-    result = await InMemoryModelCatalog().sync(FakeProvider())
+    catalog = InMemoryModelCatalog()
+    result = await catalog.sync(FakeProvider())
     assert result.added == ("future-model",)
+    assert catalog.models[("fake", "future-model")].capabilities["availability"] == "available"
+
+
+@pytest.mark.asyncio
+async def test_sync_marks_missing_vendor_model_unavailable_without_deleting_it():
+    catalog = InMemoryModelCatalog()
+    catalog.models[("fake", "old-model")] = ProviderModel("fake", "old-model", "Old", {})
+    result = await catalog.sync(FakeProvider())
+    assert result.unavailable == ("old-model",)
+    assert catalog.models[("fake", "old-model")].capabilities["availability"] == "unavailable"

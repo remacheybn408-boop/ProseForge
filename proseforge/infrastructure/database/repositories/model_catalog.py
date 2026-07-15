@@ -31,6 +31,7 @@ class SqlAlchemyModelCatalogRepository:
             )
             capabilities = dict(model.capabilities)
             capabilities.setdefault("display_name", model.display_name)
+            capabilities.setdefault("availability", "available")
             if model.context_window is not None:
                 capabilities.setdefault("context_window", model.context_window)
             if model.max_output_tokens is not None:
@@ -40,6 +41,19 @@ class SqlAlchemyModelCatalogRepository:
                 self.session.add(ModelCatalogModel(id=new_id(), provider=model.provider, model_id=model.model_id, capabilities=payload))
             else:
                 row.capabilities = payload
+        await self.session.flush()
+
+    async def mark_unavailable(self, provider: str, model_ids: set[str]) -> None:
+        if not model_ids:
+            return
+        rows = await self.session.scalars(select(ModelCatalogModel).where(ModelCatalogModel.provider == provider))
+        for row in rows:
+            if row.model_id not in model_ids:
+                capabilities = json.loads(row.capabilities or "{}")
+                if capabilities.get("manual"):
+                    continue
+                capabilities["availability"] = "unavailable"
+                row.capabilities = json.dumps(capabilities, ensure_ascii=False)
         await self.session.flush()
 
     @staticmethod
