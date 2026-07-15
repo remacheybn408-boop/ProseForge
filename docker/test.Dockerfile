@@ -8,3 +8,4 @@ RUN python -m pip install --no-cache-dir -e ".[api,dev]"
 COPY . .
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ENTRYPOINT ["sh", "/app/docker/entrypoint-test.sh"]

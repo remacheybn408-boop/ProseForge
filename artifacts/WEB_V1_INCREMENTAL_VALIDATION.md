@@ -42,3 +42,6 @@ All commands below were executed in Docker containers.
 - Production readiness after returning to the base Compose stack: API/blob/backup/database/redis all `ok`; Celery `inspect ping` returned `pong`
 - After API container recreation, the Web/Nginx proxy still served `/api/v1/health/live` successfully via Docker DNS resolution
 - Compose services were healthy after rebuild/restart
+- Final Docker API regression: `517 passed, 1 skipped`; test entrypoint now runs Alembic plus schema bootstrap before pytest
+- Final Docker contract/migration/recovery suites: `17 passed`, `22 passed`, and `2 passed`
+- Final Docker frontend validation: Vitest `2 passed`, Vite production build passed, and Playwright E2E `1 passed`
