@@ -2,8 +2,21 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
+import subprocess
 from proseforge.infrastructure.legacy_import.importer import LegacyImporter
 from proseforge.operations.backup import BackupService
+
+
+def _database_dump(database_url: str | None = None) -> bytes:
+    url = database_url or os.getenv("PROSEFORGE_SYNC_DATABASE_URL") or os.getenv("PROSEFORGE_DATABASE_URL")
+    if not url:
+        raise RuntimeError("database URL is required for automatic database backup")
+    normalized = url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+asyncpg://", "postgresql://")
+    result = subprocess.run(["pg_dump", "--format=plain", "--no-owner", normalized], check=False, capture_output=True)
+    if result.returncode:
+        raise RuntimeError(result.stderr.decode(errors="replace").strip() or "pg_dump failed")
+    return result.stdout
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -23,6 +36,8 @@ def main(argv: list[str] | None = None) -> int:
     backup.add_argument("--root", default="/data/backups")
     backup.add_argument("--destination")
     backup.add_argument("--database-dump")
+    backup.add_argument("--include-database", action="store_true")
+    backup.add_argument("--database-url")
     args = parser.parse_args(argv)
     if args.version:
         print("1.0.0.dev0")
@@ -38,7 +53,13 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "backup":
         service = BackupService(args.root)
         if args.action == "create":
-            dump = open(args.database_dump, "rb").read() if args.database_dump else None
+            if args.database_dump:
+                with open(args.database_dump, "rb") as dump_file:
+                    dump = dump_file.read()
+            elif args.include_database:
+                dump = _database_dump(args.database_url)
+            else:
+                dump = None
             print(service.create(args.source, database_dump=dump))
         elif args.action == "list":
             for archive in service.list():

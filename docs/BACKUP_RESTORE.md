@@ -3,7 +3,7 @@
 备份包含 Blob 文件、清单、SHA-256 校验值、应用版本和迁移版本；如果提供数据库 dump，也会一并打包。
 
 ```bash
-docker compose run --rm api proseforge backup create --source /data --root /data/backups
+docker compose run --rm api proseforge backup create --source /data --root /data/backups --include-database
 docker compose run --rm api proseforge backup list --root /data/backups
 docker compose run --rm api proseforge backup verify /data/backups/proseforge-<timestamp>.tar.gz
 docker compose run --rm api proseforge backup restore /data/backups/proseforge-<timestamp>.tar.gz --destination /data/restore-staging
