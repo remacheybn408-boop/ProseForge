@@ -22,7 +22,11 @@ celery.conf.update(
         "sync-provider-model-catalog-daily": {
             "task": "proseforge.providers.sync_all_models",
             "schedule": 24 * 60 * 60,
-        }
+        },
+        "recover-expired-workflows": {
+            "task": "proseforge.workflows.recover_expired",
+            "schedule": 60.0,
+        },
     },
 )
 
@@ -36,6 +40,28 @@ def healthcheck() -> str:
 def sync_all_provider_models(self) -> dict[str, int]:
     del self
     return asyncio.run(_sync_all_provider_models())
+
+
+@celery.task(name="proseforge.workflows.recover_expired", bind=True, max_retries=0)
+def recover_expired_workflows(self) -> int:
+    del self
+    return asyncio.run(_recover_expired_workflows())
+
+
+async def _recover_expired_workflows() -> int:
+    from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
+    from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
+    from proseforge.settings import get_settings
+
+    settings = get_settings()
+    engine, session_factory = create_engine_and_sessionmaker(settings)
+    try:
+        async with SqlAlchemyUnitOfWork(session_factory) as uow:
+            recovered = await uow.workflows.recover_expired()
+            await uow.commit()
+            return recovered
+    finally:
+        await engine.dispose()
 
 
 async def _sync_all_provider_models() -> dict[str, int]:
