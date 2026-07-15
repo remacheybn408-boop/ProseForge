@@ -23,7 +23,7 @@ services:
     build:
       context: .
       dockerfile: docker/legacy-test.Dockerfile
-    command: ["pytest", "-q", "--junitxml=/artifacts/pytest.xml"]
+    command: ["sh", "-lc", "pytest -q tests/test_*.py --junitxml=/artifacts/pytest.xml"]
     volumes:
       - .:/app
       - ./artifacts:/artifacts

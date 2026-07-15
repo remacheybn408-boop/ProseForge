@@ -6,7 +6,7 @@ All commands below were executed in Docker containers.
 
 - Playwright browser smoke: `1 passed`
 - API/contract/unit regression: `37 passed`
-- Legacy full regression: `483 passed`
+- Legacy top-level regression isolated from Web/API integration tests: `408 passed in 209.28s`
 - Frontend Vitest: `2 passed`; Vite production build passed
 - Backup archive verification passed
 - Backup database restore completed into PostgreSQL `proseforge_staging`; `alembic_version` exists and application tables were created
