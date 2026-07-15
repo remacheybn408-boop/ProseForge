@@ -19,6 +19,8 @@ router = APIRouter(prefix="/api/v1", tags=["workflows"])
 class NovelWorkflowRequest(BaseModel):
     chapter_numbers: list[int] = Field(default_factory=list, min_length=1)
     cost_limit: float = Field(default=0.0, ge=0)
+    provider: str = "openai"
+    model: str = "gpt-4.1-mini"
 
 
 def _response(run) -> dict[str, str]:
@@ -29,6 +31,7 @@ def _response(run) -> dict[str, str]:
 async def create_workflow(
     project_id: str,
     payload: NovelWorkflowRequest,
+    request: Request,
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
 ) -> dict[str, str]:
@@ -42,7 +45,10 @@ async def create_workflow(
                 await uow.chapters.add(Chapter.create(project_id=project.id, chapter_no=chapter_no, title=f"Chapter {chapter_no}"))
         return_value = await uow.workflows.create(project.id, "NOVEL", cost_limit=payload.cost_limit)
         await uow.commit()
-        return _response(return_value)
+        task_id = await request.app.state.queue.enqueue("proseforge.workflows.generate_novel", {"workflow_id": return_value.id, "user_id": user.id, "chapter_numbers": payload.chapter_numbers, "provider": payload.provider, "model": payload.model})
+        result = _response(return_value)
+        result["task_id"] = task_id
+        return result
 
 
 @router.get("/workflows/{workflow_id}")

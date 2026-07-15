@@ -31,6 +31,103 @@ celery.conf.update(
 )
 
 
+@celery.task(name="proseforge.workflows.generate_novel", bind=True, max_retries=0)
+def generate_novel_workflow(self, payload: dict[str, object]) -> str:
+    del self
+    return asyncio.run(_generate_novel_workflow(payload))
+
+
+async def _generate_novel_workflow(payload: dict[str, object]) -> str:
+    import base64
+    import binascii
+    import hashlib
+    import json
+
+    from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
+    from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
+    from proseforge.infrastructure.security.credential_cipher import CredentialCipher
+    from proseforge.providers.factory import build_provider
+    from proseforge.settings import get_settings
+    from proseforge.workflows.novel_generation import generate_chapter_content
+
+    settings = get_settings()
+    engine, session_factory = create_engine_and_sessionmaker(settings)
+    workflow_id = str(payload["workflow_id"])
+    owner_id = str(payload.get("user_id", ""))
+    provider_id = str(payload.get("provider", "openai"))
+    model_id = str(payload.get("model", "gpt-4.1-mini"))
+    lease_owner = f"celery:{workflow_id}"
+    try:
+        async with SqlAlchemyUnitOfWork(session_factory) as uow:
+            run = await uow.workflows.get_owned(workflow_id, owner_id)
+            if run is None:
+                return "workflow-not-found"
+            if run.status == "QUEUED":
+                await uow.workflows.transition(run, "RUNNING")
+            if not await uow.workflows.acquire_lease(run, lease_owner):
+                return "lease-unavailable"
+            credential = await uow.credentials.get_for_user(owner_id, provider_id)
+            project = await uow.projects.get_by_id(owner_id, run.project_id)
+            chapters = await uow.chapters.list_owned(run.project_id, owner_id)
+            if credential is None or project is None:
+                await uow.workflows.transition(run, "FAILED")
+                await uow.commit()
+                return "provider-or-project-not-configured"
+            associated = f"{owner_id}:{provider_id}:{credential.id}".encode()
+            try:
+                raw = base64.b64decode(settings.master_key.get_secret_value(), validate=True)
+            except (ValueError, binascii.Error):
+                raw = b""
+            if len(raw) != 32:
+                raw = hashlib.sha256(settings.master_key.get_secret_value().encode()).digest()
+            secret = json.loads(CredentialCipher(raw).decrypt(base64.b64decode(credential.encrypted_payload), associated_data=associated))
+            provider = build_provider(provider_id, secret["api_key"], secret.get("base_url"))
+            requested = [int(item) for item in payload.get("chapter_numbers", [])]
+            targets = [chapter for chapter in chapters if not requested or chapter.chapter_no in requested]
+            if not targets:
+                await uow.workflows.transition(run, "FAILED")
+                await uow.commit()
+                return "no-chapters"
+            # Persist the lease/checkpoint before leaving the transaction.
+            await uow.workflows.checkpoint(run, lease_owner, "PREPARING")
+            await uow.commit()
+
+        for chapter in targets:
+            async with SqlAlchemyUnitOfWork(session_factory) as uow:
+                run = await uow.workflows.get_owned(workflow_id, owner_id)
+                if run is None:
+                    return "workflow-not-found"
+                if run.status == "PAUSED":
+                    return "paused"
+                await uow.workflows.heartbeat(run, lease_owner)
+                await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_DRAFTING")
+                await uow.commit()
+            content = await generate_chapter_content(provider, model=model_id, project_title=project.title, chapter_title=chapter.title)
+            async with SqlAlchemyUnitOfWork(session_factory) as uow:
+                run = await uow.workflows.get_owned(workflow_id, owner_id)
+                if run is None:
+                    return "workflow-not-found"
+                version = await uow.chapters.append_version(chapter_id=chapter.id, content=content)
+                await uow.chapters.set_active_version(chapter.id, version.id)
+                await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_COMMITTED")
+                await uow.commit()
+        async with SqlAlchemyUnitOfWork(session_factory) as uow:
+            run = await uow.workflows.get_owned(workflow_id, owner_id)
+            if run is not None and run.status == "RUNNING":
+                await uow.workflows.transition(run, "COMPLETED")
+                await uow.commit()
+        return "completed"
+    except Exception:
+        async with SqlAlchemyUnitOfWork(session_factory) as uow:
+            run = await uow.workflows.get_owned(workflow_id, owner_id)
+            if run is not None and run.status in {"RUNNING", "RETRYING", "RECOVERING"}:
+                await uow.workflows.transition(run, "FAILED")
+                await uow.commit()
+        raise
+    finally:
+        await engine.dispose()
+
+
 @celery.task(name="proseforge.healthcheck")
 def healthcheck() -> str:
     return "ok"
