@@ -17,6 +17,22 @@ from proseforge.infrastructure.database.session import create_engine_and_session
 from proseforge.infrastructure.events.database import DatabaseEventStream
 from proseforge.infrastructure.tasks.celery import CeleryTaskQueue
 from proseforge.providers.registry import ProviderRegistry
+from proseforge.providers.anthropic import AnthropicProvider
+from proseforge.providers.baidu import BaiduProvider
+from proseforge.providers.cohere import CohereProvider
+from proseforge.providers.dashscope import DashScopeProvider
+from proseforge.providers.deepseek import DeepSeekProvider
+from proseforge.providers.google import GoogleProvider
+from proseforge.providers.kimi import KimiProvider
+from proseforge.providers.minimax import MiniMaxProvider
+from proseforge.providers.mistral import MistralProvider
+from proseforge.providers.ollama import OllamaProvider
+from proseforge.providers.openai import OpenAIProvider
+from proseforge.providers.tencent import TencentProvider
+from proseforge.providers.volcengine import VolcEngineProvider
+from proseforge.providers.vllm import VLLMProvider
+from proseforge.providers.xai import XAIProvider
+from proseforge.providers.zhipu import ZhipuProvider
 
 from proseforge.settings import Settings, get_settings
 
@@ -29,7 +45,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.engine, application.state.session_factory = create_engine_and_sessionmaker(resolved)
     application.state.event_stream = DatabaseEventStream(application.state.session_factory)
     application.state.queue = CeleryTaskQueue()
-    application.state.provider_registry = ProviderRegistry()
+    registry = ProviderRegistry()
+    for provider in (
+        OpenAIProvider(""), AnthropicProvider(""), GoogleProvider(""), DeepSeekProvider(), KimiProvider(),
+        DashScopeProvider(), ZhipuProvider(), VolcEngineProvider(), BaiduProvider(), TencentProvider(),
+        MiniMaxProvider(), XAIProvider(), MistralProvider(), CohereProvider(), OllamaProvider(), VLLMProvider(),
+    ):
+        registry.register(provider)
+    application.state.provider_registry = registry
     application.state.model_catalog = {}
     application.include_router(health_router)
     application.include_router(auth_router)
