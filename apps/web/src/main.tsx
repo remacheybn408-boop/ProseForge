@@ -3,9 +3,9 @@ import { createRoot } from "react-dom/client";
 import "./styles/tokens.css";
 import "./styles/views.css";
 import {
-  addContext, answerOutline, confirmOutline, controlWorkflow, createProject, createWorkflow,
+  addContext, answerOutline, confirmOutline, controlWorkflow, createConversation, createProject, createWorkflow,
   getHealth, getWorkflow, importOutline, listChapters, listContext, listCredentials, listOutlines,
-  listProjects, login, saveChapterVersion, saveCredential, setupAdmin, updateContext,
+  listMessages, listProjects, login, saveChapterVersion, saveCredential, sendMessage, setupAdmin, updateContext,
   type Chapter, type ContextItem, type Credential, type Outline, type Project, type Workflow,
 } from "./lib/api/client";
 
@@ -35,14 +35,12 @@ function Projects({ projects, onOpen, onCreated }: { projects: Project[]; onOpen
 }
 
 function Studio({ project }: { project: Project }) {
-  const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [chapter, setChapter] = useState<Chapter | null>(null);
-  const [content, setContent] = useState("");
-  const [baseVersion, setBaseVersion] = useState<number | undefined>();
-  const [message, setMessage] = useState("Loading chapters…");
+  const [chapters, setChapters] = useState<Chapter[]>([]); const [chapter, setChapter] = useState<Chapter | null>(null); const [content, setContent] = useState(""); const [baseVersion, setBaseVersion] = useState<number | undefined>(); const [message, setMessage] = useState("Loading chapters…");
+  const [conversation, setConversation] = useState<{ id: string; branch_id: string } | null>(null); const [chat, setChat] = useState<{ id: string; role: string; content: string; status: string }[]>([]); const [draft, setDraft] = useState("");
   useEffect(() => { listChapters(project.id).then(items => { setChapters(items); setChapter(items[0] ?? null); setMessage(items.length ? "Ready to write" : "Import an outline to create chapters"); }).catch(() => setMessage("Unable to load chapters")); }, [project.id]);
-  const save = async () => { if (!chapter) return; try { const version = await saveChapterVersion(chapter.id, content, baseVersion); setBaseVersion(version.version_no); setMessage(`Saved version ${version.version_no}`); } catch (error) { setMessage(error instanceof Error ? "Save conflict: reload the latest version" : "Save failed"); } };
-  return <section className="studio-layout"><aside className="chapter-tree"><strong>Chapters</strong>{chapters.map(item => <button className={chapter?.id === item.id ? "selected" : ""} key={item.id} onClick={() => setChapter(item)}>{String(item.chapter_no).padStart(2, "0")} · {item.title}</button>)}{!chapters.length && <small>{message}</small>}</aside><div className="editor-pane"><div className="chapter-head"><span>{chapter ? `Chapter ${String(chapter.chapter_no).padStart(2, "0")}` : project.title}</span><span className="status">{message}</span></div><textarea className="editor" value={content} onChange={event => setContent(event.target.value)} placeholder="Your chapter will appear here…" /><button className="primary" onClick={save} disabled={!chapter}>Save version</button></div><div className="review-pane"><strong>Writing companion</strong><p>Use Context to pin facts and Workflow to run a durable chapter plan.</p><span>{project.title}</span></div></section>;
+  const save = async () => { if (!chapter) return; try { const version = await saveChapterVersion(chapter.id, content, baseVersion); setBaseVersion(version.version_no); setMessage(`Saved version ${version.version_no}`); } catch { setMessage("Save conflict: reload the latest version"); } };
+  const send = async () => { if (!draft.trim()) return; try { const active = conversation ?? await createConversation(project.id); setConversation(active); const text = draft.trim(); setDraft(""); setChat(items => [...items, { id: crypto.randomUUID(), role: "user", content: text, status: "COMPLETED" }, { id: crypto.randomUUID(), role: "assistant", content: "", status: "PENDING" }]); await sendMessage(active.id, { branch_id: active.branch_id, content: text, client_request_id: crypto.randomUUID() }); setTimeout(() => listMessages(active.id, active.branch_id).then(setChat).catch(() => undefined), 800); } catch { setMessage("Chat could not be queued; check the worker and provider settings."); } };
+  return <section className="studio-layout"><aside className="chapter-tree"><strong>Chapters</strong>{chapters.map(item => <button className={chapter?.id === item.id ? "selected" : ""} key={item.id} onClick={() => setChapter(item)}>{String(item.chapter_no).padStart(2, "0")} · {item.title}</button>)}{!chapters.length && <small>{message}</small>}</aside><div className="editor-pane"><div className="chapter-head"><span>{chapter ? `Chapter ${String(chapter.chapter_no).padStart(2, "0")}` : project.title}</span><span className="status">{message}</span></div><textarea className="editor" value={content} onChange={event => setContent(event.target.value)} placeholder="Your chapter will appear here…" /><button className="primary" onClick={save} disabled={!chapter}>Save version</button></div><div className="review-pane chat-pane"><strong>Writing companion</strong><div className="chat-messages">{chat.length === 0 && <p>Ask for a scene revision or continuity check.</p>}{chat.map(item => <div className={`chat-message ${item.role}`} key={item.id}>{item.content || "Waiting for the worker…"}<small>{item.status}</small></div>)}</div><div className="chat-composer"><textarea value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="Ask your companion…" /><button className="primary" onClick={send}>Send</button></div></div></section>;
 }
 
 function OutlineView({ project, onWorkflow }: { project: Project; onWorkflow: (workflow: Workflow) => void }) {

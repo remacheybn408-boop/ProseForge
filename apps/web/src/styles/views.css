@@ -25,6 +25,14 @@
 .review-pane { border-left: 1px solid var(--line); padding-left: 20px; color: var(--secondary); font-size: 13px; line-height: 1.6; }
 .review-pane strong { color: var(--text); display: block; margin-bottom: 12px; }
 .review-pane span { color: var(--faint); }
+.chat-pane { display: grid; grid-template-rows: auto 1fr auto; gap: 12px; }
+.chat-messages { overflow: auto; display: grid; align-content: start; gap: 8px; }
+.chat-messages > p { color: var(--faint); }
+.chat-message { padding: 9px 10px; border-radius: 8px; background: var(--muted); font-size: 12px; white-space: pre-wrap; }
+.chat-message.assistant { background: var(--surface); border: 1px solid var(--line); }
+.chat-message small { display: block; color: var(--faint); margin-top: 5px; }
+.chat-composer { display: grid; gap: 7px; }
+.chat-composer textarea { min-height: 60px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 9px; background: var(--surface); color: var(--text); }
 .outline-status { display: grid; gap: 10px; margin-top: 26px; padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .outline-status span { color: var(--secondary); font-size: 13px; }
 .answer-row { display: flex; gap: 8px; margin-top: 8px; }
