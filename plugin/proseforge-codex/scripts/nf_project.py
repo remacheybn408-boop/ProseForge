@@ -118,7 +118,13 @@ def _run_project(args: argparse.Namespace) -> object:
         from src.db.slot_manager import SlotManager
 
         manager = SlotManager(project_root)
-        result = manager.create_slot(slot_id, ensure_registry=True, name=args.title, description=args.title)
+        result = manager.create_slot(
+            slot_id,
+            ensure_registry=True,
+            name=args.title,
+            description=args.title,
+            slug=slot_id,
+        )
         return {
             "status": "ok",
             "message": f"slot '{slot_id}' created",

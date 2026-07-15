@@ -135,6 +135,19 @@ def ensure_schema_migrations(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def schema_version(conn: sqlite3.Connection) -> dict:
+    """Return migration status without hiding a partially migrated database."""
+    ensure_schema_migrations(conn)
+    rows = conn.execute(
+        "SELECT filename, applied_at FROM schema_migrations ORDER BY filename"
+    ).fetchall()
+    return {
+        "count": len(rows),
+        "latest": rows[-1][0] if rows else None,
+        "applied": [row[0] for row in rows],
+    }
+
+
 def run_migrations(conn: sqlite3.Connection, migrations) -> bool:
     """Run pending migrations in order, tracking in schema_migrations."""
     ensure_schema_migrations(conn)

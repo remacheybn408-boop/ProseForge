@@ -241,8 +241,8 @@ def test_run_accept_ingest_appends_snapshot_without_overwrite(rw_env):
     assert len(rows) == 2                       # 追加快照，不覆盖
     assert rows[0][1] == v1_content             # 原稿快照仍在
     assert "怀里" in rows[1][1]                  # 新快照是改稿
-    # canonical 已提升为改稿
-    assert "怀里" in rw_env["chapter_file"].read_text(encoding="utf-8")
+    # 原始章节文件不可变；当前版本由数据库版本记录承载
+    assert rw_env["chapter_file"].read_text(encoding="utf-8") == _CHAPTER_TEXT
 
 
 def test_verify_resolved_when_revised_clean(tmp_path, monkeypatch):

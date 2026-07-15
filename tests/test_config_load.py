@@ -24,6 +24,8 @@ class TestConfigLoad:
         assert isinstance(cfg["word_count"]["normal"]["min"], int)
         assert isinstance(cfg["scene_quality"], dict)
         assert isinstance(cfg["scene_quality"]["min_effective_scenes"], int)
+        assert cfg["default_genre"] == ""
+        assert cfg["default_style"] == ""
 
     def test_load_config_file(self, tmp_path):
         """Custom config overrides defaults"""

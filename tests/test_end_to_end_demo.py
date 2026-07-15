@@ -11,6 +11,7 @@ from src.db import init_db
 from src.pipeline._base import App
 from src.pipeline.pre import run_pre
 from src.pipeline.ingest import ingest
+from src.pipeline import ingest as ingest_module
 from src.pipeline.volume import volume_post
 
 
@@ -86,6 +87,27 @@ def e2e_env(tmp_path, project_root, monkeypatch):
 
 
 class TestEndToEndFlow:
+    def test_ingest_marks_partial_failure_when_enrichment_crashes(self, e2e_env, monkeypatch):
+        app = e2e_env["app"]
+        chapter_file = e2e_env["chapters_dir"] / "第1章_测试.txt"
+        chapter_file.write_text("有效正文。\n" * 20, encoding="utf-8")
+
+        def fail_brief(*args, **kwargs):
+            raise RuntimeError("brief generator unavailable")
+
+        monkeypatch.setattr(ingest_module, "generate_chapter_brief", fail_brief)
+
+        with pytest.raises(RuntimeError, match="brief generator unavailable"):
+            ingest_module.ingest(1, "normal", app_inst=app)
+
+        state_path = app.state_dir / "chapter_001_state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        assert state["status"] == "PARTIAL_FAILURE"
+        assert "brief generator unavailable" in state["error"]
+        conn = sqlite3.connect(app.db_path)
+        assert conn.execute("SELECT COUNT(*) FROM chapters WHERE chapter_no=1").fetchone()[0] == 0
+        conn.close()
+
     def test_full_ch1_cycle(self, e2e_env):
         """Complete ch1: pre → write TXT → post → verify brief + DB state"""
         env = e2e_env

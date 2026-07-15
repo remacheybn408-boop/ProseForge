@@ -98,13 +98,34 @@ def _resolve_slot_word_count(paths: ProjectPaths, active_slot: str) -> dict[str,
     return word_count if isinstance(word_count, dict) else None
 
 
-def resolve_slot_db_path(cfg: dict[str, Any], project_root: str | Path | None = None) -> Path:
+def _validate_active_slot_slug(paths: ProjectPaths, active_slot: str, novel_slug: str) -> None:
+    if not active_slot or not novel_slug:
+        return
+    project_file = paths.workspace_root / active_slot / "project.json"
+    if not project_file.exists():
+        return
+    try:
+        payload = json.loads(project_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    stored_slug = payload.get("slug") if isinstance(payload, dict) else None
+    if stored_slug and stored_slug != novel_slug:
+        raise ValueError(
+            f"novel slug '{novel_slug}' does not match active project '{stored_slug}'"
+        )
+
+
+def resolve_slot_db_path(
+    cfg: dict[str, Any],
+    project_root: str | Path | None = None,
+    slot_id: str | None = None,
+) -> Path:
     paths = build_project_paths(project_root)
     registry = _load_registry(paths)
-    active_slot = registry.get("active_slot", "")
-    if active_slot:
-        slot_db = paths.workspace_root / active_slot / "novel.db"
-        if slot_db.exists():
+    selected_slot = slot_id or registry.get("active_slot", "")
+    if selected_slot:
+        slot_db = paths.workspace_root / selected_slot / "novel.db"
+        if slot_id or slot_db.exists():
             return slot_db
     return resolve_path(paths.project_root, cfg.get("db_path", DEFAULT_DB_PATH))
 
@@ -118,17 +139,21 @@ def build_pipeline_context(
     db_path: str | Path | None = None,
     project_root: str | Path | None = None,
     config_path: str | Path | None = None,
+    slot_id: str | None = None,
 ) -> PipelineContext:
     paths = build_project_paths(project_root, config_path)
     cfg = load_json_config(paths.config_path, paths.project_root)
     registry = _load_registry(paths)
-    active_slot = registry.get("active_slot", "")
+    active_slot = slot_id or registry.get("active_slot", "")
+    if slot_id and not (paths.workspace_root / slot_id).is_dir():
+        raise ValueError(f"project slot '{slot_id}' does not exist")
+    _validate_active_slot_slug(paths, active_slot, novel_slug)
 
     if db_path:
         resolved_db_path = resolve_path(paths.project_root, db_path)
         cfg["db_path"] = str(resolved_db_path)
     else:
-        resolved_db_path = resolve_slot_db_path(cfg, paths.project_root)
+        resolved_db_path = resolve_slot_db_path(cfg, paths.project_root, slot_id=slot_id)
         cfg["db_path"] = str(resolved_db_path)
 
     wc_rules = cfg.get("word_count", {})

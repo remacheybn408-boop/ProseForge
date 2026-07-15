@@ -2,6 +2,7 @@
 """ingest.py — Chapter ingestion (DB + FTS + summaries + character tracking)"""
 
 import re, json, sys, os, sqlite3
+from uuid import uuid4
 from pathlib import Path
 from datetime import datetime
 from version import get_version
@@ -53,7 +54,17 @@ def _count_character_appearances(content, names):
     return count_character_mentions(content, names)
 
 
-def ingest(chapter_no, chapter_type="normal", app_inst=None):
+def _get_hostile_relationships(cur, novel_id):
+    """Return only hostile relationships belonging to the current novel."""
+    rows = cur.execute(
+        "SELECT char_a, char_b FROM character_relationships "
+        "WHERE novel_id=? AND relation_type='敌对'",
+        (novel_id,),
+    ).fetchall()
+    return [(row[0], row[1]) for row in rows]
+
+
+def ingest(chapter_no, chapter_type="normal", app_inst=None, content_override=None):
     if app_inst is None:
         raise RuntimeError("ingest requires app_inst/context")
     app = app_inst
@@ -78,6 +89,12 @@ def ingest(chapter_no, chapter_type="normal", app_inst=None):
             except Exception:
                 pass
 
+        _update_pipeline_state(
+            status="VALIDATING",
+            chapter_no=chapter_no,
+            started_at=ts,
+        )
+
         def _record_fts_error(step, exc):
             msg = f"{step}: {exc}"
             fts_sync_errors.append(msg)
@@ -86,12 +103,71 @@ def ingest(chapter_no, chapter_type="normal", app_inst=None):
         filepath = find_chapter_file_with_fallback(chapter_no, app)
         if not filepath:
             print(f"[FAIL] 找不到第{chapter_no}章TXT"); conn.close(); return None
-        with open(filepath, 'r', encoding='utf-8') as f: raw = f.read()
-        content = _strip_selfcheck(raw)
+        if content_override is None:
+            with open(filepath, 'r', encoding='utf-8') as f: raw = f.read()
+            content = _strip_selfcheck(raw)
+        else:
+            content = _strip_selfcheck(content_override)
 
         # v0.4.5: 标题优先正文 `# 第N章 标题`，否则文件名（分隔符可选），再否则 stem
         title = _resolve_chapter_title(filepath.name, content)
         wc = _count_chinese(content)
+
+        latest_version = cur.execute(
+            """SELECT version_no, content FROM chapter_versions
+               WHERE novel_id=? AND chapter_no=?
+               ORDER BY version_no DESC LIMIT 1""",
+            (nid, chapter_no),
+        ).fetchone()
+        if latest_version and latest_version[1] == content:
+            _update_pipeline_state(
+                status="COMPLETED",
+                result="NOOP",
+                version=latest_version[0],
+                completed_at=now(),
+            )
+            return {
+                "status": "noop",
+                "ch_id": None,
+                "word_count": wc,
+                "version": latest_version[0],
+                "chunks": 0,
+            }
+
+        # Keep the database and generated brief atomic with enrichment.  The
+        # chapter rows are committed before the generators run so they can use
+        # a fresh connection; restore that snapshot if either generator fails.
+        backup_dir = getattr(app, "tmp_root", app.project_root / ".proseforge-tmp") / "ingest_backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup_path = backup_dir / f"chapter_{chapter_no:03d}_{uuid4().hex}.db"
+        brief_path = app.exports_root / "chapter_briefs" / f"chapter_{chapter_no:03d}_brief.json"
+        brief_existed = brief_path.exists()
+        brief_original = brief_path.read_bytes() if brief_existed else None
+
+        def _snapshot_db():
+            source = sqlite3.connect(str(app.db_path))
+            target = sqlite3.connect(str(backup_path))
+            try:
+                source.backup(target)
+            finally:
+                target.close()
+                source.close()
+
+        def _restore_enrichment_inputs():
+            # The write connection is closed before enrichment begins.
+            current = sqlite3.connect(str(app.db_path))
+            snapshot = sqlite3.connect(str(backup_path))
+            try:
+                snapshot.backup(current)
+            finally:
+                current.close()
+                snapshot.close()
+            if brief_existed:
+                brief_path.write_bytes(brief_original)
+            else:
+                brief_path.unlink(missing_ok=True)
+
+        _snapshot_db()
 
         # ── Resolve volume_id ──
         vol_id = None
@@ -198,13 +274,27 @@ def ingest(chapter_no, chapter_type="normal", app_inst=None):
         cur.execute("UPDATE novels SET current_words=(SELECT COALESCE(SUM(word_count),0) FROM chapters WHERE novel_id=?), updated_at=? WHERE id=?", (nid, ts, nid))
 
         # --- chapter_brief ---
+        _update_pipeline_state(status="COMMITTING")
         conn.commit()  # commit and release the write lock before nested DB work
     finally:
         conn.close()
-    generate_chapter_brief(chapter_no, title, content, wc, chapter_type, app_inst=app)
+    _update_pipeline_state(status="STAGED")
+    try:
+        generate_chapter_brief(chapter_no, title, content, wc, chapter_type, app_inst=app)
+    except Exception as exc:
+        _restore_enrichment_inputs()
+        backup_path.unlink(missing_ok=True)
+        _update_pipeline_state(status="PARTIAL_FAILURE", failed_step="chapter_brief", error=str(exc))
+        raise
 
     # --- chapter_context ---
-    generate_chapter_context(chapter_no, title, content, wc, nid, ch_id, app_inst=app)
+    try:
+        generate_chapter_context(chapter_no, title, content, wc, nid, ch_id, app_inst=app)
+    except Exception as exc:
+        _restore_enrichment_inputs()
+        backup_path.unlink(missing_ok=True)
+        _update_pipeline_state(status="PARTIAL_FAILURE", failed_step="chapter_context", error=str(exc))
+        raise
     conn = connect(app)
     cur = conn.cursor()
     try:
@@ -240,9 +330,7 @@ def ingest(chapter_no, chapter_type="normal", app_inst=None):
 
         # ── 敌对角色同场检测 ──
         try:
-            hostile_rels = cur.execute(
-                "SELECT char_a, char_b FROM character_relationships WHERE relation_type='敌对'"
-            ).fetchall()
+            hostile_rels = _get_hostile_relationships(cur, nid)
             if hostile_rels and appeared_names:
                 for hr in hostile_rels:
                     a, b = hr[0], hr[1]
@@ -276,6 +364,7 @@ def ingest(chapter_no, chapter_type="normal", app_inst=None):
         reports_root = app.exports_root / "reports"
         evidence_root = app.exports_root / "evidence"
         run_report = {
+            "run_id": getattr(app, "current_run_id", None) or f"run_{uuid4().hex}",
             "chapter_no": chapter_no,
             "title": title,
             "word_count": wc,
@@ -302,10 +391,14 @@ def ingest(chapter_no, chapter_type="normal", app_inst=None):
             "final_submission_report_path": _safe_relpath(reports_root / f"chapter_{chapter_no:03d}_final_submission_report.json", project_root),
         }
         reports_dir = app.exports_root / "run_reports"
-        reports_dir.mkdir(parents=True, exist_ok=True)
+        canonical_dir = reports_dir / f"chapter_{chapter_no:03d}" / run_report["run_id"]
+        canonical_dir.mkdir(parents=True, exist_ok=True)
+        canonical_path = canonical_dir / "run_report.json"
+        payload = json.dumps(run_report, ensure_ascii=False, indent=2)
+        canonical_path.write_text(payload, encoding="utf-8")
         report_path = reports_dir / f"chapter_{chapter_no:03d}_run_report.json"
-        report_path.write_text(json.dumps(run_report, ensure_ascii=False, indent=2), encoding='utf-8')
-        print(f"  [OK] run_report: {report_path}") 
+        report_path.write_text(payload, encoding="utf-8")
+        print(f"  [OK] run_report: {canonical_path}")
          # --- log ---
         cur.execute("INSERT INTO novel_logs(action,target_type,target_id,detail) VALUES('ingest','chapter',?,?)",
             (ch_id, f"第{chapter_no}章入库:{wc}字,v{vno},{len(chunks)}切片"))
@@ -340,6 +433,8 @@ def ingest(chapter_no, chapter_type="normal", app_inst=None):
     except Exception as _e:
         print(f"  [WARN] story commit 失败: {_e}")
 
+    _update_pipeline_state(status="COMPLETED", completed_at=now())
+    backup_path.unlink(missing_ok=True)
     return {"ch_id": ch_id, "word_count": wc, "version": vno, "chunks": len(chunks)}
 
 

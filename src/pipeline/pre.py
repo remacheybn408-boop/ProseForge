@@ -905,6 +905,7 @@ def run_pre(
     app.state_dir.mkdir(parents=True, exist_ok=True)
     state = {
         "chapter_no": chapter_no, "chapter_type": chapter_type,
+        "status": "PREPARED", "project_slug": getattr(app, "novel_slug", ""),
         "genre": genre,  # Phase 4: 从 novels 表读取
         "pre_done": True, "previous_tail_loaded": prev_ch >= 1,
         "recent_summaries_loaded": True, "sqlite_search_logged": True,

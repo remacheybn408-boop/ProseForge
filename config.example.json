@@ -28,8 +28,8 @@
   },
   "default_novel_slug": "demo_novel",
   "default_novel_title": "Demo Novel",
-  "default_genre": "xianxia",
-  "default_style": "webnovel",
+  "default_genre": "",
+  "default_style": "",
   "allow_short_chapter": true,
   "word_count": {
     "normal": {

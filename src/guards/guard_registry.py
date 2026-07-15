@@ -336,13 +336,13 @@ def run_orchestrated(content: str, chapter_no: int, mode: str = "standard",
                      config: dict = None,
                      custom_guards: list[str] = None,
                      reports_dir: str = "",
-                     extra_context: dict = None) -> dict:
+                     extra_context: dict = None,
+                     chapter_type: str = "normal") -> dict:
     """
     Legacy-compatible wrapper around run_standard_guards.
     Returns the old dict format so existing code in chapter_pipeline.py
     and guard_orchestrator.py still works.
     """
-    chapter_type = "normal"
     if config:
         policy = config.get("quality_policy", {})
         mode = policy.get("run_mode", mode)

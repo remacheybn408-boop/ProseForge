@@ -38,6 +38,10 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 DEFAULT_SLUG = "demo_novel"
 
 
+class ExportDataError(RuntimeError):
+    """Raised when export data cannot be read reliably."""
+
+
 def load_config(config_path: str) -> dict:
     """Load config JSON, falling back to defaults."""
     cfg = {}
@@ -83,8 +87,8 @@ def get_novel_info(conn: sqlite3.Connection, slug: str) -> dict | None:
         if row:
             return {"id": row[0], "title": row[1]}
         return None
-    except Exception:
-        return None
+    except (sqlite3.Error, OSError) as exc:
+        raise ExportDataError(f"novel lookup failed: {exc}") from exc
 
 
 def get_chapters(
@@ -145,9 +149,8 @@ def get_chapters(
                 "volume_no": row[5] if len(row) > 5 else 1,
             })
         return result
-    except Exception as e:
-        print(f"[ERROR] Failed to query chapters: {e}", file=sys.stderr)
-        return []
+    except (sqlite3.Error, OSError) as exc:
+        raise ExportDataError(f"chapter query failed: {exc}") from exc
 
 
 def build_txt(chapters: list[dict], novel_title: str, separator: str = "\n\n---\n\n") -> str:
@@ -283,7 +286,11 @@ def export_novel(
             "chapters_exported": 0,
         }
 
-    novel = get_novel_info(conn, slug)
+    try:
+        novel = get_novel_info(conn, slug)
+    except ExportDataError as exc:
+        conn.close()
+        return {"status": "error", "message": str(exc), "chapters_exported": 0}
     if not novel:
         conn.close()
         return {
@@ -292,7 +299,11 @@ def export_novel(
             "chapters_exported": 0,
         }
 
-    chapters = get_chapters(conn, novel["id"], from_ch, to_ch, chapters_dir)
+    try:
+        chapters = get_chapters(conn, novel["id"], from_ch, to_ch, chapters_dir)
+    except ExportDataError as exc:
+        conn.close()
+        return {"status": "error", "message": str(exc), "chapters_exported": 0}
     conn.close()
 
     if not chapters:

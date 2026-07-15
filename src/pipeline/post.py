@@ -5,7 +5,8 @@ Runs word-count gating, guard orchestration, human-texture checks,
 deduplicated revision tasks, ingest, stage review, and full agent review.
 """
 
-import re, json, sys, os, sqlite3
+import re, json, sys, os, sqlite3, shutil, types
+from uuid import uuid4
 from contextlib import closing
 from pathlib import Path
 from datetime import datetime, timezone
@@ -22,6 +23,7 @@ from src.pipeline._mental_triggers import load_mental_triggers
 from src.runtime import build_guard_context
 from src.db._conn import connect_sqlite
 from src.utils.config_utils import find_project_root
+from src.pipeline.run_artifacts import create_run_artifacts
 
 _PROJECT_ROOT = find_project_root(__file__)  # 仓库根（共享 configs/ 预设用），不写死层级
 app = None
@@ -101,10 +103,11 @@ def word_count_gate(content, chapter_no, chapter_type="normal", genre=None, app_
 # ============================================================
 
 
-def _post_resolve_state(app, chapter_no):
+def _post_resolve_state(app, chapter_no, chapter_type="normal"):
     """校验/bootstrap pipeline_state；返回 (state, state_path)。"""
     state_path = app.state_dir / f"chapter_{chapter_no:03d}_state.json"
     if not state_path.exists():
+        raise RuntimeError(f"pre state missing for chapter {chapter_no}; run pre first")
         # Bootstrap minimal state — post doesn't need full pre
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state = {"allowed_to_write": True, "genre": "", "chapter_no": chapter_no,
@@ -113,10 +116,40 @@ def _post_resolve_state(app, chapter_no):
         print(f"[OK] 已生成最小 pipeline_state (post 无需完整 pre)")
     else:
         state = json.loads(state_path.read_text(encoding='utf-8'))
+        if state.get("chapter_no") != chapter_no:
+            raise RuntimeError(f"pre state chapter_no mismatch: expected {chapter_no}")
+        if not state.get("pre_done"):
+            raise RuntimeError(f"pre not completed for chapter {chapter_no}; post is blocked")
+        if state.get("chapter_type", chapter_type) != chapter_type:
+            raise RuntimeError(
+                f"chapter_type mismatch: pre={state.get('chapter_type')} post={chapter_type}; run pre again"
+            )
+        project_slug = getattr(app, "novel_slug", None)
+        if state.get("project_slug") and project_slug and state["project_slug"] != project_slug:
+            raise RuntimeError("pre state belongs to a different project; run pre again")
+        context_pack = state.get("context_pack")
+        if context_pack and not Path(context_pack).exists():
+            raise RuntimeError(f"context pack missing for chapter {chapter_no}; run pre again")
+        if state.get("status") in {"BLOCKED", "FAILED", "PARTIAL_FAILURE"}:
+            raise RuntimeError(f"pre state is {state['status']}; run pre again")
         if not state.get("allowed_to_write"):
             raise RuntimeError("pre 未完成，禁止 post")
         print("[OK] pipeline_state verified (pre completed at {})".format(state.get("timestamp", "?")))
     return state, state_path
+
+
+def _post_mark_state(state_path, status, *, failed_step=None, error=None):
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
+        state["status"] = status
+        state["updated_at"] = datetime.now(timezone.utc).isoformat()
+        if failed_step is not None:
+            state["failed_step"] = failed_step
+        if error is not None:
+            state["error"] = str(error)
+        write_json_atomic(state_path, state)
+    except Exception as exc:
+        print(f"[WARN] unable to persist post state: {exc}")
 
 
 def _post_fts_health(cfg):
@@ -188,6 +221,30 @@ def _post_load_prev_brief(app, chapter_no):
     return prev_brief, prev_tail_text
 
 
+def _rollback_merge(app):
+    tx = getattr(app, "_merge_transaction", None)
+    if not tx:
+        return
+    chapter_file = Path(tx["chapter_file"])
+    next_file = Path(tx["next_file"])
+    backup_next = Path(tx["backup_next"])
+    shutil.copy2(tx["chapter_backup"], chapter_file)
+    if backup_next.exists():
+        if next_file.exists():
+            next_file.unlink()
+        backup_next.replace(next_file)
+    Path(tx["staging_dir"]).exists() and shutil.rmtree(tx["staging_dir"], ignore_errors=True)
+    setattr(app, "_merge_transaction", None)
+
+
+def _finalize_merge(app):
+    tx = getattr(app, "_merge_transaction", None)
+    if not tx:
+        return
+    shutil.rmtree(tx["staging_dir"], ignore_errors=True)
+    setattr(app, "_merge_transaction", None)
+
+
 def _post_word_count_and_merge(app, args, content, chapter_no, chapter_type, genre, chapter_file):
     """字数门禁；不足且 merge_if_short 时合并下一章重判。返回 (content, wc)；仍不足则 raise。"""
     wc_pass, wc, eff_min = word_count_gate(
@@ -204,14 +261,32 @@ def _post_word_count_and_merge(app, args, content, chapter_no, chapter_type, gen
             if next_candidate:
                 next_content = _strip_selfcheck(next_candidate.read_text(encoding='utf-8'))
                 merged = content.rstrip() + "\n\n---\n\n" + next_content
-                # Save merged content
-                merged_path = chapter_file
-                merged_path.write_text(merged, encoding='utf-8')
-                # Rename next chapter as merged backup
+                staging_dir = Path(getattr(app, "tmp_root", Path(chapter_file).parent / ".tmp")) / "merge_runs" / f"run_{uuid4().hex}"
+                staging_dir.mkdir(parents=True, exist_ok=False)
+                chapter_backup = staging_dir / Path(chapter_file).name
+                next_backup = staging_dir / Path(next_candidate).name
+                shutil.copy2(chapter_file, chapter_backup)
+                shutil.copy2(next_candidate, next_backup)
+                merged_candidate = staging_dir / "merged_candidate.txt"
+                merged_candidate.write_text(merged, encoding="utf-8")
                 bak = str(next_candidate) + ".merged"
-                next_candidate.rename(bak)
+                try:
+                    shutil.copy2(merged_candidate, chapter_file)
+                    next_candidate.rename(bak)
+                except Exception:
+                    _rollback_merge(types.SimpleNamespace(_merge_transaction={
+                        "chapter_file": chapter_file, "next_file": next_candidate,
+                        "chapter_backup": chapter_backup, "backup_next": next_backup,
+                        "staging_dir": staging_dir,
+                    }))
+                    raise
+                app._merge_transaction = {
+                    "chapter_file": chapter_file, "next_file": next_candidate,
+                    "chapter_backup": chapter_backup, "backup_next": next_backup,
+                    "staging_dir": staging_dir,
+                }
                 print(f"\n[MERGE] chapter {chapter_no} ({wc} chars) merged with chapter {chapter_no + 1}")
-                print(f"  [OK] merged content saved: {merged_path.name}")
+                print(f"  [OK] merged candidate saved: {chapter_file.name}")
                 print(f"  [OK] next chapter backed up: {Path(bak).name}")
                 # Re-check word count with merged content
                 content = merged
@@ -223,6 +298,7 @@ def _post_word_count_and_merge(app, args, content, chapter_no, chapter_type, gen
                     app_inst=app,
                 )
                 if wc_pass is False:
+                    _rollback_merge(app)
                     raise RuntimeError(f"合并后仍不足 {eff_min2} 字 (实际: {wc})")
             else:
                 raise RuntimeError(f"word count gate failed and chapter {chapter_no + 1} was not available to merge; short by {eff_min - wc} chars")
@@ -257,7 +333,7 @@ def _post_build_extra_context(app, cfg, chapter_no, prev_brief, selected_genre):
     return extra_context
 
 
-def _post_run_orchestrator(content, chapter_no, orchestrator_mode, cfg, ce_reports_dir, prev_tail_text, prev_brief, extra_context):
+def _post_run_orchestrator(content, chapter_no, orchestrator_mode, cfg, ce_reports_dir, prev_tail_text, prev_brief, extra_context, chapter_type="normal"):
     """跑 guard orchestrator，写报告并打印；失败降级返回空报告（保留内层 try）。"""
     orch_report = {"warnings": [], "executed_guards": [], "warning_count": 0}
     try:
@@ -266,7 +342,21 @@ def _post_run_orchestrator(content, chapter_no, orchestrator_mode, cfg, ce_repor
             content, chapter_no, mode=orchestrator_mode,
             config=cfg, reports_dir=str(ce_reports_dir),
             prev_tail=prev_tail_text, prev_brief=prev_brief,
-            extra_context=extra_context)
+            extra_context=extra_context,
+            chapter_type=chapter_type)
+        orch_report = dict(orch_report or {})
+        blocked_by = orch_report.get("blocked_by") or []
+        crashed_guards = orch_report.get("crashed_guards") or []
+        if blocked_by or crashed_guards:
+            orch_report["status"] = "BLOCK"
+            orch_report["can_ingest"] = False
+            orch_report["blocked_by"] = blocked_by or [f"crashed:{name}" for name in crashed_guards]
+        elif orch_report.get("fail_count", 0) > 0 or orch_report.get("warning_count", 0) > 0:
+            orch_report["status"] = "WARN"
+            orch_report["can_ingest"] = True
+        else:
+            orch_report["status"] = "PASS"
+            orch_report["can_ingest"] = True
         orch_path = ce_reports_dir / f"chapter_{chapter_no:03d}_orchestrator_report.json"
         orch_path.write_text(json.dumps(orch_report, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"  [OK] orchestrator ({orchestrator_mode}): {len(orch_report.get('executed_guards', []))} guards, {orch_report.get('warning_count', 0)} warnings")
@@ -278,8 +368,18 @@ def _post_run_orchestrator(content, chapter_no, orchestrator_mode, cfg, ce_repor
             failed = orch_report.get("failed_guards", orch_report.get("executed_guards", []))
             print(f"  [WARN] {orch_report['fail_count']} guard(s) FAIL (level 1/2) — ingest 继续但需复查")
     except Exception as e:
-        print(f"  [FAIL] orchestrator: {e} — 跳过门禁但 human_texture/dedup/ingest 继续")
-        orch_report = {"warnings": [], "executed_guards": [], "warning_count": 0}
+        print(f"  [FAIL] orchestrator: {e} — ingest 已阻断")
+        orch_report = {
+            "status": "ERROR",
+            "can_ingest": False,
+            "blocked_by": ["guard_orchestrator_error"],
+            "errors": [str(e)],
+            "warnings": [],
+            "executed_guards": [],
+            "warning_count": 0,
+        }
+    orch_path = ce_reports_dir / f"chapter_{chapter_no:03d}_orchestrator_report.json"
+    orch_path.write_text(json.dumps(orch_report, ensure_ascii=False, indent=2), encoding="utf-8")
     return orch_report
 
 
@@ -536,7 +636,8 @@ def run_post(
         raise RuntimeError(f"找不到第{chapter_no}章TXT (目录: {app.chapters_dir})")
 
     # 检查 pre 是否完成（允许 bootstrapped minimal state）
-    state, state_path = _post_resolve_state(app, chapter_no)
+    state, state_path = _post_resolve_state(app, chapter_no, chapter_type=chapter_type)
+    _post_mark_state(state_path, "POST_CHECKING")
 
     # v0.4.5: FTS5 health check before post
     _post_fts_health(cfg)
@@ -549,14 +650,22 @@ def run_post(
 
     # STEP 4: word_count（genre 缺失时回退 novels 表）
     _pipeline_genre = _post_resolve_genre(app, state)
-    content, wc = _post_word_count_and_merge(
-        app, args, content, chapter_no, chapter_type, _pipeline_genre, chapter_file)
+    try:
+        content, wc = _post_word_count_and_merge(
+            app, args, content, chapter_no, chapter_type, _pipeline_genre, chapter_file)
+    except Exception as exc:
+        _rollback_merge(app)
+        _post_mark_state(state_path, "FAILED", failed_step="word_count", error=exc)
+        raise
 
     # Read prev_brief/prev_tail once for all downstream guards
     prev_brief, prev_tail_text = _post_load_prev_brief(app, chapter_no)
 
-    ce_reports_dir = app.exports_root / "reports"
-    ce_reports_dir.mkdir(parents=True, exist_ok=True)
+    run_artifacts = create_run_artifacts(app.exports_root, chapter_no=chapter_no, operation="post")
+    setattr(app, "current_run_id", run_artifacts.run_id)
+    ce_reports_dir = run_artifacts.directory
+    legacy_reports_dir = app.exports_root / "reports"
+    legacy_reports_dir.mkdir(parents=True, exist_ok=True)
 
 # ── STEP 7.6: Guard Orchestrator (single entry for all registered guards) ──
 # v0.8.0: L1 安全 (continuity / canon / hallucination / scene_delta) +
@@ -577,16 +686,30 @@ def run_post(
     try:
         orch_report = _post_run_orchestrator(
             content, chapter_no, orchestrator_mode, cfg, ce_reports_dir,
-            prev_tail_text, prev_brief, extra_context)
+            prev_tail_text, prev_brief, extra_context, chapter_type=chapter_type)
         _post_run_human_texture(app, content, chapter_no, selected_genre, args, quality_policy, ce_reports_dir)
         _post_dedup_tasks(orch_report, quality_policy, ce_reports_dir, chapter_no)
     except Exception as e:
         # 安全网：human_texture/dedup 各自已有独立 try，此处仅兜底意外错误
         print(f"  [WARN] post quality layer 异常: {e}")
 
-# STEP 8: ingest
-    result = ingest(chapter_no, chapter_type, app_inst=app)
+    shutil.copytree(ce_reports_dir, legacy_reports_dir, dirs_exist_ok=True)
+
+    if not orch_report.get("can_ingest", False):
+        _rollback_merge(app)
+        _post_mark_state(state_path, "BLOCKED", failed_step="quality_gate", error=orch_report.get("blocked_by", []))
+        raise RuntimeError(f"quality gate blocked ingest for chapter {chapter_no}: {orch_report.get('blocked_by', [])}")
+
+    # STEP 8: ingest
+    try:
+        result = ingest(chapter_no, chapter_type, app_inst=app)
+    except Exception as exc:
+        _rollback_merge(app)
+        _post_mark_state(state_path, "FAILED", failed_step="ingest", error=exc)
+        raise
     if not result:
+        _rollback_merge(app)
+        _post_mark_state(state_path, "FAILED", failed_step="ingest", error="ingest returned no result")
         raise RuntimeError(f"ingest failed for chapter {chapter_no}")
 
 # 三章复盘
@@ -601,6 +724,8 @@ def run_post(
 
     # 3. 改稿检测
     _post_detect_fixes(app, chapter_no)
+
+    _finalize_merge(app)
 
     print(f"\n{'='*60}")
     print("chapter {} post-processing complete [OK] {} chars v{}".format(chapter_no, wc, result["version"]))
