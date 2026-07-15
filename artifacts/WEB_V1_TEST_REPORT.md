@@ -8,11 +8,12 @@
 
 | 检查 | 命令 | 结果 |
 |---|---|---|
-| Legacy 全量 | `docker run ... proseforge-web-v1-legacy-test:latest pytest -q` | **481 passed** |
+| Legacy 全量 | `docker run ... proseforge-web-v1-legacy-test:latest pytest -q` | **483 passed** |
 | API/contract/unit | `docker compose ... run --rm api-test pytest -q tests/api tests/contract tests/unit` | **35 passed** |
 | Migration/database | `docker compose ... run --rm migration-test pytest -q tests/migration tests/integration/database` | **12 passed** |
 | Recovery/backup | `docker compose ... run --rm recovery-test pytest -q tests/recovery tests/integration/operations` | **4 passed** |
 | Frontend | `docker compose ... run --rm web-test` | **2 Vitest passed; Vite build passed** |
+| Browser E2E | `docker compose ... run --rm e2e` | **1 Playwright passed, including mock Provider worker flow** |
 | Static checks | Docker `ruff check` | passed |
 
 ## 真实容器流程

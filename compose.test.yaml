@@ -1,4 +1,12 @@
 services:
+  postgres:
+    volumes:
+      - postgres-test-data:/var/lib/postgresql/data
+
+  redis:
+    volumes:
+      - redis-test-data:/data
+
   provider-mock:
     image: python:3.12-slim
     working_dir: /app
@@ -29,8 +37,11 @@ services:
     command: ["pytest", "-q", "--junitxml=/artifacts/api-pytest.xml"]
     environment:
       PROSEFORGE_DATABASE_URL: postgresql+asyncpg://proseforge:proseforge@postgres:5432/proseforge
+      PROSEFORGE_SYNC_DATABASE_URL: postgresql+psycopg://proseforge:proseforge@postgres:5432/proseforge
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   contract-test:
@@ -44,6 +55,7 @@ services:
     command: ["pytest", "-q", "tests/migration", "tests/integration/database", "--junitxml=/artifacts/migration-pytest.xml"]
     environment:
       PROSEFORGE_DATABASE_URL: postgresql+asyncpg://proseforge:proseforge@postgres:5432/proseforge
+      PROSEFORGE_SYNC_DATABASE_URL: postgresql+psycopg://proseforge:proseforge@postgres:5432/proseforge
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,8 +84,14 @@ services:
     depends_on:
       web:
         condition: service_healthy
+      api:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
       provider-mock:
         condition: service_healthy
 
 volumes:
   web-node-modules:
+  postgres-test-data:
+  redis-test-data:
