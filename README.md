@@ -1,516 +1,98 @@
 # ProseForge
 
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://python.org)
-![Version](https://img.shields.io/badge/version-0.8.0-orange)
-![Surfaces](https://img.shields.io/badge/surfaces-Hermes%20%7C%20Codex%20%7C%20Claude-brightgreen)
-![License](https://img.shields.io/badge/license-AGPL%203.0-blue)
+ProseForge is a local, Docker-first engineering workflow for long-form fiction: outline management, pre-writing context, post-writing quality gates, revision validation, versioned ingestion, and export.
 
-`ProseForge` 是一个面向长篇小说的工程化写作系统。  
-它不只是“生成一章文本”的提示词仓库，而是一套从大纲、写前准备、写后门禁、审读、改写到导出的完整工作流。
+The core system does not call an LLM. External agents such as Codex, Hermes, or Claude provide writing and semantic review; ProseForge provides project context, deterministic checks, state management, and persistence.
 
-一句话理解：
+## Quick start
 
-> 它要解决的不是“怎么多写一点”，而是“怎么把一本书持续写下去，而且尽量不写崩”。
+Requirements:
 
----
-
-## 安装
-
-### 前置要求
-
-- Python 3.10+
-- [uv](https://docs.astral.sh/uv/)（推荐，比 pip 快；也可以用 pip）
+- Docker Desktop with Compose
 - Git
 
-### 1. 克隆仓库
+Clone the repository and build the application image:
 
 ```bash
 git clone https://github.com/remacheybn408-boop/ProseForge.git
 cd ProseForge
+docker compose build proseforge
 ```
 
-### 2. 安装核心依赖
+Initialize a project and inspect its health:
 
 ```bash
-# 用 uv（推荐）
-uv pip install -e .
-
-# 或者用 pip
-# pip install -e .
-
-# 可选：RAG 检索依赖（chromadb + sentence-transformers）
-uv pip install -e ".[rag]"
-
-# 安装后，pre.py 的世界观提醒自动使用语义检索替代关键词子串匹配。
-
-# 安装测试工具
-uv pip install pytest
+docker compose run --rm proseforge -m src.interfaces.cli project init
+docker compose run --rm proseforge -m src.interfaces.cli project create --slug my_novel --title "我的小说"
+docker compose run --rm proseforge -m src.interfaces.cli doctor
 ```
 
-### 3. 配置路径
+The default genre and style are intentionally empty. Configure them per project instead of inheriting a hard-coded genre.
+
+## Writing workflow
+
+The normal chapter lifecycle is:
+
+```text
+pre → write chapter text → post → ingest/version → export
+```
+
+Run the chapter pipeline inside the container:
 
 ```bash
-cp config.example.json config.json
+docker compose run --rm proseforge -m src.interfaces.cli chapter pre 1
+docker compose run --rm proseforge -m src.interfaces.cli chapter post 1
 ```
 
-编辑 `config.json`（结构见 `config.example.json`），按需调整 `paths`：
-
-```json
-{
-  "app": { "name": "Novel Forge - 小说引擎", "version": "0.8.0", "mode": "local" },
-  "paths": {
-    "db_path": "./data/novel_memory.db",
-    "novels_root": "./novels",
-    "exports_root": "./exports",
-    "outputs_root": "./outputs"
-  },
-  "novel": { "default_slug": "demo_novel", "default_title": "Demo Novel" }
-}
-```
-
-> `db_path` 是默认回退路径；实际写作用槽位库 `workspace/<slot>/novel.db`。路径用正斜杠 `/`，pathlib 自动跨平台。
-
-### 4. 注册插件（按你的 Agent 选择）
-
-ProseForge 提供三个插件表面，选一个即可：
-
-**Hermes Agent**（推荐）：
+Use `--slot` when a task must explicitly bind to a project rather than the interactive active project:
 
 ```bash
-# 把插件源码 plugin/proseforge-Hermes/ 链接到 Hermes 的 profiles/<profile>/plugins/ 下
-# 在 Hermes 配置中启用该插件（注册的 toolset 名为 proseforge-engine）
-# 注册后可用工具: nf_pipeline, nf_project
+docker compose run --rm proseforge -m src.interfaces.cli chapter pre 1 --slot my_novel
+docker compose run --rm proseforge -m src.interfaces.cli chapter post 1 --slot my_novel
 ```
 
-**Codex**：
-将 `plugin/proseforge-codex/` 链接到 Codex 的插件目录。
-提供两个入口：`nf_pipeline`（写/审/改/卷）、`nf_project`（建/管/导）。
+`post` requires a valid `pre` state. It blocks when the project, chapter type, context pack, or state does not match. Short-chapter merging uses staging and restores both source files if a later check fails.
 
-**Claude**：
-将 `plugin/proseforge-claude/` 放入 Claude 的 projects 目录。
-提供 SKILL.md 引导 Claude 调用对应工作流。
+## Testing
 
-### 5. 验证安装
+Tests must run in Docker; the host does not need Python, pytest, or RAG dependencies:
 
 ```bash
-uv pip install pytest
-python -m pytest tests/ -x -q
+docker compose run --rm test
 ```
 
-预期输出：全部测试通过（365 项）。
-
----
-
-## 这个项目解决什么问题
-
-长篇小说一旦进入几十章以后，最常见的问题不是没灵感，而是失控：
-
-- 角色口吻前后不一致
-- 世界观和设定互相打架
-- 上一章埋的东西，下一章接不上
-- 写前没有任务卡，写后没有质量门禁
-- 改稿只能靠人工来回翻，缺少闭环
-- 不同 Agent / 不同插件表面，调用方式不统一
-
-`ProseForge` 的目标，就是把这些问题收束到一套统一流程里。
-
----
-
-## 一眼看懂这套系统
-
-### 用户视角
-
-如果你是使用者，可以把它理解成这条主链：
-
-```text
-大纲
-  -> nf_project outline add
-  -> nf_pipeline pre
-  -> 正式写章节
-  -> nf_pipeline post
-  -> nf_pipeline review
-  -> nf_pipeline volume
-  -> nf_project export
-```
-
-最核心的闭环是：
-
-```text
-pre -> write -> post
-```
-
-也就是：
-
-1. 先做写前准备
-2. 再写正文
-3. 写完后跑质量门禁和入库
-
-`review` 是质量增强层，`volume` 和 `export` 是阶段收尾层。
-
-### 架构视角
-
-如果你是第一次看仓库，建议把它理解成“一个共享内核，两个主入口，三个插件表面”：
-
-```text
-Hermes / Codex / Claude
-    -> nf_project / nf_pipeline
-    -> 本地 wrapper / plugin surface
-    -> src/runtime.py (ProjectPaths / PipelineContext)
-    -> src/pipeline/
-        -> pre / post / volume / export
-        -> guards
-        -> review agents
-        -> revision planner
-    -> workspace/<slot>/
-        -> novel.db
-        -> outlines/
-        -> chapters/
-        -> reports/
-        -> exports/
-```
-
-这也是整个仓库最重要的设计原则：
-
-- 对外入口尽量少
-- 内核逻辑尽量共享
-- 不同平台尽量使用同一种心智模型
-
----
-
-## 系统架构
-
-### 1. 入口层
-
-对外只有两个主入口：
-
-| 入口 | 作用 | 典型动作 |
-| --- | --- | --- |
-| `nf_project` | 管项目和工作区 | `init` / `create` / `list` / `status` / `outline` / `export` |
-| `nf_pipeline` | 管章节流水线 | `pre` / `post` / `review` / `batch` / `volume` / `rewrite` / `accept` |
-
-它们是用户最应该记住的两个名字。
-
-### 2. 共享内核层
-
-真正的业务逻辑主要在 `src/` 下面：
-
-| 目录 | 作用 |
-| --- | --- |
-| `src/pipeline/` | 写前、写后、卷汇总、导出、任务卡、报告等主流水线 |
-| `src/guards/` | 质量门禁系统和统一注册入口 |
-| `src/agents/` | 多 Agent 审读系统 |
-| `src/db/` | workspace、slot、registry、数据库管理 |
-| `src/outline/` | 大纲导入、切换、版本相关逻辑 |
-| `src/story/` | story contract、章节承接、story health |
-| `src/rag/` | FTS5 + 向量混合检索，pre.py 的世界观提醒走这里 |
-| `src/utils/` | config_utils / guard_result 等公共工具 |
-
-`src/runtime.py` 是统一的路径与上下文层，对外暴露 `ProjectPaths` 与 `PipelineContext` 两个 dataclass，pipeline / guard 都从这里拿到工作区根目录、配置和 slot 信息。voice 相关资源放在 `packs/voice/`（不是 src 模块）。
-
-### 3. 质量门禁层
-
-`post` 之后最关键的一层就是 Guard 系统。
-
-它负责检查：
-
-- 连续性
-- 设定证据一致性
-- 幻觉和捏造
-- 场景推进
-- 对话质量
-- 读者卷入度
-- 文本真实感
-- 自检与合规
-
-你可以把它理解成“章节写完以后的一道总闸门”。
-
-### 4. 审读层
-
-`review` 走的是 `src/agents/` 里的多 Agent 审读系统。
-
-当前有两种模式：
-
-- `light`：轻量审读
-- `full`：完整审读
-
-入口在：
-
-- `src/agents/orchestrator.py`
-
-这层更像“编辑部复盘”，不是单纯的规则检查。
-
-### 5. 改写层
-
-改写以 `nf_pipeline` 的 `rewrite` + `accept` 两个 action 接回流水线，**内核不调 LLM**。
-
-流程：
-
-```text
-run_rewrite ── 读 post 去重报告 → 产「改写卡」+ revision_tasks.json
-    │          + 语义保全契约（开放承诺/伏笔/角色关系/canon 硬事实/结尾钩）
-    │          + host 回执模板（让改写方知道"什么必须留住"）
-    │
-    ▼  [Agent host 改写 → 写 chapter_NNN_revised.txt]
-    │
-run_accept ── 原文 vs revised 做字级 difflib diff
-    │          + 全文改动图（段落对齐，任务区间外也捕获）
-    │          + guard 复跑验证：按类别比对 resolved / persisted / regressed
-    │          + 语义保全评估：词级预检 + host 回执 → broken / preserved
-    │          + 多信号推荐：空改(NO_CHANGE) / 拒绝(REJECTED) / 仔细复核 / 可入库
-    │
-    └── ingest 门禁 —— recommendation 为 REJECTED / NO_CHANGE 时直接跳过入库
-```
-
-关键设计：
-
-- **内核零 LLM**：内核只做确定性规则（契约生成、difflib 对比、词级预检、guard 编排），不做语义判断。
-- **语义保全**（`semantic_contract.py`）：从 DB 提取 4 维契约（读者承诺/活跃伏笔/同章角色关系/canon 硬事实），
-  `run_rewrite` 产请求卡，host LLM 写回执，`run_accept` 读回执 + 词级预检 → broken/preserved。
-  可设 `semantic_preservation.enforce` 为 true 硬阻入库。
-- **guard 复跑**：`run_accept` 在 revised 上重跑 guard orchestrator，类别级比对原问题是否真正消失（resolved），
-  还是仍在（persisted），或引入了新类别（regressed）。regressed 导致拒绝。
-- **空改拦截**：字级改动量 ratio ≤ 0.001 自动判 NO_CHANGE_DETECTED，不入库。
-- **差异化 guidance**：任务类别复用 report_deduplicator.ISSUE_CATEGORIES 标签，每类 task 带独立的 must_keep/avoid
-  （如 ADD_CONCRETE_DETAILS 禁止空喊情绪、IMPROVE_DIALOGUE 禁止删除停顿误会）。
-- **零引号风格兼容**：引号丢失风险检查仅原文有引号标记时才触发。
-
-原则不变：改稿是增量产物，只向 `chapter_versions` 追加快照，不覆盖原稿。详见 [REVISION_LOOP.md](docs/REVISION_LOOP.md)。
-### 6. 存储层
-
-工作区使用 `workspace/` 作为项目容器，每个 `slot` 都可以看成一部小说的独立工作区。**slot 按大纲名命名**——导入大纲时会自动用书名派生 slug 创建同名 slot。
-
-典型结构如下：
-
-```text
-workspace/
-|- registry.json
-|- 冰火之歌/                 # 第一本小说，slot 名 = 书名 slug
-|  |- novel.db
-|  |- project.json
-|  |- outlines/
-|  |- chapters/
-|  |- reports/
-|  |- exports/
-|  `- backups/
-`- my_novel/                # 第二本小说
-```
-
-这里最值得记住的一点是：
-
-> 一个 `slot` 基本就等于一个独立项目容器，按书名命名。不同小说不串库、不串上下文、不串报告。`nf_project init` 不再预创建 slot——第一次 `outline add` 自动按 title 派生 slug 创建。
-
----
-
-## 两个主入口怎么用
-
-### `nf_project`
-
-`nf_project` 负责项目和工作区管理。
-
-| action | 作用 |
-| --- | --- |
-| `init` | 初始化本地 `workspace/`、registry 和默认 slot |
-| `create` | 新建一个 slot / 项目容器 |
-| `list` | 列出已注册 slot |
-| `status` | 查看当前活动 slot 和 registry 状态 |
-| `outline` | 添加 / 列出 / 切换大纲 |
-| `export` | 导出小说，支持 `txt` / `md` |
-
-可以把它理解成“工程台”和“资料台”。
-
-### `nf_pipeline`
-
-`nf_pipeline` 负责写作流水线本身。
-
-| action | 作用 |
-| --- | --- |
-| `pre` | 写前准备，生成任务卡、上下文和流水线状态 |
-| `post` | 写后处理，跑门禁、报告、入库等 |
-| `review` | 多 Agent 审读 |
-| `batch` | 批量跑章节 `post` |
-| `rewrite` | 读 post 去重报告 → 产改写卡 + revision_tasks.json。不调 LLM。 |
-| `accept` | 原文 vs revised 做 diff + guard 复跑验证 + 语义保全评估；ingest 时经门禁（空改/回归/保全破坏拦截）后入库。 |
-| `volume` | 生成卷级汇总和桥接信息 |
-
-可以把它理解成“章节生产线”。
-
----
-
-## 推荐的标准使用顺序
-
-### 第一次开新项目
+The JUnit report is written to `artifacts/pytest.xml`. Run a focused test file with:
 
 ```bash
-python plugin/proseforge-codex/scripts/nf_project.py --action init
-python plugin/proseforge-codex/scripts/nf_project.py --action status
-python plugin/proseforge-codex/scripts/nf_project.py --action outline --sub-action add --file-path examples/demo_novel/outline_skeleton.json
-python plugin/proseforge-codex/scripts/nf_pipeline.py --action pre --slug demo_novel --title "Demo Novel" --vol-no 1 --chapter-no 1
+docker compose run --rm test -m pytest tests/test_quality_gate_enforcement.py -q
 ```
 
-然后你去写正文，写完再继续：
+The current merged branch has 413 passing tests in the Docker test service.
 
-```bash
-python plugin/proseforge-codex/scripts/nf_pipeline.py --action post --slug demo_novel --title "Demo Novel" --vol-no 1 --chapter-no 1
-python plugin/proseforge-codex/scripts/nf_pipeline.py --action review --slug demo_novel --vol-no 1 --chapter-no 1 --mode full
-python plugin/proseforge-codex/scripts/nf_pipeline.py --action volume --slug demo_novel --title "Demo Novel" --vol-no 1
-```
+More Docker commands and volume details are documented in [docs/DOCKER_TESTING.md](docs/DOCKER_TESTING.md).
 
-### 日常章节写作
-
-日常最常用的是这条链：
+## Project layout
 
 ```text
-status -> pre -> write -> post
+workspace/<slot>/
+├── project.json
+├── novel.db
+├── chapters/
+├── outlines/
+├── reports/
+└── exports/
 ```
 
-也就是：
+Each slot is an isolated novel project. Runtime contexts can bind explicitly to a slot, so background tasks do not depend on a changing global active-slot selection.
 
-1. 先确认当前活动 slot
-2. 做 `pre`
-3. 写正文
-4. 跑 `post`
+## Interfaces
 
-如果章节有问题，再接：
+- `src.interfaces.cli`: formal JSON-producing CLI
+- `src.application`: application services shared by CLI and agent adapters
+- `plugin/proseforge-codex`: Codex wrappers
+- `plugin/proseforge-Hermes`: Hermes tools and skills
+- `plugin/proseforge-claude`: Claude workflow skill
 
-改写闭环：
+## License
 
-```text
-rewrite → [Agent 改写] → accept
-```
-
-也就是：
-1. 跑 `rewrite` 产改写卡 + 语义保全契约
-2. Agent host 据卡改写，写 `chapter_NNN_revised.txt`
-3. 跑 `accept --ingest` 做 diff/验证/保全评估，经门禁后入库
-
-如果只想看 diff 不入库，省略 `--ingest`。
-
-```text
-review
-```
-
----
-
-## 几条很重要的工作规则
-
-- 所有 wrapper script 最好都在仓库根目录执行
-- 在跑 slot-aware 的流程之前，先 `init` 一次 workspace
-- 在 `pre` 之前先导入 outline，这套系统本质上是 outline-driven
-- `slug`、`title`、`vol-no`、`chapter-no` 在整条章节生命周期里要尽量一致
-
-如果你只记一条规则，请记这条：
-
-> 先有大纲，再做 `pre`；先做 `pre`，再写正文；写完正文，再跑 `post`。
-
----
-
-## 插件表面
-
-当前仓库里可以看到三种表面：
-
-| 表面 | 位置 | 特点 |
-| --- | --- | --- |
-| Hermes | `plugin/proseforge-Hermes/` | 面向 Hermes 的插件入口 |
-| Codex | `plugin/proseforge-codex/` | 面向 Codex 的本地插件骨架和共享 wrapper |
-| Claude | `plugin/proseforge-claude/` | 面向 Claude Code 的 skill 包装 |
-
-虽然外层平台不同，但内部尽量共用同一套入口名和同一套逻辑。
-
-这也是为什么 README 一直强调：
-
-- `nf_project`
-- `nf_pipeline`
-
-因为这两个名字才是跨平台稳定的“公共语言”。
-
----
-
-## 代码导览
-
-如果你要快速读代码，推荐顺序如下：
-
-1. `plugin/proseforge-codex/scripts/nf_project.py`
-2. `plugin/proseforge-codex/scripts/nf_pipeline.py`
-3. `src/runtime.py`
-4. `src/pipeline/pre.py`
-5. `src/pipeline/post.py`
-6. `src/agents/orchestrator.py`
-7. `src/guards/guard_registry.py`
-8. `src/pipeline/rewrite.py`
-9. `src/pipeline/semantic_contract.py`
-10. `src/pipeline/revision_diff_report.py`
-
-原因很简单：
-
-- 先看 wrapper，知道外部怎么进来
-- 再看 `runtime.py`，知道路径/上下文怎么构建
-- 再看 `pre` / `post`，知道主流水线怎么跑
-- 再看 `agents` 和 `guards`，知道质量系统怎么挂上去
-再看 `rewrite` / `semantic_contract` / `revision_diff_report`，知道改写闭环怎么跑。
-
----
-
-## 仓库目录速览
-
-```text
-ProseForge/
-|- src/                      # 共享 Python 内核
-|- plugin/                   # Hermes / Codex / Claude 三类表面
-|- configs/                  # 配置
-|- packs/                    # genre / style / template / voice 资源
-|- workspace/                # 本地工作区与 slot
-|- docs/                     # 架构、指南、说明文档
-|- examples/                 # demo outline / demo chapter / demo reports
-|- exports/                  # 导出和流水线产物
-`- tests/                    # 测试
-```
-
-如果你是使用者，重点看：
-
-- `plugin/`
-- `workspace/`
-- `examples/`
-- `docs/`
-
-如果你是开发者，重点看：
-
-- `src/pipeline/`
-- `src/guards/`
-- `src/agents/`
-- `src/db/`
-
----
-
-
-## 相关文档
-
-如果 README 还不够，可以继续看这些文件：
-
-- `docs/architecture.md`：系统架构说明
-- `docs/setup-guide.md`：安装和环境说明
-- `docs/USER_GUIDE_CN.md`：更完整的中文用户手册
-- `docs/README_FULL.md`：旧版长说明
-- `examples/demo_novel/outline_skeleton.json`：可直接导入的 demo 大纲
-- `examples/demo_novel/README.md`：示例项目说明
-
----
-
-## 当前状态
-
-- Core version: `0.8.0`
-- Python requirement: `>=3.10`
-- Optional extra: `rag`
-- Repository: `https://github.com/remacheybn408-boop/ProseForge`
-- License: see `LICENSE`
-
-当前这个仓库的方向，可以概括成一句话：
-
-> 一个共享内核，两个主入口，三个插件表面，一条面向长篇小说的工程化流水线。
-
----
-
-## 赞助
-
-如果你觉得这个项目有帮助，欢迎用支付宝支持作者：
-
-![支付宝收款码](assets/alipay.jpg)
+AGPL-3.0
