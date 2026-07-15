@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Test revision_diff_report — 改稿对比报告测试"""
-import sys, json
-from pathlib import Path
 from version import get_version
 from src.pipeline.revision_diff_report import (
     generate_diff_report, compute_diff_summary,
-    generate_risk_flags, split_paragraphs
+    generate_risk_flags
 )
 
 
@@ -51,4 +49,5 @@ def test_empty_reports_handled():
 
 
 if __name__ == "__main__":
-    import pytest; pytest.main([__file__, "-v"])
+    import pytest
+    pytest.main([__file__, "-v"])

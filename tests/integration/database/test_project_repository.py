@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from proseforge.domain.project.entity import Project
 from proseforge.infrastructure.database.repositories.project import SqlAlchemyProjectRepository

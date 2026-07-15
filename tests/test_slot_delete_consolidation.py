@@ -4,7 +4,6 @@ test_slot_delete_consolidation.py — CODE_REVIEW #18
 delete_slot 默认走回收站（可恢复），仅 force=True 才永久硬删；活跃槽受保护。
 """
 import shutil
-from pathlib import Path
 
 import pytest
 

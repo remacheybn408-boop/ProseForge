@@ -12,7 +12,6 @@ chief_editor.py — 主编汇总Agent v0.5.5
 """
 
 import re
-from collections import Counter
 from .base_analyzer import BaseAnalyzer
 
 

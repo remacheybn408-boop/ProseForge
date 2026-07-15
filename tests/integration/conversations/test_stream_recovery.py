@@ -12,9 +12,15 @@ class Provider:
 
 
 class Repo:
-    def __init__(self): self.statuses = []; self.chunks = []
-    async def set_message_status(self, message_id, status): self.statuses.append(status)
-    async def append_chunk(self, *args): self.chunks.append(args)
+    def __init__(self):
+        self.statuses = []
+        self.chunks = []
+
+    async def set_message_status(self, message_id, status):
+        self.statuses.append(status)
+
+    async def append_chunk(self, *args):
+        self.chunks.append(args)
     async def chunk_count(self, message_id): return 2
 
 

@@ -7,8 +7,6 @@ Agents only review — they do NOT modify the original text.
 They output structured reports with findings, scores, and status.
 """
 
-import re
-from typing import Optional
 
 
 class BaseAnalyzer:

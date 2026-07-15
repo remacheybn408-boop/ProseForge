@@ -2,10 +2,10 @@
 """Merged character agent."""
 
 import re
-import sqlite3, json
+import sqlite3
+import json
 from contextlib import closing
 from pathlib import Path
-from typing import Optional
 
 from .base_analyzer import BaseAnalyzer
 DEFAULT_DB_PATH = "./data/novel_memory.db"

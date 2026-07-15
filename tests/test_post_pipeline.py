@@ -19,7 +19,9 @@ from src.pipeline.pre import run_pre
 from src.pipeline.post import run_post
 
 # 复用既有端到端夹具与造章助手
-from tests.test_end_to_end_demo import e2e_env, _make_chapter_text  # noqa: F401
+from tests.test_end_to_end_demo import _make_chapter_text
+
+pytest_plugins = ["tests.test_end_to_end_demo"]
 
 
 def _app_with_tmp_root(env):

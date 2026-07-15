@@ -1,5 +1,6 @@
 """test_multi_register_voice_guard.py — 多语体声纹检测 (v0.4.5 通用化)"""
-import sys, os, json
+import os
+import json
 
 from src.guards.character_voice_guard import run_character_voice_check
 from src.agents.character import _load_packs_from_files

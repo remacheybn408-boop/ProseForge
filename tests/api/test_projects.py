@@ -1,7 +1,6 @@
 from fastapi.testclient import TestClient
 
 from proseforge.api.main import create_app
-from proseforge.application.auth.service import AuthUser
 
 
 def test_project_routes_require_authentication():

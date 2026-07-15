@@ -1,7 +1,6 @@
 """
 test_hallucination_guard.py — 幻觉拦截测试
 """
-import pytest, json, sys, os
 from src.guards.hallucination_guard import run_hallucination_check
 
 

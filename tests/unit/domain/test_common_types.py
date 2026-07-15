@@ -1,4 +1,3 @@
-from datetime import UTC
 
 from proseforge.domain.common.ids import new_id
 from proseforge.domain.common.result import OperationResult

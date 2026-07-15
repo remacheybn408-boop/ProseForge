@@ -19,7 +19,7 @@ class TestPunctuationCounting:
     def test_count_dashes_normal(self):
         text = _make_dash_text(5)
         result = run_punctuation_check(text)
-        s = result["status"]
+        assert result["status"]
         assert result["stats"]["dash_pairs"] >= 5, f"expected >=5, got {result['stats']['dash_pairs']}"
 
     def test_count_single_dash(self):

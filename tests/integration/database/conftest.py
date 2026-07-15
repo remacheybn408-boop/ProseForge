@@ -4,7 +4,6 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from proseforge.infrastructure.database.base import Base
-from proseforge.infrastructure.database.models import ChapterModel, ChapterVersionModel, ProjectModel
 from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
 from proseforge.settings import Settings
 

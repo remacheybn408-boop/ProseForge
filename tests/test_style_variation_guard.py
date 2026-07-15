@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Test style_variation_guard — 句式变化门禁测试"""
-import sys, json
-from pathlib import Path
 
 from src.guards.style_variation_guard import (
     build_report,
@@ -9,11 +7,8 @@ from src.guards.style_variation_guard import (
     split_paragraphs,
     count_chinese,
     compute_sentence_opening_repetition,
-    compute_sentence_length_cv,
-    compute_paragraph_length_cv,
     count_abstract_words,
     count_transition_words,
-    compute_transition_density,
 )
 
 

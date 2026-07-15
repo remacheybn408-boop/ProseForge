@@ -5,16 +5,15 @@
 正确解析。Codex 2026-06-18 review 揭示的协议断裂回归测试。
 """
 import json
-from pathlib import Path
 
 from src.utils.guard_result import (
-    GuardResult, GuardSummary, GuardFinding, finding,
+    GuardResult, GuardSummary, finding,
 )
 from src.pipeline.final_submission_report import (
-    aggregate_reports, _coerce_legacy, _infer_priority,
+    aggregate_reports, _coerce_legacy,
 )
 from src.pipeline.report_deduplicator import (
-    classify_warning, deduplicate_warnings, _flag_type, _flag_source,
+    classify_warning, deduplicate_warnings,
 )
 
 

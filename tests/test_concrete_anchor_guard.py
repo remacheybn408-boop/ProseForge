@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Test concrete_anchor_guard — 具体锚点门禁测试"""
-import sys, json
-from pathlib import Path
 
 from src.guards.concrete_anchor_guard import (
     detect_object_anchors,

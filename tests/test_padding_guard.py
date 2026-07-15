@@ -1,7 +1,6 @@
 """
 test_padding_guard.py — 防水文证据门禁测试
 """
-import pytest, json, sys, os
 from src.guards.padding_guard import run_padding_check
 
 

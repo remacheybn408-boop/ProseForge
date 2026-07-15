@@ -20,8 +20,12 @@ class Uow:
 
 
 class Queue:
-    def __init__(self): self.enqueued = []
-    async def enqueue(self, name, payload): self.enqueued.append((name, payload)); return "task-1"
+    def __init__(self):
+        self.enqueued = []
+
+    async def enqueue(self, name, payload):
+        self.enqueued.append((name, payload))
+        return "task-1"
 
 
 @pytest.mark.asyncio

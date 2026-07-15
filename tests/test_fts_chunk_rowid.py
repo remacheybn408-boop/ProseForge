@@ -8,7 +8,6 @@ test_fts_chunk_rowid.py — High #2/#4 回归
 import json
 import shutil
 import sqlite3
-from pathlib import Path
 
 import pytest
 

@@ -1,7 +1,6 @@
 """
 test_schema_init.py — Schema 初始化测试
 """
-import pytest
 import tempfile
 
 from src.db import init_db
@@ -16,7 +15,7 @@ class TestSchemaInit:
             schema_path = Path(__file__).parent.parent / "database" / "schema.sql"
 
             result = init_db.init_db(str(db_path), str(schema_path), [])
-            assert result == True
+            assert result
             assert db_path.exists()
             assert db_path.stat().st_size > 0
 

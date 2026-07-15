@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Test revision_task_generator — 修改任务生成器测试"""
-import sys, json
-from pathlib import Path
 from version import get_version
 from src.pipeline.revision_task_generator import generate_tasks
 
@@ -91,4 +89,5 @@ def test_no_target_range_field():
 
 
 if __name__ == "__main__":
-    import pytest; pytest.main([__file__, "-v"])
+    import pytest
+    pytest.main([__file__, "-v"])
