@@ -47,9 +47,17 @@ async def login(
 ) -> dict[str, str]:
     async with uow:
         user = await uow.users.get_by_email(payload.email)
-    if user is None or not http_request.app.state.auth.verify_password(payload.password, user.password_hash):
+        if user is None:
+            password_hash = None
+            user_id = ""
+            email = payload.email
+        else:
+            password_hash = user.password_hash
+            user_id = user.id
+            email = user.email
+    if password_hash is None or not http_request.app.state.auth.verify_password(payload.password, password_hash):
         raise HTTPException(status_code=401, detail="invalid credentials")
     from proseforge.application.auth.service import AuthUser
-    token = http_request.app.state.auth.issue_token(AuthUser(user.id, user.email))
+    token = http_request.app.state.auth.issue_token(AuthUser(user_id, email))
     response.set_cookie("proseforge_session", token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
     return {"access_token": token, "token_type": "bearer"}
