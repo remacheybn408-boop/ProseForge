@@ -4,21 +4,56 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proseforge"
-version = "0.8.0"
+version = "1.0.0.dev0"
 description = "AI-powered long-form novel engineering pipeline"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
-    "pyyaml>=6.0",
+    "pydantic>=2.11,<3",
+    "pydantic-settings>=2.9,<3",
+    "orjson>=3.10,<4",
+    "structlog>=25.1,<26",
+    "zstandard>=0.23,<1",
+    "pyyaml>=6,<7",
 ]
 
 [project.optional-dependencies]
+api = [
+    "fastapi>=0.116,<1",
+    "uvicorn[standard]>=0.35,<1",
+    "sqlalchemy[asyncio]>=2.0.41,<3",
+    "asyncpg>=0.30,<1",
+    "alembic>=1.16,<2",
+    "pgvector>=0.4,<1",
+    "httpx>=0.28,<1",
+    "python-multipart>=0.0.20,<1",
+    "cryptography>=45,<46",
+    "passlib[argon2]>=1.7,<2",
+    "pyjwt>=2.10,<3",
+    "redis>=6,<7",
+]
+worker = [
+    "celery[redis]>=5.5,<6",
+]
+legacy = [
+    "chromadb>=1,<2",
+    "sentence-transformers>=4,<6",
+]
 rag = [
-    "chromadb>=0.4.0",
-    "sentence-transformers>=2.2.0",
+    "chromadb>=1,<2",
+    "sentence-transformers>=4,<6",
+]
+dev = [
+    "pytest>=8.4,<9",
+    "pytest-asyncio>=1,<2",
+    "pytest-cov>=6,<7",
+    "respx>=0.22,<1",
+    "ruff>=0.12,<1",
+    "mypy>=1.16,<2",
 ]
 
 [project.scripts]
-proseforge = "src.interfaces.cli:main"
+proseforge = "proseforge.cli.main:main"
+proseforge-legacy = "src.interfaces.cli:main"
 
 [project.urls]
 Repository = "https://github.com/remacheybn408-boop/ProseForge"
