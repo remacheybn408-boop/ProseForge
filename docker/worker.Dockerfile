@@ -12,6 +12,6 @@ RUN addgroup --system --gid 10001 proseforge \
     && mkdir -p /data/blobs /data/backups \
     && chown -R proseforge:proseforge /app /data
 
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app
 USER proseforge
 ENTRYPOINT ["/app/docker/entrypoint-worker.sh"]

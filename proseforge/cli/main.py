@@ -38,6 +38,7 @@ def main(argv: list[str] | None = None) -> int:
     backup.add_argument("--database-dump")
     backup.add_argument("--include-database", action="store_true")
     backup.add_argument("--database-url")
+    backup.add_argument("--restore-database-url")
     args = parser.parse_args(argv)
     if args.version:
         print("1.0.0.dev0")
@@ -72,6 +73,8 @@ def main(argv: list[str] | None = None) -> int:
             if not args.destination:
                 parser.error("backup restore requires --destination staging path")
             print(service.restore(args.archive, args.destination))
+            if args.restore_database_url:
+                print(service.restore_database(args.archive, args.restore_database_url))
         return 0
     return 0
 

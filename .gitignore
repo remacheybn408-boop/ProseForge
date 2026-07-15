@@ -54,6 +54,7 @@ data/
 backups/
 artifacts/
 apps/web/node_modules/
+apps/web/.pnpm-store/
 /.pnpm-store/
 apps/web/dist/
 playwright-report/

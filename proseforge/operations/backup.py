@@ -4,6 +4,8 @@ import hashlib
 import io
 import json
 import tarfile
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -97,4 +99,27 @@ class BackupService:
                 if target != member_path and target not in member_path.parents:
                     raise ValueError("backup contains unsafe path")
             tar.extractall(target, filter="data")
+        return verified
+
+    def restore_database(self, archive: str | Path, database_url: str) -> BackupVerification:
+        """Restore the SQL dump into an explicitly named staging database only."""
+        verified = self.verify(archive)
+        target_name = database_url.rsplit("/", 1)[-1].split("?", 1)[0]
+        if "staging" not in target_name.lower():
+            raise ValueError("database restore requires a staging database target")
+        with tarfile.open(verified.archive, "r:gz") as tar:
+            member = tar.getmember("database.dump")
+            dump = tar.extractfile(member)
+            if dump is None:
+                raise ValueError("backup does not contain database.dump")
+            with tempfile.NamedTemporaryFile(suffix=".sql", mode="wb") as handle:
+                # pg_dump 17 can emit this setting even when targeting PostgreSQL 16;
+                # PostgreSQL 16 rejects it before executing the actual dump.
+                compatible_dump = dump.read().replace(b"SET transaction_timeout = 0;\n", b"")
+                handle.write(compatible_dump)
+                handle.flush()
+                normalized = database_url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+asyncpg://", "postgresql://")
+                result = subprocess.run(["psql", "--dbname", normalized, "--set", "ON_ERROR_STOP=1", "--file", handle.name], check=False, capture_output=True)
+        if result.returncode:
+            raise RuntimeError(result.stderr.decode(errors="replace").strip() or "psql restore failed")
         return verified
