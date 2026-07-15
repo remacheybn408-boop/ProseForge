@@ -20,9 +20,15 @@ async def ready(request: Request) -> dict[str, object]:
     try:
         async with request.app.state.engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
+            migration = await connection.scalar(text("SELECT version_num FROM alembic_version ORDER BY version_num DESC LIMIT 1"))
+            workflow_table = await connection.scalar(text("SELECT to_regclass('workflow_runs')"))
         checks["database"] = "ok"
+        checks["migration"] = "ok" if migration else "error"
+        checks["workflow_recovery"] = "ok" if workflow_table else "error"
     except Exception:
         checks["database"] = "error"
+        checks["migration"] = "error"
+        checks["workflow_recovery"] = "error"
     redis_client = Redis.from_url(request.app.state.settings.redis_url)
     try:
         await redis_client.ping()
