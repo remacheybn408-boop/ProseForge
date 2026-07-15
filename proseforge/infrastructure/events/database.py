@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import AsyncIterator
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from proseforge.domain.common.ids import new_id
 from proseforge.infrastructure.database.models.conversation import ConversationEventModel
@@ -23,6 +23,13 @@ class DatabaseEventStream:
     async def publish(self, topic: str, event: dict[str, object]) -> None:
         stream_key = topic.split(":", 1)[-1]
         async with self.session_factory() as session:
+            # MAX(sequence) + 1 is not safe when two workers publish to the
+            # same conversation concurrently. Serialize allocation per stream
+            # inside the transaction so SSE ids remain unique and ordered.
+            await session.execute(
+                text("SELECT pg_advisory_xact_lock(hashtext(:stream_key))"),
+                {"stream_key": stream_key},
+            )
             next_sequence = await session.scalar(
                 select(func.coalesce(func.max(ConversationEventModel.event_sequence), 0)).where(
                     ConversationEventModel.conversation_id == stream_key
