@@ -7,7 +7,7 @@ from proseforge.api.routes.conversations import router as conversations_router
 from proseforge.api.routes.providers import router as providers_router
 from proseforge.application.auth.service import AuthService
 from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
-from proseforge.infrastructure.events.memory import InMemoryEventStream
+from proseforge.infrastructure.events.database import DatabaseEventStream
 from proseforge.infrastructure.tasks.memory import InMemoryTaskQueue
 from proseforge.providers.registry import ProviderRegistry
 
@@ -20,7 +20,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.settings = resolved
     application.state.auth = AuthService(resolved.jwt_secret.get_secret_value())
     application.state.engine, application.state.session_factory = create_engine_and_sessionmaker(resolved)
-    application.state.event_stream = InMemoryEventStream()
+    application.state.event_stream = DatabaseEventStream(application.state.session_factory)
     application.state.queue = InMemoryTaskQueue()
     application.state.provider_registry = ProviderRegistry()
     application.state.model_catalog = {}
