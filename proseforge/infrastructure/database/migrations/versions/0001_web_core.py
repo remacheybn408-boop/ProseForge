@@ -96,4 +96,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     for table in ("conversation_events", "message_chunks", "messages", "conversation_branches", "conversations", "chapter_versions", "chapters", "projects"):
-        op.drop_table(table)
+        op.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
