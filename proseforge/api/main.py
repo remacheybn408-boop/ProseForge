@@ -15,7 +15,7 @@ from proseforge.api.routes.context import router as context_router
 from proseforge.application.auth.service import AuthService
 from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
 from proseforge.infrastructure.events.database import DatabaseEventStream
-from proseforge.infrastructure.tasks.memory import InMemoryTaskQueue
+from proseforge.infrastructure.tasks.celery import CeleryTaskQueue
 from proseforge.providers.registry import ProviderRegistry
 
 from proseforge.settings import Settings, get_settings
@@ -28,7 +28,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.auth = AuthService(resolved.jwt_secret.get_secret_value())
     application.state.engine, application.state.session_factory = create_engine_and_sessionmaker(resolved)
     application.state.event_stream = DatabaseEventStream(application.state.session_factory)
-    application.state.queue = InMemoryTaskQueue()
+    application.state.queue = CeleryTaskQueue()
     application.state.provider_registry = ProviderRegistry()
     application.state.model_catalog = {}
     application.include_router(health_router)
