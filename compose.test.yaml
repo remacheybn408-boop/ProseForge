@@ -2,7 +2,7 @@ services:
   legacy-test:
     build:
       context: .
-      dockerfile: docker/api.Dockerfile
+      dockerfile: docker/legacy-test.Dockerfile
     command: ["pytest", "-q", "--junitxml=/artifacts/pytest.xml"]
     volumes:
       - .:/app
