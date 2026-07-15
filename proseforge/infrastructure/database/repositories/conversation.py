@@ -68,6 +68,14 @@ class SqlAlchemyConversationRepository:
         row = await self.session.get(MessageModel, message_id)
         return self._message(row) if row else None
 
+    async def conversation_id_for_message(self, message_id: str) -> str | None:
+        return await self.session.scalar(
+            select(ConversationModel.id)
+            .join(ConversationBranchModel, ConversationBranchModel.conversation_id == ConversationModel.id)
+            .join(MessageModel, MessageModel.branch_id == ConversationBranchModel.id)
+            .where(MessageModel.id == message_id)
+        )
+
     async def belongs_to_owner(self, conversation_id: str, owner_id: str) -> bool:
         from proseforge.infrastructure.database.models.project import ProjectModel
         row = await self.session.scalar(

@@ -18,9 +18,14 @@ class GenerateReply:
                     continue
                 async with self.uow_factory() as uow:
                     await uow.conversations.append_chunk(message_id, chunks, event.event, event.text)
+                    lookup = getattr(uow.conversations, "conversation_id_for_message", None)
+                    conversation_id = await lookup(message_id) if lookup else None
                     await uow.commit()
                 if self.event_stream:
-                    await self.event_stream.publish(f"message:{message_id}", {"index": chunks, "text": event.text})
+                    payload = {"event": event.event, "message_id": message_id, "index": chunks, "text": event.text}
+                    await self.event_stream.publish(f"message:{message_id}", payload)
+                    if conversation_id:
+                        await self.event_stream.publish(f"conversation:{conversation_id}", payload)
                 chunks += 1
             async with self.uow_factory() as uow:
                 await uow.conversations.set_message_status(message_id, "COMPLETED")
