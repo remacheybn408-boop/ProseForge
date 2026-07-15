@@ -33,6 +33,11 @@ class BranchRequest(BaseModel):
     name: str = Field(min_length=1, max_length=200)
 
 
+class MessageControlRequest(BaseModel):
+    provider: str = "openai"
+    model: str = "gpt-4.1-mini"
+
+
 @router.post("/conversations")
 async def create_conversation(
     payload: ConversationCreateRequest,
@@ -96,6 +101,49 @@ async def fork_branch(
             raise HTTPException(status_code=404, detail="conversation or fork point not found")
         await uow.commit()
         return {"id": branch.id, "name": branch.name}
+
+
+async def _owned_message(message_id: str, user: AuthUser, request: Request):
+    async with unit_of_work(request) as uow:
+        conversation_id = await uow.conversations.conversation_id_for_message(message_id)
+        if conversation_id is None or not await uow.conversations.belongs_to_owner(conversation_id, user.id):
+            raise HTTPException(status_code=404, detail="message not found")
+        message = await uow.conversations.get_message(message_id)
+        if message is None:
+            raise HTTPException(status_code=404, detail="message not found")
+        return message
+
+
+@router.post("/messages/{message_id}/stop")
+async def stop_message(message_id: str, request: Request, user: Annotated[AuthUser, Depends(current_user)]) -> dict[str, str]:
+    message = await _owned_message(message_id, user, request)
+    if message.status not in {"PENDING", "STREAMING", "PARTIAL"}:
+        raise HTTPException(status_code=409, detail="message cannot be stopped in its current state")
+    async with unit_of_work(request) as uow:
+        await uow.conversations.set_message_status(message_id, "CANCELLED")
+        await uow.commit()
+    return {"id": message_id, "status": "CANCELLED"}
+
+
+async def _requeue_message(message_id: str, payload: MessageControlRequest, request: Request, user: AuthUser, allowed: set[str]) -> dict[str, str]:
+    message = await _owned_message(message_id, user, request)
+    if message.status not in allowed:
+        raise HTTPException(status_code=409, detail="message is not recoverable in its current state")
+    async with unit_of_work(request) as uow:
+        await uow.conversations.set_message_status(message_id, "PENDING")
+        await uow.commit()
+    task_id = await request.app.state.queue.enqueue("proseforge.chat.generate", {"message_id": message_id, "user_id": user.id, "provider": payload.provider, "model": payload.model})
+    return {"id": message_id, "status": "PENDING", "task_id": task_id}
+
+
+@router.post("/messages/{message_id}/retry")
+async def retry_message(message_id: str, payload: MessageControlRequest, request: Request, user: Annotated[AuthUser, Depends(current_user)]) -> dict[str, str]:
+    return await _requeue_message(message_id, payload, request, user, {"FAILED", "PARTIAL"})
+
+
+@router.post("/messages/{message_id}/continue")
+async def continue_message(message_id: str, payload: MessageControlRequest, request: Request, user: Annotated[AuthUser, Depends(current_user)]) -> dict[str, str]:
+    return await _requeue_message(message_id, payload, request, user, {"PARTIAL"})
 
 
 @router.get("/conversations/{conversation_id}/events")

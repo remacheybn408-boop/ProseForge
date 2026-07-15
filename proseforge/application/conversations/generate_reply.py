@@ -9,6 +9,10 @@ class GenerateReply:
 
     async def execute(self, *, message_id: str, request):
         chunks = 0
+        async with self.uow_factory() as uow:
+            count = getattr(uow.conversations, "chunk_count", None)
+            if count is not None:
+                chunks = await count(message_id)
         try:
             async with self.uow_factory() as uow:
                 await uow.conversations.set_message_status(message_id, "STREAMING")

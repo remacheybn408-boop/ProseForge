@@ -15,6 +15,7 @@ class Repo:
     def __init__(self): self.statuses = []; self.chunks = []
     async def set_message_status(self, message_id, status): self.statuses.append(status)
     async def append_chunk(self, *args): self.chunks.append(args)
+    async def chunk_count(self, message_id): return 2
 
 
 class Uow:
@@ -29,5 +30,5 @@ async def test_interrupted_stream_marks_partial_after_persisting_chunks():
     repo = Repo()
     with pytest.raises(RuntimeError):
         await GenerateReply(lambda: Uow(repo), Provider()).execute(message_id="m", request=object())
-    assert repo.chunks == [("m", 0, "content.delta", "one"), ("m", 1, "content.delta", "two")]
+    assert repo.chunks == [("m", 2, "content.delta", "one"), ("m", 3, "content.delta", "two")]
     assert repo.statuses[-1] == "PARTIAL"

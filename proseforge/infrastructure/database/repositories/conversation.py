@@ -108,6 +108,9 @@ class SqlAlchemyConversationRepository:
         await self.session.flush()
         return chunk
 
+    async def chunk_count(self, message_id: str) -> int:
+        return int(await self.session.scalar(select(func.count()).select_from(MessageChunkModel).where(MessageChunkModel.message_id == message_id)) or 0)
+
     async def get_message(self, message_id: str) -> Message | None:
         row = await self.session.get(MessageModel, message_id)
         return self._message(row) if row else None
