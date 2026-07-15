@@ -60,3 +60,38 @@ jobs:
         run: docker compose -f compose.yaml -f compose.test.yaml run --rm api-test sh -lc "python -m pip install --no-cache-dir pip-audit && pip-audit"
       - name: Audit frontend dependencies in Docker
         run: docker compose -f compose.yaml -f compose.test.yaml run --rm web-test pnpm audit --audit-level high
+
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan source filesystem with Trivy
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: artifacts/trivy-fs.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+      - name: Scan repository history with Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate source SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: artifacts/proseforge-sbom.cdx.json
+      - name: Upload security artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: proseforge-security-reports
+          path: artifacts/
+          if-no-files-found: ignore
