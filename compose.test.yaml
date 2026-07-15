@@ -15,6 +15,11 @@ services:
       context: .
       dockerfile: docker/test.Dockerfile
     command: ["pytest", "-q", "--junitxml=/artifacts/api-pytest.xml"]
+    environment:
+      PROSEFORGE_DATABASE_URL: postgresql+asyncpg://proseforge:proseforge@postgres:5432/proseforge
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   contract-test:
     extends:

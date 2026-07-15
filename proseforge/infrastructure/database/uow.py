@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from proseforge.infrastructure.database.repositories.chapter import SqlAlchemyChapterRepository
+from proseforge.infrastructure.database.repositories.project import SqlAlchemyProjectRepository
+
 
 class SqlAlchemyUnitOfWork:
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
@@ -9,6 +12,7 @@ class SqlAlchemyUnitOfWork:
         self.session: AsyncSession | None = None
         self._committed = False
         self.projects = None
+        self.chapters = None
         self.conversations = None
         self.messages = None
         self.workflows = None
@@ -16,6 +20,8 @@ class SqlAlchemyUnitOfWork:
     async def __aenter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self.session_factory()
         self._committed = False
+        self.projects = SqlAlchemyProjectRepository(self.session)
+        self.chapters = SqlAlchemyChapterRepository(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
