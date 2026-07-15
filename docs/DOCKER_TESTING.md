@@ -1,39 +1,24 @@
-# Docker-only 运行与测试
+# Docker-only testing
 
-ProseForge Web v1 的测试和构建固定在 Docker 中运行。宿主机只需要 Docker Desktop、Compose 和 Git。
+All ProseForge builds, tests, migrations, and browser runs execute inside Docker. The host only needs Docker Desktop, Compose, and Git; do not run the Python or Node toolchains directly on the host.
 
-## 启动基础服务
-
-```bash
-docker compose up -d postgres redis
-docker compose ps
-```
-
-PostgreSQL 和 Redis 都必须显示 `healthy`。
-
-## 数据库迁移
+## Production stack
 
 ```bash
-docker compose -f compose.yaml -f compose.test.yaml run --rm migration-test alembic upgrade head
+docker compose -f compose.yaml up -d
+docker compose -f compose.yaml ps
 ```
 
-从空库验证完整迁移链：
+Wait for PostgreSQL, Redis, API, worker, scheduler, and web to report `healthy`.
 
-```bash
-docker compose -f compose.yaml -f compose.test.yaml run --rm migration-test sh -lc "alembic downgrade base && alembic upgrade head"
-```
+## Isolated test stack
 
-## 测试命令
+`compose.test.yaml` overrides PostgreSQL and Redis with `postgres-test-data` and `redis-test-data`. Never use `down -v`: named volumes contain durable user data.
 
-完整旧核心回归：
+Run the main suites with:
 
 ```bash
 docker compose -f compose.yaml -f compose.test.yaml run --rm legacy-test
-```
-
-Web/API/迁移/恢复/前端测试：
-
-```bash
 docker compose -f compose.yaml -f compose.test.yaml run --rm api-test
 docker compose -f compose.yaml -f compose.test.yaml run --rm contract-test
 docker compose -f compose.yaml -f compose.test.yaml run --rm migration-test
@@ -41,33 +26,22 @@ docker compose -f compose.yaml -f compose.test.yaml run --rm recovery-test
 docker compose -f compose.yaml -f compose.test.yaml run --rm web-test
 ```
 
-JUnit 报告写入 `artifacts/`。聚焦测试可以覆盖服务默认 command：
+## Browser E2E after a test-volume switch
+
+When the combined Compose project replaces the database volume, force-recreate the API and dependent services so their startup migration/bootstrap runs against the same database:
 
 ```bash
-docker compose -f compose.yaml -f compose.test.yaml run --rm api-test pytest tests/api/test_health.py -q
+docker compose -f compose.yaml -f compose.test.yaml up -d --force-recreate api worker scheduler web
+docker compose -f compose.yaml -f compose.test.yaml run --rm e2e
 ```
 
-## 构建与运行
+This prevents a running API from retaining a connection to the previous database volume. The E2E stack includes a local mock provider and verifies setup/login, project creation, outline clarification, chapter workflow, version save, encrypted provider setup, and worker-backed chat streaming.
+
+## Return to production
 
 ```bash
-docker compose -f compose.yaml -f compose.test.yaml config --quiet
-docker compose build api worker web
-docker compose up -d api worker scheduler web
+docker compose -f compose.yaml up -d
+docker compose -f compose.yaml exec -T api python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready').read().decode())"
 ```
 
-Web 地址为 `http://localhost:3000`，API 地址为 `http://localhost:8000`。
-
-## 数据与安全
-
-- `postgres-data`、`redis-data`、`proseforge-blobs` 和 `proseforge-backups` 使用 Docker volumes。
-- 不要把真实 `.env`、API key、JWT secret 或 master key 提交到 Git。
-- 上传文件使用 content-addressed BlobStore；备份必须经过 hash 校验。
-- 生产环境禁止默认 secret 和相对路径。
-
-## 停止
-
-```bash
-docker compose down
-```
-
-不使用 `-v`，这样不会删除数据库和 Redis volume。
+Do not run `docker compose down -v`; ordinary `down` preserves PostgreSQL, Redis, BlobStore, and backup volumes.
