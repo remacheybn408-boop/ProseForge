@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from proseforge.domain.common.ids import new_id
@@ -11,6 +11,10 @@ from proseforge.infrastructure.database.models.conversation import ConversationB
 class SqlAlchemyConversationRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    async def lock_client_request(self, client_request_id: str) -> None:
+        """Serialize concurrent retries for the same idempotency key in PostgreSQL."""
+        await self.session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:client_request_id))"), {"client_request_id": client_request_id})
 
     async def create(self, conversation: Conversation) -> ConversationBranch:
         self.session.add(ConversationModel(id=conversation.id, project_id=conversation.project_id, title=conversation.title))
@@ -29,6 +33,21 @@ class SqlAlchemyConversationRepository:
         self.session.add(MessageModel(**message.__dict__, sequence_no=next_sequence))
         await self.session.flush()
         return message
+
+    async def get_by_client_request_id(self, client_request_id: str) -> Message | None:
+        row = await self.session.scalar(select(MessageModel).where(MessageModel.client_request_id == client_request_id))
+        return self._message(row) if row else None
+
+    async def assistant_after(self, user_message_id: str) -> Message | None:
+        source = await self.session.get(MessageModel, user_message_id)
+        if source is None:
+            return None
+        row = await self.session.scalar(
+            select(MessageModel)
+            .where(MessageModel.branch_id == source.branch_id, MessageModel.role == "assistant", MessageModel.sequence_no > source.sequence_no)
+            .order_by(MessageModel.sequence_no)
+        )
+        return self._message(row) if row else None
 
     async def fork(self, conversation_id: str, forked_from_message_id: str, name: str) -> ConversationBranch:
         source = await self.session.scalar(select(MessageModel).where(MessageModel.id == forked_from_message_id))
