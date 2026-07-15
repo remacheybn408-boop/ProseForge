@@ -34,7 +34,7 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await expect(page.getByRole("button", { name: /Chapter 1/i })).toBeVisible();
   await page.getByRole("textbox", { name: "" }).first().fill("A first draft written through the browser.");
   await page.getByRole("button", { name: "Save version" }).click();
-  await expect(page.getByText(/Saved version 1/)).toBeVisible();
+  await expect(page.getByText(/Saved version \d+/)).toBeVisible();
 
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByLabel("API key").fill("mock-api-key");

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from proseforge.domain.chapter.entity import Chapter, ChapterVersion
@@ -37,6 +37,10 @@ class SqlAlchemyChapterRepository:
         return None if row is None else self._chapter(row)
 
     async def append_version(self, *, chapter_id: str, content: str) -> ChapterVersion:
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:chapter_id))"),
+            {"chapter_id": chapter_id},
+        )
         content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         existing = await self.session.execute(
             select(ChapterVersionModel).where(

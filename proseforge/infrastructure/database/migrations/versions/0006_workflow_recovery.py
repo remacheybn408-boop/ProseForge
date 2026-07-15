@@ -2,6 +2,7 @@
 
 from alembic import op
 from sqlalchemy import Column, DateTime, Float, String, Text, inspect
+from proseforge.infrastructure.database.base import Base
 
 revision = "0006_workflow_recovery"
 down_revision = "0005_outline_context"
@@ -11,6 +12,11 @@ depends_on = None
 
 def upgrade() -> None:
     bind = op.get_bind()
+    # Some early Web v1 databases recorded 0005 while the workflow tables
+    # were absent. Repair the durable base tables before adding recovery
+    # columns so startup migrations remain safe for those installations.
+    for name in ("workflow_runs", "workflow_steps", "workflow_events"):
+        Base.metadata.tables[name].create(bind=bind, checkfirst=True)
     columns = {column["name"] for column in inspect(bind).get_columns("workflow_runs")}
     additions = (
         ("lease_owner", String(200), None),
