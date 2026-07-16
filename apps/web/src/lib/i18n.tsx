@@ -18,7 +18,12 @@ const extraMessages = {
   "en-US": { usage: "Usage", startChapter: "Start chapter", endChapter: "End chapter", logout: "Sign out" },
 } as const;
 
-export type TranslationKey = keyof typeof messages["zh-CN"] | keyof typeof extraMessages["zh-CN"];
+const credentialMessages: Record<Language, Record<string, string>> = {
+  "zh-CN": { removeCredential: "鍒犻櫎凭据", removeCredentialConfirm: "纭畾鍒犻櫎此凭据吗？", credentialRemoved: "凭据已删除" },
+  "en-US": { removeCredential: "Remove credential", removeCredentialConfirm: "Remove this credential?", credentialRemoved: "Credential removed." },
+};
+
+export type TranslationKey = keyof typeof messages["zh-CN"] | keyof typeof extraMessages["zh-CN"] | keyof typeof credentialMessages["zh-CN"];
 export type Translator = (key: TranslationKey) => string;
 
 export function loadLanguage(): Language {
@@ -32,7 +37,7 @@ export function saveLanguage(language: Language): void {
 }
 
 export function createTranslator(language: Language): Translator {
-  return key => messages[language][key as keyof typeof messages["zh-CN"]] ?? extraMessages[language][key as keyof typeof extraMessages["zh-CN"]] ?? messages[defaultLanguage][key as keyof typeof messages["zh-CN"]] ?? extraMessages[defaultLanguage][key as keyof typeof extraMessages["zh-CN"]] ?? key;
+  return key => messages[language][key as keyof typeof messages["zh-CN"]] ?? extraMessages[language][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[language][key] ?? messages[defaultLanguage][key as keyof typeof messages["zh-CN"]] ?? extraMessages[defaultLanguage][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[defaultLanguage][key] ?? key;
 }
 
 type LanguageContextValue = { language: Language; setLanguage: (language: Language) => void; t: Translator };

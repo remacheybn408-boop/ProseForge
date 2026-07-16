@@ -40,6 +40,7 @@ export function listModels(filters: { provider?: string; q?: string; available_o
 export function listProjects() { return request<Project[]>("/api/v1/projects"); }
 export function listCredentials() { return request<Credential[]>("/api/v1/credentials"); }
 export function saveCredential(payload: { provider: string; api_key: string; base_url?: string }) { return request<Credential>("/api/v1/credentials", { method: "POST", body: JSON.stringify(payload) }); }
+export function deleteCredential(credentialId: string) { return request<void>(`/api/v1/credentials/${encodeURIComponent(credentialId)}`, { method: "DELETE" }); }
 export function probeProvider(provider: string) { return request<{ provider: string; valid: boolean }>(`/api/v1/providers/${provider}/probe`, { method: "POST" }); }
 export function listModelProfiles() { return request<ModelProfile[]>("/api/v1/model-profiles"); }
 export function saveModelProfile(payload: { name: string; role: "writer" | "editor"; config: Record<string, unknown> }) { return request<ModelProfile>("/api/v1/model-profiles", { method: "POST", body: JSON.stringify(payload) }); }

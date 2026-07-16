@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError, listContext, request } from "./client";
+import { ApiError, deleteCredential, listContext, request } from "./client";
 
 describe("api request responses", () => {
   it("accepts a successful 204 without trying to parse JSON", async () => {
@@ -33,5 +33,13 @@ describe("api request responses", () => {
     await listContext("project-1", { profileId: "profile-1" });
 
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/projects/project-1/context?profile_id=profile-1", expect.objectContaining({ credentials: "include" }));
+  });
+
+  it("deletes a credential by id", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(deleteCredential("credential-1")).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/credentials/credential-1", expect.objectContaining({ method: "DELETE", credentials: "include" }));
   });
 });

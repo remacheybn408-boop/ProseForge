@@ -5,7 +5,7 @@ import {
   activateChapterVersion, answerOutline, confirmOutline, controlWorkflow, createConversation, createProject, createWorkflow,
   getChapterDiff, importOutline, listChapters, listChapterVersions, listCredentials,
   forkConversation, listMessages, login, probeProvider, saveChapterVersion, saveCredential, sendMessage, setupAdmin, subscribeConversationEvents,
-  getWorkflow, listModelProfiles, logout, requestExport, saveModelProfile, type Chapter, type ChapterVersion, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
+  getWorkflow, listModelProfiles, logout, requestExport, saveModelProfile, deleteCredential, type Chapter, type ChapterVersion, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
 } from "./lib/api/client";
 import { loadDraft, saveDraft } from "./lib/drafts";
 import { ProjectVersionHistory } from "./features/VersionHistory";
@@ -17,6 +17,7 @@ import { navigateRoute, useAppRoute, type AppView } from "./app/router";
 import { ApiError } from "./lib/api/client";
 import { TokenMeter } from "./features/usage/TokenMeter";
 import { UsagePage } from "./features/usage/UsagePage";
+import { removeCredential, upsertCredential } from "./features/providers/credentialState";
 
 function newClientId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -109,7 +110,8 @@ function SettingsView() {
   const providersQuery = useProvidersQuery();
   const modelsQuery = useModelsQuery(provider);
   useEffect(() => { listCredentials().then(setCredentials).catch(() => undefined); listModelProfiles().then(setProfiles).catch(() => undefined); }, []);
-  const save = async () => { if (!apiKey.trim()) return setMessage(t("apiKeyHelp")); try { const record = await saveCredential({ provider, api_key: apiKey, base_url: baseUrl || undefined }); setCredentials([...credentials, record]); setApiKey(""); setMessage(t("configured")); } catch { setMessage(t("genericError")); } };
+  const save = async () => { if (!apiKey.trim()) return setMessage(t("apiKeyHelp")); try { const record = await saveCredential({ provider, api_key: apiKey, base_url: baseUrl || undefined }); setCredentials(current => upsertCredential(current, record)); setApiKey(""); setMessage(t("configured")); } catch { setMessage(t("genericError")); } };
+  const removeConfigured = async (item: Credential) => { if (!window.confirm(`${t("removeCredentialConfirm")} ${item.provider}?`)) return; try { await deleteCredential(item.id); setCredentials(current => removeCredential(current, item.id)); setMessage(t("credentialRemoved")); } catch { setMessage(t("genericError")); } };
   const probe = async (item: Credential) => { setMessage(`${item.provider}…`); try { await probeProvider(item.provider); setProbeStates(states => ({ ...states, [item.id]: "connected" })); setMessage(`${item.provider} · ${t("connected")}`); } catch { setProbeStates(states => ({ ...states, [item.id]: "failed" })); setMessage(`${item.provider} · ${t("checkFailed")}`); } };
   const saveProfile = async () => { if (!profileName.trim() || !modelId.trim()) return setMessage(t("modelIdHelp")); try { const profile = await saveModelProfile({ name: profileName.trim(), role: profileRole, config: { provider, model: modelId.trim() } }); setProfiles([...profiles, profile]); setProfileName(""); setModelId(""); setMessage(t("configured")); } catch { setMessage(t("genericError")); } };
   const providers = providersQuery.data?.map(item => item.id) ?? [];
@@ -121,7 +123,7 @@ function SettingsView() {
       <label>{t("baseUrl")}<input value={baseUrl} onChange={event => setBaseUrl(event.target.value)} placeholder="https://api.example.com/v1" /></label><small className="field-help">{t("baseUrlHelp")}</small>
       <button className="primary" onClick={save}>{t("saveProvider")}</button><p className="form-message" aria-live="polite">{message}</p>
     </div></section>
-    <section className="settings-section"><div className="settings-section-heading"><h3>{t("configured")}</h3><p>{t("secretsNeverPrefilled")}</p></div><div className="settings-list">{credentials.length === 0 && <p className="empty">{t("notConnected")}</p>}{credentials.map(item => { const state = probeStates[item.id]; return <div className="settings-row" key={item.id}><div><strong>{item.provider}</strong><span>{item.masked_key}</span></div><span className={`connection-status ${state ?? "unknown"}`}>{state === "connected" ? t("connected") : state === "failed" ? t("checkFailed") : t("notConnected")}</span><button onClick={() => probe(item)}>{t("testConnection")}</button></div>; })}</div></section>
+    <section className="settings-section"><div className="settings-section-heading"><h3>{t("configured")}</h3><p>{t("secretsNeverPrefilled")}</p></div><div className="settings-list">{credentials.length === 0 && <p className="empty">{t("notConnected")}</p>}{credentials.map(item => { const state = probeStates[item.id]; return <div className="settings-row" key={item.id}><div><strong>{item.provider}</strong><span>{item.masked_key}</span></div><span className={`connection-status ${state ?? "unknown"}`}>{state === "connected" ? t("connected") : state === "failed" ? t("checkFailed") : t("notConnected")}</span><button onClick={() => probe(item)}>{t("testConnection")}</button><button className="danger" aria-label={`${t("removeCredential")} ${item.provider}`} onClick={() => removeConfigured(item)}>{t("removeCredential")}</button></div>; })}</div></section>
     <section className="settings-section"><div className="settings-section-heading"><h3>{t("writerEditor")}</h3><p>{t("writerEditorIntro")}</p></div><div className="settings-form">
       <label>{t("writerEditor")}<select value={profileRole} onChange={event => setProfileRole(event.target.value as "writer" | "editor")}><option value="writer">{t("writerModel")}</option><option value="editor">{t("editorModel")}</option></select></label>
       <label>{t("profileName")}<input value={profileName} onChange={event => setProfileName(event.target.value)} placeholder={t("profileNamePlaceholder")} /></label>

@@ -87,6 +87,7 @@
 .settings-row strong { color: var(--ink); font-size: 13px; }
 .settings-row span { color: var(--ink-faint); font-size: 12px; }
 .settings-row button, .settings-section .settings-form > button:not(.primary) { border: 1px solid var(--line); background: transparent; color: var(--ink-soft); border-radius: 3px; padding: 8px 12px; }
+.settings-row button.danger { color: var(--vermilion); border-color: var(--vermilion); }
 .connection-status { white-space: nowrap; }
 .connection-status.connected { color: var(--success) !important; }
 .connection-status.failed { color: var(--vermilion) !important; }

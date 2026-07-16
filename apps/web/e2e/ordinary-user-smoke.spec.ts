@@ -30,6 +30,9 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByLabel("Endpoint URL (optional)").fill("http://provider-mock:8080/v1");
   await page.getByRole("button", { name: "Save model service" }).click();
   await expect(page.getByRole("heading", { name: "Configured" })).toBeVisible();
+  await page.getByLabel("API key").fill("mock-api-key-replaced");
+  await page.getByRole("button", { name: "Save model service" }).click();
+  await expect(page.getByRole("button", { name: "Remove credential openai" })).toHaveCount(1);
   await page.getByLabel("Profile name").fill("E2E Writer");
   await page.getByLabel("Model name / Model ID").fill("gpt-4.1-mini");
   await page.getByRole("button", { name: "Save model profile" }).click();
@@ -69,6 +72,11 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await expect(page.getByText("Context received: Mira fears deep water.")).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Fork branch" }).click();
   await expect(page.getByText("Alternative branch created.")).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).click();
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "Remove credential openai" }).click();
+  await expect(page.getByText("Credential removed.")).toBeVisible();
+  await page.getByRole("button", { name: "Writing Studio" }).click();
   await page.reload();
   await expect(page.getByRole("button", { name: /Chapter 1/i })).toBeVisible();
   await page.getByRole("button", { name: "Sign out" }).click();
