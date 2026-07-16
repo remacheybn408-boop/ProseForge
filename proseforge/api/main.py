@@ -18,6 +18,7 @@ from proseforge.api.routes.usage import router as usage_router
 from proseforge.application.auth.service import AuthService
 from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
 from proseforge.infrastructure.events.database import DatabaseEventStream
+from proseforge.infrastructure.security.login_rate_limiter import LoginRateLimiter
 from proseforge.infrastructure.tasks.celery import CeleryTaskQueue
 from proseforge.providers.registry import ProviderRegistry
 from proseforge.providers.anthropic import AnthropicProvider
@@ -51,6 +52,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.engine, application.state.session_factory = create_engine_and_sessionmaker(resolved)
     application.state.event_stream = DatabaseEventStream(application.state.session_factory)
     application.state.queue = CeleryTaskQueue()
+    application.state.login_rate_limiter = LoginRateLimiter.from_url(resolved.redis_url)
     registry = ProviderRegistry()
     for provider in (
         OpenAIProvider(""), AnthropicProvider(""), GoogleProvider(""), DeepSeekProvider(), KimiProvider(),
