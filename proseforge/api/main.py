@@ -52,7 +52,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.engine, application.state.session_factory = create_engine_and_sessionmaker(resolved)
     application.state.event_stream = DatabaseEventStream(application.state.session_factory)
     application.state.queue = CeleryTaskQueue()
-    application.state.login_rate_limiter = LoginRateLimiter.from_url(resolved.redis_url)
+    application.state.login_rate_limiter = LoginRateLimiter.from_url(resolved.redis_url, max_attempts=resolved.login_rate_limit_attempts)
     registry = ProviderRegistry()
     for provider in (
         OpenAIProvider(""), AnthropicProvider(""), GoogleProvider(""), DeepSeekProvider(), KimiProvider(),

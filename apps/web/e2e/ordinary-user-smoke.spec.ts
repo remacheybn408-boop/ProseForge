@@ -11,11 +11,11 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /登录你的写作空间/i })).toBeVisible();
-  await expect(page.getByLabel("Email")).toHaveAttribute("type", "email");
-  await expect(page.getByLabel("Password")).toHaveAttribute("type", "password");
+  await expect(page.getByLabel("邮箱")).toHaveAttribute("type", "email");
+  await expect(page.getByLabel("密码")).toHaveAttribute("type", "password");
 
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("邮箱").fill(email);
+  await page.getByLabel("密码").fill(password);
   await page.getByRole("button", { name: "登录" }).click();
   await expect(page.getByRole("button", { name: "项目", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "English", exact: true }).click();

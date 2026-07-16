@@ -10,6 +10,15 @@ describe("credential state", () => {
     ]);
   });
 
+  it("collapses stale duplicate rows for one provider", () => {
+    expect(upsertCredential([
+      configured,
+      { id: "credential-legacy", provider: "openai", masked_key: "legacy****key" },
+    ], { id: "credential-1", provider: "openai", masked_key: "new****key" })).toEqual([
+      { id: "credential-1", provider: "openai", masked_key: "new****key" },
+    ]);
+  });
+
   it("removes only the selected credential row", () => {
     expect(removeCredential([configured, { id: "credential-2", provider: "anthropic", masked_key: "configured" }], "credential-1")).toEqual([
       { id: "credential-2", provider: "anthropic", masked_key: "configured" },

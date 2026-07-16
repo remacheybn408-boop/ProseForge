@@ -1,4 +1,5 @@
 type WorkflowAction = "pause" | "resume" | "cancel" | "retry";
+import { useLanguage } from "../../lib/i18n";
 
 const allowedTransitions: Record<string, string[]> = {
   CREATED: ["CANCELLED", "QUEUED"], WAITING_USER: ["CANCELLED", "QUEUED"], QUEUED: ["CANCELLED", "RUNNING"],
@@ -12,5 +13,6 @@ export function canApplyWorkflowAction(status: string, action: WorkflowAction): 
 }
 
 export function WorkflowStatus({ status, onAction }: { status: string; onAction: (action: WorkflowAction) => void }) {
-  return <section className="workflow-status" aria-label="Workflow status"><strong>{status}</strong><div>{(["pause", "resume", "cancel", "retry"] as WorkflowAction[]).map(action => <button key={action} disabled={!canApplyWorkflowAction(status, action)} onClick={() => onAction(action)}>{action[0].toUpperCase() + action.slice(1)}</button>)}</div></section>;
+  const { t } = useLanguage();
+  return <section className="workflow-status" aria-label={t("workflowStatus")}><strong>{status}</strong><div>{(["pause", "resume", "cancel", "retry"] as WorkflowAction[]).map(action => <button key={action} disabled={!canApplyWorkflowAction(status, action)} onClick={() => onAction(action)}>{t(action)}</button>)}</div></section>;
 }
