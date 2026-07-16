@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 
@@ -14,6 +14,7 @@ class UsageDelta:
     source: Literal["provider", "estimated"] = "provider"
     final: bool = False
     provider_request_id: str | None = None
+    raw_metadata: dict[str, object] = field(default_factory=dict)
 
     def as_event_payload(self) -> dict[str, object]:
         payload: dict[str, object] = {
@@ -47,6 +48,7 @@ def normalize_usage(data: dict[str, object], *, source: Literal["provider", "est
     total_value = values.get("total_tokens", values.get("totalTokens"))
     total_tokens = _integer(total_value) if total_value is not None else input_tokens + output_tokens
     request_id = values.get("provider_request_id", values.get("request_id", values.get("id")))
+    safe_metadata = {key: values[key] for key in ("service_tier", "finish_reason", "cache_creation_input_tokens") if key in values}
     return UsageDelta(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
@@ -56,4 +58,5 @@ def normalize_usage(data: dict[str, object], *, source: Literal["provider", "est
         source=source,
         final=final,
         provider_request_id=str(request_id) if request_id else None,
+        raw_metadata=safe_metadata,
     )
