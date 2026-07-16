@@ -34,6 +34,10 @@ celery.conf.update(
 )
 
 
+def should_abort_workflow(status: str) -> bool:
+    return status == "CANCELLED"
+
+
 @celery.task(name="proseforge.workflows.generate_novel", bind=True, max_retries=0)
 def generate_novel_workflow(self, payload: dict[str, object]) -> str:
     del self
@@ -65,6 +69,8 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
             run = await uow.workflows.get_owned(workflow_id, owner_id)
             if run is None:
                 return "workflow-not-found"
+            if should_abort_workflow(run.status):
+                return "cancelled"
             if run.status == "QUEUED":
                 await uow.workflows.transition(run, "RUNNING")
             if not await uow.workflows.acquire_lease(run, lease_owner):
@@ -100,6 +106,8 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                 run = await uow.workflows.get_owned(workflow_id, owner_id)
                 if run is None:
                     return "workflow-not-found"
+                if should_abort_workflow(run.status):
+                    return "cancelled"
                 if run.status == "PAUSED":
                     return "paused"
                 await uow.workflows.heartbeat(run, lease_owner)
@@ -110,12 +118,18 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                 run = await uow.workflows.get_owned(workflow_id, owner_id)
                 if run is None:
                     return "workflow-not-found"
+                if should_abort_workflow(run.status):
+                    return "cancelled"
+                if run.status == "PAUSED":
+                    return "paused"
                 version = await uow.chapters.append_version(chapter_id=chapter.id, content=content)
                 await uow.chapters.set_active_version(chapter.id, version.id)
                 await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_COMMITTED_REWRITES_{rewrite_rounds}")
                 await uow.commit()
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             run = await uow.workflows.get_owned(workflow_id, owner_id)
+            if run is not None and should_abort_workflow(run.status):
+                return "cancelled"
             if run is not None and run.status == "RUNNING":
                 await uow.workflows.transition(run, "COMPLETED")
                 await uow.commit()
@@ -220,6 +234,7 @@ async def _generate_chat(payload: dict[str, object]) -> str:
     import json
 
     from proseforge.application.conversations.generate_reply import GenerateReply
+    from proseforge.application.conversations.terminal_state import terminal_message_status
     from proseforge.domain.ports.model_provider import GenerationRequest
     from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
     from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
@@ -242,7 +257,7 @@ async def _generate_chat(payload: dict[str, object]) -> str:
             user_message = next((item for item in reversed(visible) if item.role == "user"), None)
             if credential is None or user_message is None:
                 if message:
-                    await uow.conversations.set_message_status(message_id, "PARTIAL")
+                    await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
                     await uow.commit()
                 return "provider-not-configured"
             try:
@@ -257,6 +272,11 @@ async def _generate_chat(payload: dict[str, object]) -> str:
         try:
             provider = build_provider(provider_id, secret["api_key"], base_url=base_url)
         except KeyError:
+            async with SqlAlchemyUnitOfWork(session_factory) as uow:
+                message = await uow.conversations.get_message(message_id)
+                if message:
+                    await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
+                    await uow.commit()
             return "provider-not-supported"
         input_blocks = [{"role": "user", "text": user_message.content}]
         if message is not None and message.status == "PARTIAL" and message.content:

@@ -150,8 +150,14 @@ class SqlAlchemyConversationRepository:
         row = await self.session.get(MessageModel, message_id)
         if row is None:
             raise ValueError("message does not exist")
+        if row.status == "CANCELLED" and status in {"STREAMING", "COMPLETED", "PARTIAL"}:
+            return
         row.status = status
         await self.session.flush()
+
+    async def message_status(self, message_id: str) -> str | None:
+        row = await self.session.get(MessageModel, message_id)
+        return row.status if row else None
 
     @staticmethod
     def _message(item: MessageModel) -> Message:

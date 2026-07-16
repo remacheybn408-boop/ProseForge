@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from proseforge.providers.errors import classify_provider_error
+from proseforge.domain.usage import normalize_usage
+from proseforge.application.conversations.terminal_state import terminal_message_status
 
 
 class GenerateReply:
@@ -20,9 +22,22 @@ class GenerateReply:
                 await uow.conversations.set_message_status(message_id, "STREAMING")
                 await uow.commit()
             async for event in self.provider.stream(request):
+                if event.event == "usage.updated":
+                    if self.event_stream:
+                        async with self.uow_factory() as uow:
+                            lookup = getattr(uow.conversations, "conversation_id_for_message", None)
+                            conversation_id = await lookup(message_id) if lookup else None
+                        usage_payload = {"event": "usage.updated", "message_id": message_id, **normalize_usage(event.data).as_event_payload()}
+                        await self.event_stream.publish(f"message:{message_id}", usage_payload)
+                        if conversation_id:
+                            await self.event_stream.publish(f"conversation:{conversation_id}", usage_payload)
+                    continue
                 if event.event != "content.delta":
                     continue
                 async with self.uow_factory() as uow:
+                    status_reader = getattr(uow.conversations, "message_status", None)
+                    if status_reader and await status_reader(message_id) == "CANCELLED":
+                        return chunks
                     await uow.conversations.append_chunk(message_id, chunks, event.event, event.text)
                     lookup = getattr(uow.conversations, "conversation_id_for_message", None)
                     conversation_id = await lookup(message_id) if lookup else None
@@ -34,11 +49,16 @@ class GenerateReply:
                         await self.event_stream.publish(f"conversation:{conversation_id}", payload)
                 chunks += 1
             async with self.uow_factory() as uow:
+                status_reader = getattr(uow.conversations, "message_status", None)
+                if status_reader and await status_reader(message_id) == "CANCELLED":
+                    return chunks
                 await uow.conversations.set_message_status(message_id, "COMPLETED")
                 await uow.commit()
         except Exception as error:
             async with self.uow_factory() as uow:
-                await uow.conversations.set_message_status(message_id, "PARTIAL")
-                await uow.commit()
+                status_reader = getattr(uow.conversations, "message_status", None)
+                if not status_reader or await status_reader(message_id) != "CANCELLED":
+                    await uow.conversations.set_message_status(message_id, terminal_message_status(chunks))
+                    await uow.commit()
             raise classify_provider_error(error) from error
         return chunks
