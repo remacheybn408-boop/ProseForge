@@ -53,9 +53,14 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByRole("button", { name: "Save version" }).click();
   await expect(page.getByText(/Saved version \d+/)).toBeVisible();
 
+  await page.getByRole("button", { name: "Story memory" }).click();
+  await page.getByLabel("Add a story memory").fill("Mira fears deep water.");
+  await page.getByRole("button", { name: "Add memory" }).click();
+  await expect(page.getByText("Mira fears deep water.")).toBeVisible();
+  await page.getByRole("button", { name: "Writing Studio" }).click();
   await page.getByPlaceholder(/Ask your companion/i).fill("Give me one continuity check.");
   await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByText("Mock provider response")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Context received: Mira fears deep water.")).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Fork branch" }).click();
   await expect(page.getByText("Alternative branch created.")).toBeVisible();
   await page.reload();

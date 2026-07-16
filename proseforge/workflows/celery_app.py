@@ -263,12 +263,14 @@ async def _generate_chat(payload: dict[str, object]) -> str:
     import json
 
     from proseforge.application.conversations.generate_reply import GenerateReply
+    from proseforge.application.conversations.request import build_chat_request
     from proseforge.application.conversations.terminal_state import terminal_message_status
     from proseforge.domain.ports.model_provider import GenerationRequest
     from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
     from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
     from proseforge.infrastructure.events.database import DatabaseEventStream
     from proseforge.infrastructure.security.credential_cipher import CredentialCipher
+    from proseforge.context_engine.compiler import compile_context
     from proseforge.providers.factory import build_provider
     from proseforge.settings import get_settings
 
@@ -284,11 +286,24 @@ async def _generate_chat(payload: dict[str, object]) -> str:
             message = await uow.conversations.get_message(message_id)
             visible = await uow.conversations.list_visible_messages(message.branch_id) if message else []
             user_message = next((item for item in reversed(visible) if item.role == "user"), None)
-            if credential is None or user_message is None:
+            project_id = await uow.conversations.project_id_for_message(message_id) if message else None
+            project = await uow.projects.get_by_id(user_id, project_id) if project_id else None
+            if message is None or user_message is None or project is None:
                 if message:
                     await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
                     await uow.commit()
+                return "conversation-not-found"
+            if credential is None:
+                await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
+                await uow.commit()
                 return "provider-not-configured"
+            context_items = [item for item in await uow.context.list_owned(project.id, user_id) if not item.excluded]
+            context_blocks = [
+                {"id": item.id, "source_type": item.source_type, "source_ids": [item.source_id], "content": item.content, "pinned": item.pinned, "priority": item.priority}
+                for item in context_items
+            ]
+            compiled_context = compile_context("chat", context_blocks, input_budget=8000)
+            context_text = "\n".join(str(block.get("content", "")) for block in compiled_context.blocks)
             try:
                 raw = base64.b64decode(settings.master_key.get_secret_value(), validate=True)
             except (ValueError, binascii.Error):
@@ -307,11 +322,14 @@ async def _generate_chat(payload: dict[str, object]) -> str:
                     await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
                     await uow.commit()
             return "provider-not-supported"
-        input_blocks = [{"role": "user", "text": user_message.content}]
+        request = build_chat_request(model=model, messages=visible, excluded_message_id=message_id, context_text=context_text)
         if message is not None and message.status == "PARTIAL" and message.content:
-            input_blocks.append({"role": "assistant", "text": message.content})
-            input_blocks.append({"role": "user", "text": "Continue from the saved partial response without repeating existing text."})
-        request = GenerationRequest(model=model, system_blocks=(), input_blocks=tuple(input_blocks))
+            request = GenerationRequest(
+                model=request.model,
+                system_blocks=request.system_blocks,
+                input_blocks=(*request.input_blocks, {"role": "assistant", "text": message.content}, {"role": "user", "text": "Continue from the saved partial response without repeating existing text."}),
+                metadata=request.metadata,
+            )
         await GenerateReply(lambda: SqlAlchemyUnitOfWork(session_factory), provider, DatabaseEventStream(session_factory)).execute(message_id=message_id, request=request, user_id=user_id, provider=provider_id, model=model)
         return "completed"
     finally:

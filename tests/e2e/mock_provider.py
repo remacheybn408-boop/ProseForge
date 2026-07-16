@@ -20,7 +20,8 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("content-length", "0"))
         request = json.loads(self.rfile.read(length) or b"{}")
         is_review = isinstance(request.get("text"), dict)
-        response_text = '{"status":"PASS","summary":"mock review","issues":[],"preserve":[],"rewrite_scope":[]}' if is_review else "Mock provider response"
+        request_text = json.dumps(request.get("input", {}), ensure_ascii=False)
+        response_text = '{"status":"PASS","summary":"mock review","issues":[],"preserve":[],"rewrite_scope":[]}' if is_review else ("Context received: Mira fears deep water." if "Mira fears deep water." in request_text else "Mock provider response")
         events = [
             {"type": "response.created", "id": "mock-response"},
             {"type": "response.output_text.delta", "delta": response_text},
