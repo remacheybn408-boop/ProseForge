@@ -10,6 +10,7 @@ from proseforge.domain.common.ids import new_id
 from proseforge.infrastructure.database.models.project import ProjectModel
 from proseforge.infrastructure.database.models.remaining import WorkflowEventModel, WorkflowRunModel
 from proseforge.domain.workflow.state import ALLOWED_TRANSITIONS
+from proseforge.application.workflows.control import decode_checkpoint
 
 
 class SqlAlchemyWorkflowRepository:
@@ -22,6 +23,24 @@ class SqlAlchemyWorkflowRepository:
         await self.session.flush()
         await self.append_event(run.id, status, {"status": status})
         return run
+
+    async def set_command(self, run: WorkflowRunModel, command: dict[str, object]) -> None:
+        document = decode_checkpoint(run.checkpoint)
+        document["command"] = command
+        document.setdefault("phase", run.status)
+        run.checkpoint = json.dumps(document, ensure_ascii=False)
+        await self.session.flush()
+
+    async def get_command(self, run: WorkflowRunModel) -> dict[str, object] | None:
+        command = decode_checkpoint(run.checkpoint).get("command")
+        return command if isinstance(command, dict) else None
+
+    async def set_task(self, run: WorkflowRunModel, task_id: str) -> None:
+        document = decode_checkpoint(run.checkpoint)
+        document["active_task_id"] = task_id
+        document["retry_count"] = int(document.get("retry_count", 0)) + 1
+        run.checkpoint = json.dumps(document, ensure_ascii=False)
+        await self.session.flush()
 
     async def get_owned(self, workflow_id: str, owner_id: str) -> WorkflowRunModel | None:
         return await self.session.scalar(
@@ -60,7 +79,12 @@ class SqlAlchemyWorkflowRepository:
         projected = float(run.estimated_cost or 0) + estimated_cost
         if run.cost_limit and projected > run.cost_limit:
             raise ValueError("workflow cost limit exceeded")
-        run.checkpoint = checkpoint
+        document = decode_checkpoint(run.checkpoint)
+        if "command" in document:
+            document["phase"] = checkpoint
+            run.checkpoint = json.dumps(document, ensure_ascii=False)
+        else:
+            run.checkpoint = checkpoint
         run.estimated_cost = projected
         await self.session.flush()
 

@@ -13,6 +13,7 @@ async def test_workflow_events_and_transitions_are_durable(session_factory):
         await session.flush()
         repository = SqlAlchemyWorkflowRepository(session)
         run = await repository.create("p-workflow", "NOVEL")
+        await repository.set_command(run, {"user_id": "u1", "chapter_numbers": [1], "provider": "openai", "model": "m", "editor_model": "m"})
         await repository.transition(run, "RUNNING")
         await session.commit()
 
@@ -20,9 +21,13 @@ async def test_workflow_events_and_transitions_are_durable(session_factory):
         repository = SqlAlchemyWorkflowRepository(session)
         owned = await repository.get_owned(run.id, "u1")
         events = await repository.events(run.id)
+        replayed = await repository.events(run.id, 1)
+        command = await repository.get_command(owned)
 
     assert owned is not None and owned.status == "RUNNING"
     assert [event["event"] for event in events] == ["QUEUED", "RUNNING"]
+    assert [event["event"] for event in replayed] == ["RUNNING"]
+    assert command == {"user_id": "u1", "chapter_numbers": [1], "provider": "openai", "model": "m", "editor_model": "m"}
 
 
 @pytest.mark.asyncio

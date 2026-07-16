@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.api.sse.encoder import encode_sse
 from proseforge.application.auth.service import AuthUser
+from proseforge.application.workflows.control import WorkflowControlService, workflow_command
 from proseforge.domain.chapter.entity import Chapter
 from proseforge.domain.workflow.state import ALLOWED_TRANSITIONS
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
@@ -45,8 +46,12 @@ async def create_workflow(
             if chapter_no not in existing:
                 await uow.chapters.add(Chapter.create(project_id=project.id, chapter_no=chapter_no, title=f"Chapter {chapter_no}"))
         return_value = await uow.workflows.create(project.id, "NOVEL", cost_limit=payload.cost_limit)
+        command = workflow_command(user_id=user.id, chapter_numbers=payload.chapter_numbers, provider=payload.provider, model=payload.model, editor_model=payload.editor_model or payload.model)
+        await uow.workflows.set_command(return_value, command)
         await uow.commit()
-        task_id = await request.app.state.queue.enqueue("proseforge.workflows.generate_novel", {"workflow_id": return_value.id, "user_id": user.id, "chapter_numbers": payload.chapter_numbers, "provider": payload.provider, "model": payload.model, "editor_model": payload.editor_model or payload.model})
+        task_id = await request.app.state.queue.enqueue("proseforge.workflows.generate_novel", {"workflow_id": return_value.id, **command})
+        await uow.workflows.set_task(return_value, task_id)
+        await uow.commit()
         result = _response(return_value)
         result["task_id"] = task_id
         return result
@@ -72,19 +77,17 @@ async def control_workflow(
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
 ) -> dict[str, str]:
-    targets = {"pause": "PAUSED", "resume": "RUNNING", "cancel": "CANCELLED", "retry": "RETRYING"}
-    target = targets.get(action)
-    if target is None:
-        raise HTTPException(status_code=404, detail="workflow action not found")
     async with uow:
-        run = await uow.workflows.get_owned(workflow_id, user.id)
-        if run is None:
-            raise HTTPException(status_code=404, detail="workflow not found")
-        if target not in ALLOWED_TRANSITIONS.get(run.status, set()):
-            raise HTTPException(status_code=409, detail=f"invalid workflow transition: {run.status} -> {target}")
-        await uow.workflows.transition(run, target)
-        await uow.commit()
-        return _response(run)
+        try:
+            result = await WorkflowControlService(uow, request.app.state.queue).execute(workflow_id, user.id, action)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        response = _response(result.run)
+        if result.task_id:
+            response["task_id"] = result.task_id
+        return response
 
 
 @router.get("/workflows/{workflow_id}/events")
@@ -94,11 +97,15 @@ async def workflow_events(
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
 ):
-    del request
+    last_event_id = request.headers.get("last-event-id")
+    try:
+        after = max(0, int(last_event_id or "0"))
+    except ValueError:
+        after = 0
     async with uow:
         if await uow.workflows.get_owned(workflow_id, user.id) is None:
             raise HTTPException(status_code=404, detail="workflow not found")
-        events = await uow.workflows.events(workflow_id, 0)
+        events = await uow.workflows.events(workflow_id, after)
 
     async def body():
         for event in events:
