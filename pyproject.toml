@@ -50,7 +50,7 @@ dev = [
     "pytest-cov>=6,<7",
     "respx>=0.22,<1",
     "ruff>=0.12,<1",
-    "mypy>=1.16,<2",
+    "mypy>=1.16,<3",
 ]
 
 [project.scripts]
