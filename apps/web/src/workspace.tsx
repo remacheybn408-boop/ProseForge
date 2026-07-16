@@ -2,19 +2,19 @@ import { useEffect, useState } from "react";
 import "./styles/tokens.css";
 import "./styles/views.css";
 import {
-  activateChapterVersion, addContext, answerOutline, confirmOutline, controlWorkflow, createConversation, createProject, createWorkflow,
-  getChapterDiff, importOutline, listChapters, listChapterVersions, listContext, listCredentials,
-  forkConversation, listMessages, login, probeProvider, saveChapterVersion, saveCredential, sendMessage, setupAdmin, subscribeConversationEvents, updateContext,
-  getWorkflow, listModelProfiles, logout, requestExport, saveModelProfile, type Chapter, type ChapterVersion, type ContextItem, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
+  activateChapterVersion, answerOutline, confirmOutline, controlWorkflow, createConversation, createProject, createWorkflow,
+  getChapterDiff, importOutline, listChapters, listChapterVersions, listCredentials,
+  forkConversation, listMessages, login, probeProvider, saveChapterVersion, saveCredential, sendMessage, setupAdmin, subscribeConversationEvents,
+  getWorkflow, listModelProfiles, logout, requestExport, saveModelProfile, type Chapter, type ChapterVersion, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
 } from "./lib/api/client";
 import { loadDraft, saveDraft } from "./lib/drafts";
 import { ProjectVersionHistory } from "./features/VersionHistory";
+import { ContextView } from "./features/context/ContextView";
 import { chapterDraftKey as makeChapterDraftKey, shouldApplyServerVersion } from "./features/editor/documentState";
 import { useLanguage } from "./lib/i18n";
 import { useHealthQuery, useModelsQuery, useProjectsQuery, useProvidersQuery, useUsageSummaryQuery, queryClient } from "./app/query";
 import { navigateRoute, useAppRoute, type AppView } from "./app/router";
 import { ApiError } from "./lib/api/client";
-import { ContextBudgetBar } from "./features/usage/ContextBudgetBar";
 import { TokenMeter } from "./features/usage/TokenMeter";
 import { UsagePage } from "./features/usage/UsagePage";
 
@@ -84,17 +84,6 @@ function OutlineView({ project, onWorkflow }: { project: Project; onWorkflow: (w
   const answerMissing = async () => { if (!outline || !Object.values(answers).some(value => value.trim())) return; try { const normalized = Object.fromEntries(Object.entries(answers).map(([key, value]) => [key, /^\d+$/.test(value) ? Number(value) : key === "characters" ? [value] : value])); const item = await answerOutline(outline.id, normalized); setOutline(item); setAnswers({}); setMessage(item.missing_questions.length ? "More answers are needed." : "Ready to confirm."); } catch { setMessage("Could not save the answer"); } };
   const confirm = async () => { if (!outline) return; try { await confirmOutline(outline.id); const workflow = await createWorkflow(project.id, Array.from({ length: Math.max(1, endChapter - startChapter + 1) }, (_, index) => startChapter + index)); onWorkflow(workflow); setMessage("Outline confirmed; workflow created."); } catch { setMessage("Complete the required answers first."); } };
   return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">{t("outlineIntake")}</p><h2>{t("outlineHero")}</h2><p>{t("outlineIntro")}</p></div><div className="settings-form"><label>{t("outlineTitle")}<input value={title} onChange={event => setTitle(event.target.value)} placeholder={t("outlineTitlePlaceholder")} /></label><label>{t("outlineNotes")}<textarea value={content} onChange={event => setContent(event.target.value)} placeholder={t("outlineNotesPlaceholder")} /></label><button className="primary" onClick={submit}>{t("importAnalyze")}</button></div>{outline && <div className="outline-status"><strong>{outline.title}</strong><span>{t("status")}: {outline.status}</span>{outline.missing_questions.map((question, index) => <label key={question}>{question}<input value={answers[answerField(question, index)] ?? ""} onChange={event => setAnswers(current => ({ ...current, [answerField(question, index)]: event.target.value }))} placeholder={t("answerMissing")} /></label>)}{outline.missing_questions.length > 0 && <button onClick={answerMissing}>{t("saveAnswer")}</button>}{outline.missing_questions.length === 0 && <><div className="answer-row"><label>Start chapter<input type="number" min="1" value={startChapter} onChange={event => setStartChapter(Number(event.target.value))} /></label><label>End chapter<input type="number" min={startChapter} value={endChapter} onChange={event => setEndChapter(Number(event.target.value))} /></label></div><button className="primary" onClick={confirm}>{t("confirmWorkflow")}</button></>}</div>}<p className="form-message" aria-live="polite">{message}</p></section>;
-}
-
-function ContextView({ project }: { project: Project }) {
-  const { t } = useLanguage();
-  const [items, setItems] = useState<ContextItem[]>([]); const [used, setUsed] = useState(0); const [contextWindow, setContextWindow] = useState(128000); const [content, setContent] = useState(""); const [profileId, setProfileId] = useState("");
-  const reload = () => listContext(project.id, profileId ? { profileId } : {}).then(result => { setItems(result.items); setUsed(result.used_tokens); setContextWindow(result.context_window); }).catch(() => undefined);
-  useEffect(() => { listModelProfiles().then(items => { setProfileId(current => current || items[0]?.id || ""); }).catch(() => undefined); }, []);
-  useEffect(() => { void reload(); }, [project.id, profileId]);
-  const add = async () => { if (!content.trim()) return; const item = await addContext(project.id, content); setItems([...items, item]); setContent(""); };
-  const pin = async (item: ContextItem) => { const updated = await updateContext(item.id, { pinned: !item.pinned }); setItems(items.map(value => value.id === item.id ? updated : value)); };
-  return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">{t("context")}</p><h2>{t("contextHero")}</h2><p>{t("contextIntro")}</p><ContextBudgetBar used={used} available={Math.max(0, contextWindow - used)} total={contextWindow} /></div><div className="settings-form"><label>{t("addMemory")}<textarea value={content} onChange={event => setContent(event.target.value)} placeholder={t("addMemoryPlaceholder")} /></label><button className="primary" onClick={add}>{t("addContext")}</button></div><div className="detail-list">{items.map(item => <div className="detail-card" key={item.id}><div><strong>{item.pinned ? "📌 " : ""}{item.source_type}</strong><span>{item.content}</span></div><button onClick={() => pin(item)}>{item.pinned ? t("unpin") : t("pin")}</button></div>)}</div></section>;
 }
 
 function WorkflowView({ project, workflow, onWorkflow }: { project: Project; workflow: Workflow | null; onWorkflow: (workflow: Workflow) => void }) {
