@@ -46,4 +46,12 @@ describe("web entrypoint structure", () => {
     expect(workspace).not.toMatch(/function Studio\b/);
     expect(studio).toContain("export function Studio");
   });
+
+  it("keeps workflow UI outside the application shell", () => {
+    const workspace = (import.meta.glob("./workspace.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./workspace.tsx"];
+    const workflow = (import.meta.glob("./features/workflows/WorkflowView.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./features/workflows/WorkflowView.tsx"];
+
+    expect(workspace).not.toMatch(/function WorkflowView\b/);
+    expect(workflow).toContain("export function WorkflowView");
+  });
 });
