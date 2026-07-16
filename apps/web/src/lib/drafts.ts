@@ -1,8 +1,16 @@
-export type DraftKey = {
+export type ChatDraftKey = {
   conversationId: string;
   branchId: string;
-  draftType: "chat" | "chapter";
+  draftType: "chat";
 };
+
+export type ChapterDraftKey = {
+  projectId: string;
+  chapterId: string;
+  draftType: "chapter";
+};
+
+export type DraftKey = ChatDraftKey | ChapterDraftKey;
 
 type DraftRecord = DraftKey & { key: string; content: string; updatedAt: number };
 
@@ -10,6 +18,7 @@ const DATABASE = "proseforge-drafts";
 const STORE = "drafts";
 
 function keyOf(key: DraftKey) {
+  if (key.draftType === "chapter") return `chapter:${key.projectId}:${key.chapterId}`;
   return `${key.conversationId}:${key.branchId}:${key.draftType}`;
 }
 
