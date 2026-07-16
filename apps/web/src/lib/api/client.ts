@@ -7,6 +7,8 @@ export type ChapterVersion = { id: string; chapter_id: string; version_no: numbe
 export type Workflow = { id: string; project_id: string; workflow_type: string; status: string };
 export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; status: string };
 export type ModelProfile = { id: string; name: string; config: Record<string, unknown> };
+export type UsageBucket = { input_tokens: number; output_tokens: number; cached_input_tokens: number; reasoning_tokens: number; total_tokens: number; cost_usd: number | null };
+export type UsageSummary = { scope: string; project_id?: string | null; conversation_id?: string | null; workflow_id?: string | null; actual: UsageBucket; estimated: UsageBucket };
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string, public readonly detail = "") {
@@ -60,6 +62,8 @@ export function sendMessage(conversationId: string, payload: { branch_id: string
 export function listMessages(conversationId: string, branchId: string) { return request<ChatMessage[]>(`/api/v1/conversations/${conversationId}/branches/${branchId}/messages`); }
 export function forkConversation(conversationId: string, messageId: string, name: string) { return request<{ id: string; name: string }>(`/api/v1/conversations/${conversationId}/branches`, { method: "POST", body: JSON.stringify({ message_id: messageId, name }) }); }
 export function requestExport(projectId: string, format: "txt" | "md" | "json" | "docx" | "epub") { return request<{ status: string; format: string; download_url: string }>(`/api/v1/projects/${projectId}/exports`, { method: "POST", body: JSON.stringify({ format }) }); }
+export function getUsageSummary(filters: { project_id?: string; conversation_id?: string; workflow_id?: string } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value) as [string, string][]).toString(); return request<UsageSummary>(`/api/v1/usage/summary${query ? `?${query}` : ""}`); }
+export function listUsageRecords(filters: { project_id?: string; conversation_id?: string; workflow_id?: string; limit?: number } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined) as [string, string][]).toString(); return request<Record<string, unknown>[]>(`/api/v1/usage/records${query ? `?${query}` : ""}`); }
 
 export function subscribeConversationEvents(conversationId: string, onEvent: (event: { event?: string; message_id?: string; text?: string }) => void) {
   const source = new EventSource(`/api/v1/conversations/${conversationId}/events`);

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { getHealth, listProjects, type Project } from "../lib/api/client";
+import { getHealth, getUsageSummary, listProjects, type Project } from "../lib/api/client";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,4 +22,8 @@ export function useProjectsQuery() {
 
 export function useHealthQuery() {
   return useQuery({ queryKey: ["health"], queryFn: getHealth, retry: 1, refetchInterval: 30_000 });
+}
+
+export function useUsageSummaryQuery(projectId?: string) {
+  return useQuery({ queryKey: ["usage", "summary", projectId ?? "user"], queryFn: () => getUsageSummary(projectId ? { project_id: projectId } : {}), enabled: Boolean(projectId) });
 }
