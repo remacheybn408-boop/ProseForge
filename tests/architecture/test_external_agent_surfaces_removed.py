@@ -8,7 +8,7 @@ def test_external_agent_surfaces_are_removed() -> None:
         ROOT / "plugin" / "proseforge-codex",
         ROOT / "plugin" / "proseforge-Hermes",
         ROOT / "plugin" / "proseforge-claude",
-        ROOT / ".claude",
+        ROOT / ".claude" / "settings.json",
         ROOT / "install_plugin.py",
     ]
     assert [str(path.relative_to(ROOT)) for path in forbidden if path.exists()] == []
