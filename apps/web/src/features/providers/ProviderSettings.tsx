@@ -1,0 +1,3 @@
+export function ProviderSettings({ providers, models, provider, model, onProvider, onModel }: { providers: string[]; models: { model_id: string; display_name: string }[]; provider: string; model: string; onProvider: (provider: string) => void; onModel: (model: string) => void }) {
+  return <section className="provider-settings"><label>Provider<select value={provider} onChange={event => onProvider(event.target.value)}>{providers.map(item => <option key={item}>{item}</option>)}</select></label><label>Model<input list="provider-models" value={model} onChange={event => onModel(event.target.value)} /><datalist id="provider-models">{models.map(item => <option key={item.model_id} value={item.model_id}>{item.display_name}</option>)}</datalist></label></section>;
+}

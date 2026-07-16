@@ -162,8 +162,8 @@ def healthcheck() -> str:
 
 
 @celery.task(name="proseforge.providers.sync_all_models", bind=True, max_retries=0)
-def sync_all_provider_models(self) -> dict[str, int]:
-    del self
+def sync_all_provider_models(self, payload: dict[str, object] | None = None) -> dict[str, int]:
+    del self, payload
     return asyncio.run(_sync_all_provider_models())
 
 

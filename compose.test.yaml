@@ -1,4 +1,8 @@
 services:
+  api:
+    environment:
+      PROSEFORGE_PUBLIC_URL: http://web
+
   postgres:
     volumes:
       - postgres-test-data:/var/lib/postgresql/data

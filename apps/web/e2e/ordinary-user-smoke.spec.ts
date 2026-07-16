@@ -36,8 +36,13 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByLabel("Outline title").fill("E2E Outline");
   await page.getByLabel("Outline or story notes").fill("A complete story about a cartographer who returns home and chooses hope.");
   await page.getByRole("button", { name: "Import and analyze" }).click();
-  await expect(page.getByPlaceholder("Answer the missing requirement")).toBeVisible();
-  await page.getByPlaceholder("Answer the missing requirement").fill("Mira, a determined cartographer");
+  const missingAnswers = page.getByPlaceholder("Answer the missing requirement");
+  await expect(missingAnswers).toHaveCount(5);
+  await missingAnswers.nth(0).fill("Adventure");
+  await missingAnswers.nth(1).fill("Mira, a determined cartographer");
+  await missingAnswers.nth(2).fill("Third person limited");
+  await missingAnswers.nth(3).fill("3");
+  await missingAnswers.nth(4).fill("1200");
   await page.getByRole("button", { name: "Save answer" }).click();
   await page.getByRole("button", { name: /confirm and create workflow/i }).click();
   await expect(page.getByRole("heading", { name: "Chapter workflow" })).toBeVisible();

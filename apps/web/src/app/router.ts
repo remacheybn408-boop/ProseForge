@@ -4,6 +4,9 @@ export type AppView = "projects" | "studio" | "outline" | "context" | "workflow"
 export type AppRoute = { view: AppView; projectId?: string };
 
 const navigationEvent = "proseforge:navigate";
+const serverRoute: AppRoute = { view: "projects" };
+let cachedPathname: string | undefined;
+let cachedRoute: AppRoute | undefined;
 
 export function parseAppPath(pathname: string): AppRoute {
   const parts = pathname.split("/").filter(Boolean).map(value => decodeURIComponent(value));
@@ -31,6 +34,14 @@ export function navigateRoute(route: AppRoute): void {
 }
 
 export function useAppRoute(): AppRoute {
+  const getSnapshot = () => {
+    const pathname = window.location.pathname;
+    if (!cachedRoute || cachedPathname !== pathname) {
+      cachedPathname = pathname;
+      cachedRoute = parseAppPath(pathname);
+    }
+    return cachedRoute;
+  };
   return useSyncExternalStore(
     onStoreChange => {
       window.addEventListener("popstate", onStoreChange);
@@ -40,7 +51,7 @@ export function useAppRoute(): AppRoute {
         window.removeEventListener(navigationEvent, onStoreChange);
       };
     },
-    () => parseAppPath(window.location.pathname),
-    () => ({ view: "projects" }),
+    getSnapshot,
+    () => serverRoute,
   );
 }

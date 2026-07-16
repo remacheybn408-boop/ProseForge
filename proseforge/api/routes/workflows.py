@@ -43,7 +43,7 @@ async def create_workflow(
     request: Request,
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
-) -> dict[str, str]:
+) -> dict[str, object]:
     async with uow:
         project = await uow.projects.get_by_id(user.id, project_id)
         if project is None:
@@ -69,7 +69,7 @@ async def get_workflow(
     workflow_id: str,
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
-) -> dict[str, str]:
+) -> dict[str, object]:
     async with uow:
         run = await uow.workflows.get_owned(workflow_id, user.id)
         if run is None:
@@ -81,9 +81,10 @@ async def get_workflow(
 async def control_workflow(
     workflow_id: str,
     action: str,
+    request: Request,
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
-) -> dict[str, str]:
+) -> dict[str, object]:
     async with uow:
         try:
             result = await WorkflowControlService(uow, request.app.state.queue).execute(workflow_id, user.id, action)
