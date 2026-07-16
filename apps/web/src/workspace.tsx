@@ -5,7 +5,7 @@ import {
   activateChapterVersion, answerOutline, confirmOutline, controlWorkflow, createConversation, createProject, createWorkflow,
   getChapterDiff, importOutline, listChapters, listChapterVersions, listCredentials,
   forkConversation, listMessages, login, probeProvider, saveChapterVersion, saveCredential, sendMessage, setupAdmin, subscribeConversationEvents,
-  getWorkflow, listModelProfiles, logout, requestExport, saveModelProfile, deleteCredential, type Chapter, type ChapterVersion, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
+  getWorkflow, listModelProfiles, logout, requestExport, saveModelProfile, deleteCredential, subscribeWorkflowEvents, type Chapter, type ChapterVersion, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
 } from "./lib/api/client";
 import { loadDraft, saveDraft } from "./lib/drafts";
 import { ProjectVersionHistory } from "./features/VersionHistory";
@@ -91,6 +91,19 @@ function WorkflowView({ project, workflow, onWorkflow }: { project: Project; wor
   const { t } = useLanguage();
   const [current, setCurrent] = useState(workflow); const [message, setMessage] = useState("No workflow has been started yet.");
   useEffect(() => { if (workflow) { setCurrent(workflow); return; } }, [workflow]);
+  useEffect(() => {
+    if (!current) return;
+    const controller = new AbortController();
+    const workflowSnapshot = current;
+    subscribeWorkflowEvents(current.id, event => {
+      const status = typeof event.data.status === "string" ? event.data.status : event.event;
+      if (!status) return;
+      const next = { ...workflowSnapshot, status };
+      setCurrent(next);
+      onWorkflow(next);
+    }, { signal: controller.signal }).catch(() => { if (!controller.signal.aborted) setMessage(t("workflowEventsUnavailable")); });
+    return () => controller.abort();
+  }, [current?.id, onWorkflow, t]);
   const action = async (name: "pause" | "resume" | "cancel" | "retry") => { if (!current) return; try { const result = await controlWorkflow(current.id, name); setCurrent(result); onWorkflow(result); setMessage(`Workflow ${result.status.toLowerCase()}.`); } catch { setMessage("That action is not available in the current state."); } };
   return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">{t("workflow")}</p><h2>{current ? t("workflowHero") : t("notStarted")}</h2><p>{current ? `${project.title} · ${current.status}` : message}</p></div>{current ? <><div className="timeline"><div className="timeline-item done"><b>1</b><div><strong>{t("outlineConfirmed")}</strong><span>{t("savedToPostgres")}</span></div></div><div className="timeline-item current"><b>2</b><div><strong>{t("draftChapter")}</strong><span>{current.status}</span></div></div><div className="timeline-item"><b>3</b><div><strong>{t("reviewCommit")}</strong><span>{t("waiting")}</span></div></div></div><div className="workflow-actions"><button onClick={() => action("pause")}>{t("pause")}</button><button onClick={() => action("resume")}>{t("resume")}</button><button onClick={() => action("cancel")}>{t("cancel")}</button><button onClick={() => action("retry")}>{t("retry")}</button></div></> : <p className="form-message">{t("outlineIntake")}</p>}</section>;
 }

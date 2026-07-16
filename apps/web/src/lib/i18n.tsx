@@ -19,8 +19,8 @@ const extraMessages = {
 } as const;
 
 const credentialMessages: Record<Language, Record<string, string>> = {
-  "zh-CN": { removeCredential: "鍒犻櫎凭据", removeCredentialConfirm: "纭畾鍒犻櫎此凭据吗？", credentialRemoved: "凭据已删除" },
-  "en-US": { removeCredential: "Remove credential", removeCredentialConfirm: "Remove this credential?", credentialRemoved: "Credential removed." },
+  "zh-CN": { removeCredential: "鍒犻櫎凭据", removeCredentialConfirm: "纭畾鍒犻櫎此凭据吗？", credentialRemoved: "凭据已删除", workflowEventsUnavailable: "宸ヤ綔娴佺姸鎬佹洿鏂版殏鏃朵笉鍙敤" },
+  "en-US": { removeCredential: "Remove credential", removeCredentialConfirm: "Remove this credential?", credentialRemoved: "Credential removed.", workflowEventsUnavailable: "Live workflow updates are temporarily unavailable." },
 };
 
 export type TranslationKey = keyof typeof messages["zh-CN"] | keyof typeof extraMessages["zh-CN"] | keyof typeof credentialMessages["zh-CN"];

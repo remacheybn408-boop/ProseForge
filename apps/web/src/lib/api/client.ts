@@ -5,6 +5,7 @@ export type ContextItem = { id: string; project_id: string; source_type: string;
 export type Chapter = { id: string; project_id: string; chapter_no: number; title: string; status: string; active_version_id?: string | null };
 export type ChapterVersion = { id: string; chapter_id: string; version_no: number; content: string; word_count: number };
 export type Workflow = { id: string; project_id: string; workflow_type: string; status: string };
+export type WorkflowEvent = { id: number; event: string; data: Record<string, unknown> };
 export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; status: string };
 export type ModelProfile = { id: string; name: string; config: Record<string, unknown> };
 export type UsageBucket = { input_tokens: number; output_tokens: number; cached_input_tokens: number; reasoning_tokens: number; total_tokens: number; cost_usd: number | null };
@@ -66,6 +67,48 @@ export function updateContext(itemId: string, payload: Partial<Pick<ContextItem,
 export function createWorkflow(projectId: string, chapterNumbers: number[]) { return request<Workflow>(`/api/v1/projects/${projectId}/workflows/novel`, { method: "POST", body: JSON.stringify({ chapter_numbers: chapterNumbers }) }); }
 export function getWorkflow(workflowId: string) { return request<Workflow>(`/api/v1/workflows/${workflowId}`); }
 export function controlWorkflow(workflowId: string, action: "pause" | "resume" | "cancel" | "retry") { return request<Workflow>(`/api/v1/workflows/${workflowId}/${action}`, { method: "POST" }); }
+export async function subscribeWorkflowEvents(workflowId: string, onEvent: (event: WorkflowEvent) => void, options: { lastEventId?: number; signal?: AbortSignal } = {}): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (options.lastEventId !== undefined) headers["Last-Event-ID"] = String(options.lastEventId);
+  const response = await fetch(`/api/v1/workflows/${encodeURIComponent(workflowId)}/events`, { credentials: "include", headers, signal: options.signal });
+  if (!response.ok) throw new ApiError(response.status, `Workflow event stream failed (${response.status})`);
+  if (!response.body) return;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let id = 0;
+  let event = "message";
+  let dataLines: string[] = [];
+  const dispatch = () => {
+    if (dataLines.length === 0) return;
+    const raw = dataLines.join("\n");
+    let data: Record<string, unknown>;
+    try { data = JSON.parse(raw) as Record<string, unknown>; } catch { data = { raw }; }
+    onEvent({ id, event, data });
+    id = 0;
+    event = "message";
+    dataLines = [];
+  };
+  const consumeLine = (line: string) => {
+    if (!line) return dispatch();
+    const separator = line.indexOf(":");
+    const field = separator < 0 ? line : line.slice(0, separator);
+    const value = separator < 0 ? "" : line.slice(separator + 1).replace(/^ /, "");
+    if (field === "id") id = Number(value) || 0;
+    if (field === "event") event = value || "message";
+    if (field === "data") dataLines.push(value);
+  };
+  while (true) {
+    const result = await reader.read();
+    buffer += decoder.decode(result.value ?? new Uint8Array(), { stream: !result.done });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) consumeLine(line.endsWith("\r") ? line.slice(0, -1) : line);
+    if (result.done) break;
+  }
+  if (buffer) consumeLine(buffer.endsWith("\r") ? buffer.slice(0, -1) : buffer);
+  dispatch();
+}
 export function createConversation(projectId: string) { return request<{ id: string; branch_id: string; title: string }>("/api/v1/conversations", { method: "POST", body: JSON.stringify({ project_id: projectId, title: "Writing companion" }) }); }
 export function sendMessage(conversationId: string, payload: { branch_id: string; content: string; client_request_id: string; provider?: string; model?: string }) { return request<{ user_message_id: string; assistant_message_id: string; task_id: string }>(`/api/v1/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(payload) }); }
 export function listMessages(conversationId: string, branchId: string) { return request<ChatMessage[]>(`/api/v1/conversations/${conversationId}/branches/${branchId}/messages`); }

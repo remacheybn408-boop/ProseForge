@@ -50,8 +50,10 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await missingAnswers.nth(3).fill("3");
   await missingAnswers.nth(4).fill("1200");
   await page.getByRole("button", { name: "Save answer" }).click();
+  const workflowEventsRequest = page.waitForRequest(request => request.method() === "GET" && request.url().includes("/api/v1/workflows/") && request.url().endsWith("/events"));
   await page.getByRole("button", { name: /confirm and create workflow/i }).click();
   await expect(page.getByRole("heading", { name: "Chapter workflow" })).toBeVisible();
+  await workflowEventsRequest;
   await page.reload();
   await expect(page.getByRole("heading", { name: "Chapter workflow" })).toBeVisible();
   await page.getByRole("button", { name: "Writing Studio" }).click();

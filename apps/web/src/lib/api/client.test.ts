@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError, deleteCredential, listContext, request } from "./client";
+import { ApiError, deleteCredential, listContext, request, subscribeWorkflowEvents, type WorkflowEvent } from "./client";
 
 describe("api request responses", () => {
   it("accepts a successful 204 without trying to parse JSON", async () => {
@@ -41,5 +41,26 @@ describe("api request responses", () => {
 
     await expect(deleteCredential("credential-1")).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/credentials/credential-1", expect.objectContaining({ method: "DELETE", credentials: "include" }));
+  });
+
+  it("subscribes to durable workflow status events", async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode("id: 7\nevent: RUNNING\ndata: {\"status\":\"RUNNING\"}\n\nid: 8\nevent: COMPLETED\ndata: {\"status\":\"COMPLETED\"}\n\n"));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const events: WorkflowEvent[] = [];
+
+    await subscribeWorkflowEvents("workflow-1", event => events.push(event), { lastEventId: 6 });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/workflows/workflow-1/events", expect.objectContaining({ credentials: "include", headers: { "Last-Event-ID": "6" } }));
+    expect(events).toEqual([
+      { id: 7, event: "RUNNING", data: { status: "RUNNING" } },
+      { id: 8, event: "COMPLETED", data: { status: "COMPLETED" } },
+    ]);
   });
 });
