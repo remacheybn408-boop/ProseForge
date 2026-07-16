@@ -54,4 +54,12 @@ describe("web entrypoint structure", () => {
     expect(workspace).not.toMatch(/function WorkflowView\b/);
     expect(workflow).toContain("export function WorkflowView");
   });
+
+  it("keeps provider settings UI outside the application shell", () => {
+    const workspace = (import.meta.glob("./workspace.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./workspace.tsx"];
+    const settings = (import.meta.glob("./features/providers/SettingsView.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./features/providers/SettingsView.tsx"];
+
+    expect(workspace).not.toMatch(/function SettingsView\b/);
+    expect(settings).toContain("export function SettingsView");
+  });
 });
