@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} run --rm api-test ruff check proseforge tests
       - run: ${{ env.COMPOSE }} run --rm web-test sh -lc 'corepack enable && pnpm install --frozen-lockfile && pnpm typecheck'
 
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} build legacy-test
       - run: ${{ env.COMPOSE }} run --rm legacy-test
 
@@ -32,49 +32,49 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} run --rm api-test pytest -q tests/unit
 
   api-integration:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} run --rm api-test pytest -q tests/api tests/integration
 
   frontend-unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} run --rm web-test sh -lc 'corepack enable && pnpm install --frozen-lockfile && pnpm test:unit'
 
   frontend-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} run --rm web-test sh -lc 'corepack enable && pnpm install --frozen-lockfile && pnpm typecheck && pnpm build'
 
   migration-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} run --rm migration-test
 
   provider-contract:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} run --rm contract-test
 
   docker-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} config --quiet
       - run: ${{ env.COMPOSE }} build
 
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} up -d --build postgres redis provider-mock api worker scheduler web
       - run: ${{ env.COMPOSE }} run --rm e2e
       - if: always()
@@ -94,14 +94,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} run --rm recovery-test
 
   security-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - run: ${{ env.COMPOSE }} run --rm api-test sh -lc 'python -m pip install --no-cache-dir pip-audit && pip-audit'
       - run: ${{ env.COMPOSE }} run --rm web-test sh -lc 'corepack enable && pnpm install --frozen-lockfile && pnpm audit --audit-level=high'
       - run: docker run --rm -v "$PWD:/repo" aquasec/trivy:0.59.1 fs --no-progress --exit-code 1 /repo
