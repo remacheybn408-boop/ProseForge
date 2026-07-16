@@ -60,6 +60,7 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
     from proseforge.application.workflows.budget import budget_exceeded_after_usage
     from proseforge.application.usage.call_tracker import UsageCallTracker
     from proseforge.context_engine.compiler import compile_context
+    from proseforge.context_engine.budgeting import input_budget_for_model
     from proseforge.workflows.novel_generation import run_writer_editor_loop
 
     settings = get_settings()
@@ -107,7 +108,8 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
             context_items = [item for item in await uow.context.list_owned(run.project_id, owner_id) if not item.excluded]
             context_blocks = [{"id": item.id, "source_type": item.source_type, "content": item.content, "pinned": item.pinned, "priority": item.priority} for item in context_items]
             snapshot = await uow.context.snapshot(run.project_id, context_items)
-            compiled_context = compile_context(snapshot.id, context_blocks, input_budget=8000)
+            catalog_model = next((item for item in await uow.model_catalog.list(provider_id, model_id, available_only=False) if item.model_id == model_id), None)
+            compiled_context = compile_context(snapshot.id, context_blocks, input_budget=input_budget_for_model(catalog_model, requested_output=4096))
             context_text = "\n".join(str(block.get("content", "")) for block in compiled_context.blocks)
             await uow.workflows.checkpoint(run, lease_owner, f"PREPARING_CONTEXT_{snapshot.snapshot_hash}")
             await uow.commit()
@@ -294,6 +296,7 @@ async def _generate_chat(payload: dict[str, object]) -> str:
     from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
     from proseforge.infrastructure.events.database import DatabaseEventStream
     from proseforge.infrastructure.security.credential_cipher import CredentialCipher
+    from proseforge.context_engine.budgeting import input_budget_for_model
     from proseforge.providers.factory import build_provider
     from proseforge.settings import get_settings
 
@@ -321,10 +324,11 @@ async def _generate_chat(payload: dict[str, object]) -> str:
                 await uow.commit()
                 return "provider-not-configured"
             context_items = [item for item in await uow.context.list_owned(project.id, user_id) if not item.excluded]
+            catalog_model = next((item for item in await uow.model_catalog.list(provider_id, model, available_only=False) if item.model_id == model), None)
             context_text = build_project_context(
                 context_items=context_items,
                 active_chapters=await uow.chapters.active_contents(project.id, user_id),
-                input_budget=8000,
+                input_budget=input_budget_for_model(catalog_model, requested_output=4096),
             )
             try:
                 raw = base64.b64decode(settings.master_key.get_secret_value(), validate=True)
