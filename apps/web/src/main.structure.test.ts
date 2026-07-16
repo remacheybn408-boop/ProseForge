@@ -38,4 +38,12 @@ describe("web entrypoint structure", () => {
     expect(workspace).not.toMatch(/function OutlineView\b/);
     expect(outline).toContain("export function OutlineView");
   });
+
+  it("keeps writing-studio UI outside the application shell", () => {
+    const workspace = (import.meta.glob("./workspace.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./workspace.tsx"];
+    const studio = (import.meta.glob("./features/editor/Studio.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./features/editor/Studio.tsx"];
+
+    expect(workspace).not.toMatch(/function Studio\b/);
+    expect(studio).toContain("export function Studio");
+  });
 });
