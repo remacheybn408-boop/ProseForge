@@ -9,7 +9,9 @@ export function ContextView({ project }: { project: Project }) {
   const [profiles, setProfiles] = useState<ModelProfile[]>([]);
   const [profileId, setProfileId] = useState("");
   const [used, setUsed] = useState(0);
-  const [contextWindow, setContextWindow] = useState(128000);
+  const [contextWindow, setContextWindow] = useState<number | null>(null);
+  const [available, setAvailable] = useState(0);
+  const [outputReserve, setOutputReserve] = useState(0);
   const [content, setContent] = useState("");
 
   useEffect(() => {
@@ -24,6 +26,8 @@ export function ContextView({ project }: { project: Project }) {
       setItems(result.items);
       setUsed(result.used_tokens);
       setContextWindow(result.context_window);
+      setAvailable(result.available_tokens);
+      setOutputReserve(result.output_reserve_tokens);
     }).catch(() => undefined);
   }, [project.id, profileId]);
 
@@ -45,7 +49,7 @@ export function ContextView({ project }: { project: Project }) {
       <h2>{t("contextHero")}</h2>
       <p>{t("contextIntro")}</p>
       {profiles.length > 0 && <label>{t("modelProfile")}<select value={profileId} onChange={event => setProfileId(event.target.value)}>{profiles.map(profile => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label>}
-      <ContextBudgetBar used={used} available={Math.max(0, contextWindow - used)} total={contextWindow} />
+      {contextWindow !== null && <ContextBudgetBar used={used} available={available} total={contextWindow} outputReserve={outputReserve} />}
     </div>
     <div className="settings-form"><label>{t("addMemory")}<textarea value={content} onChange={event => setContent(event.target.value)} placeholder={t("addMemoryPlaceholder")} /></label><button className="primary" onClick={add}>{t("addContext")}</button></div>
     <div className="detail-list">{items.map(item => <div className="detail-card" key={item.id}><div><strong>{item.pinned ? `${t("pinned")} · ` : ""}{item.source_type}</strong><span>{item.content}</span></div><button onClick={() => pin(item)}>{item.pinned ? t("unpin") : t("pin")}</button></div>)}</div>

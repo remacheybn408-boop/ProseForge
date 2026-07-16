@@ -60,7 +60,7 @@ export function answerOutline(outlineId: string, answers: Record<string, unknown
 export function confirmOutline(outlineId: string) { return request<Outline>(`/api/v1/outlines/${outlineId}/confirm`, { method: "POST" }); }
 export function listContext(projectId: string, options: { profileId?: string; provider?: string; model?: string } = {}) {
   const query = new URLSearchParams(Object.entries({ profile_id: options.profileId, provider: options.provider, model: options.model }).filter(([, value]) => value !== undefined) as [string, string][]).toString();
-  return request<{ items: ContextItem[]; used_tokens: number; context_window: number; available_tokens: number; provider?: string; model?: string }>(`/api/v1/projects/${projectId}/context${query ? `?${query}` : ""}`);
+  return request<{ items: ContextItem[]; used_tokens: number; context_window: number; available_tokens: number; system_reserved_tokens: number; history_tokens: number; output_reserve_tokens: number; provider?: string; model?: string }>(`/api/v1/projects/${projectId}/context${query ? `?${query}` : ""}`);
 }
 export function addContext(projectId: string, content: string, sourceType = "manual") { return request<ContextItem>(`/api/v1/projects/${projectId}/context/items`, { method: "POST", body: JSON.stringify({ content, source_type: sourceType }) }); }
 export function updateContext(itemId: string, payload: Partial<Pick<ContextItem, "content" | "pinned" | "priority" | "excluded">>) { return request<ContextItem>(`/api/v1/context/items/${itemId}`, { method: "PATCH", body: JSON.stringify(payload) }); }

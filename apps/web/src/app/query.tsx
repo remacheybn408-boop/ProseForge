@@ -25,7 +25,7 @@ export function useHealthQuery() {
 }
 
 export function useUsageSummaryQuery(projectId?: string) {
-  return useQuery({ queryKey: ["usage", "summary", projectId ?? "user"], queryFn: () => getUsageSummary(projectId ? { project_id: projectId } : {}), enabled: Boolean(projectId) });
+  return useQuery({ queryKey: ["usage", "summary", projectId ?? "user"], queryFn: () => getUsageSummary(projectId ? { project_id: projectId } : {}) });
 }
 
 export function useProvidersQuery() {
