@@ -14,4 +14,12 @@ describe("web entrypoint structure", () => {
     expect(source).toContain('nav("usage", t("usage"))');
     expect(source).not.toContain('nav("usage", "Usage")');
   });
+
+  it("keeps authentication UI outside the application shell", () => {
+    const workspace = (import.meta.glob("./workspace.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./workspace.tsx"];
+    const login = (import.meta.glob("./features/auth/Login.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./features/auth/Login.tsx"];
+
+    expect(workspace).not.toMatch(/function Login\b/);
+    expect(login).toContain("export function Login");
+  });
 });

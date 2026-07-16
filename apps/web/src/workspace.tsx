@@ -4,7 +4,7 @@ import "./styles/views.css";
 import {
   activateChapterVersion, answerOutline, confirmOutline, controlWorkflow, createConversation, createProject, createWorkflow,
   getChapterDiff, importOutline, listChapters, listChapterVersions, listCredentials,
-  forkConversation, listMessages, login, probeProvider, saveChapterVersion, saveCredential, sendMessage, setupAdmin, subscribeConversationEvents,
+  forkConversation, listMessages, probeProvider, saveChapterVersion, saveCredential, sendMessage, subscribeConversationEvents,
   getWorkflow, listModelProfiles, logout, requestExport, saveModelProfile, deleteCredential, subscribeWorkflowEvents, type Chapter, type ChapterVersion, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
 } from "./lib/api/client";
 import { loadDraft, saveDraft } from "./lib/drafts";
@@ -19,26 +19,11 @@ import { TokenMeter } from "./features/usage/TokenMeter";
 import { UsagePage } from "./features/usage/UsagePage";
 import { removeCredential, upsertCredential } from "./features/providers/credentialState";
 import { canApplyWorkflowAction } from "./features/workflows/WorkflowStatus";
+import { Login } from "./features/auth/Login";
 
 function newClientId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-}
-
-function Login({ onLoggedIn }: { onLoggedIn: () => void }) {
-  const { t } = useLanguage();
-  const [setup, setSetup] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const submit = async () => {
-    try {
-      if (setup) await setupAdmin({ email, password });
-      await login({ email, password });
-      onLoggedIn();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to sign in"); }
-  };
-  return <section className="auth-card"><p className="eyebrow">{t("appName")}</p><h1>{setup ? t("createOwner") : t("signInTitle")}</h1><p className="auth-copy">{t("authIntro")}</p><label>Email<input value={email} onChange={event => setEmail(event.target.value)} type="email" autoComplete="email" /></label><label>Password<input value={password} onChange={event => setPassword(event.target.value)} type="password" autoComplete={setup ? "new-password" : "current-password"} /></label><button className="primary wide" onClick={submit}>{setup ? t("createOwner") : t("signIn")}</button><button className="link" onClick={() => { setSetup(!setup); setMessage(""); }}>{setup ? t("alreadyAccount") : t("firstRun")}</button><p className="form-message" aria-live="polite">{message}</p></section>;
 }
 
 function Projects({ projects, onOpen, onCreated }: { projects: Project[]; onOpen: (project: Project) => void; onCreated: (project: Project) => void }) {
