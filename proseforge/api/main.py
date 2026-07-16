@@ -39,11 +39,12 @@ from proseforge.providers.zhipu import ZhipuProvider
 
 from proseforge.settings import Settings, get_settings
 from proseforge.api.middleware import CorrelationIdMiddleware
+from proseforge.version import __version__
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved = settings or get_settings()
-    application = FastAPI(title="ProseForge API", version="1.0.0")
+    application = FastAPI(title="ProseForge API", version=__version__)
     application.add_middleware(CorrelationIdMiddleware)
     application.state.settings = resolved
     application.state.auth = AuthService(resolved.jwt_secret.get_secret_value())
