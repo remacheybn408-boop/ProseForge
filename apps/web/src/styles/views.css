@@ -40,6 +40,13 @@
 .review-pane strong { color: var(--text); display: block; margin-bottom: 12px; }
 .review-pane span { color: var(--faint); }
 .chat-pane { display: grid; grid-template-rows: auto 1fr auto; gap: 12px; }
+.assistant-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.assistant-heading strong { margin-bottom: 0; }
+.assistant-toggle { min-width: 44px; min-height: 44px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--secondary); cursor: pointer; font-size: 20px; line-height: 1; }
+.assistant-toggle:hover { border-color: var(--primary); color: var(--text); }
+.assistant-content { min-height: 0; display: grid; grid-template-rows: auto 1fr auto; gap: 12px; max-height: 1200px; overflow: hidden; opacity: 1; transition: max-height 220ms ease, opacity 180ms ease, visibility 0s linear 0s; }
+.chat-pane.is-collapsed { grid-template-rows: auto; min-height: 0; }
+.chat-pane.is-collapsed .assistant-content { max-height: 0; opacity: 0; visibility: hidden; pointer-events: none; transition-delay: 0s, 0s, 220ms; }
 .chat-messages { overflow: auto; display: grid; align-content: start; gap: 8px; }
 .chat-messages > p { color: var(--faint); }
 .chat-message { padding: 9px 10px; border-radius: 8px; background: var(--muted); font-size: 12px; white-space: pre-wrap; }
@@ -135,3 +142,13 @@
   .workflow-actions button { flex: 1 1 44%; }
 }
 .workflow-actions button:disabled, .workflow-status button:disabled { opacity: .45; cursor: not-allowed; }
+.context-item-card { grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 16px; }
+.context-item-card > div:first-child { display: grid; gap: 8px; min-width: 0; }
+.context-item-card small { color: var(--faint); font-size: 12px; }
+.context-item-card label { display: inline-flex; align-items: center; gap: 8px; color: var(--secondary); font-size: 12px; }
+.context-item-card input[type="number"] { width: 76px; min-height: 40px; border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; background: var(--surface); color: var(--text); }
+.context-item-card input[type="checkbox"] { width: 18px; height: 18px; }
+.context-item-card.is-excluded { opacity: .72; }
+.context-item-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.context-item-actions button, .detail-card button { min-height: 44px; }
+@media(max-width:600px) { .context-item-actions { grid-column: 1 / -1; justify-content: flex-start; } }

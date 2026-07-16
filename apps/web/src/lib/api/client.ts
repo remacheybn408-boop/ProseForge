@@ -1,7 +1,7 @@
 export type Project = { id: string; slug: string; title: string; genre: string; style: string; language: string; status: string };
 export type Credential = { id: string; provider: string; masked_key: string };
 export type Outline = { id: string; project_id: string; title: string; status: string; payload: Record<string, unknown>; missing_questions: string[]; missing_fields: string[]; confirmed: boolean };
-export type ContextItem = { id: string; project_id: string; source_type: string; content: string; pinned: boolean; priority: number; excluded: boolean; provenance: Record<string, unknown> };
+export type ContextItem = { id: string; project_id: string; source_type: string; content: string; pinned: boolean; priority: number; excluded: boolean; token_estimate: number; provenance: Record<string, unknown> };
 export type Chapter = { id: string; project_id: string; chapter_no: number; title: string; status: string; active_version_id?: string | null };
 export type ChapterVersion = { id: string; chapter_id: string; version_no: number; content: string; word_count: number };
 export type Workflow = { id: string; project_id: string; workflow_type: string; status: string };
@@ -60,10 +60,11 @@ export function answerOutline(outlineId: string, answers: Record<string, unknown
 export function confirmOutline(outlineId: string) { return request<Outline>(`/api/v1/outlines/${outlineId}/confirm`, { method: "POST" }); }
 export function listContext(projectId: string, options: { profileId?: string; provider?: string; model?: string } = {}) {
   const query = new URLSearchParams(Object.entries({ profile_id: options.profileId, provider: options.provider, model: options.model }).filter(([, value]) => value !== undefined) as [string, string][]).toString();
-  return request<{ items: ContextItem[]; used_tokens: number; context_window: number; available_tokens: number; provider?: string; model?: string }>(`/api/v1/projects/${projectId}/context${query ? `?${query}` : ""}`);
+  return request<{ items: ContextItem[]; used_tokens: number; context_window: number; available_tokens: number; system_reserved_tokens: number; history_tokens: number; output_reserve_tokens: number; provider?: string; model?: string }>(`/api/v1/projects/${projectId}/context${query ? `?${query}` : ""}`);
 }
 export function addContext(projectId: string, content: string, sourceType = "manual") { return request<ContextItem>(`/api/v1/projects/${projectId}/context/items`, { method: "POST", body: JSON.stringify({ content, source_type: sourceType }) }); }
 export function updateContext(itemId: string, payload: Partial<Pick<ContextItem, "content" | "pinned" | "priority" | "excluded">>) { return request<ContextItem>(`/api/v1/context/items/${itemId}`, { method: "PATCH", body: JSON.stringify(payload) }); }
+export function deleteContext(itemId: string) { return request<void>(`/api/v1/context/items/${itemId}`, { method: "DELETE" }); }
 export function createWorkflow(projectId: string, chapterNumbers: number[]) { return request<Workflow>(`/api/v1/projects/${projectId}/workflows/novel`, { method: "POST", body: JSON.stringify({ chapter_numbers: chapterNumbers }) }); }
 export function getWorkflow(workflowId: string) { return request<Workflow>(`/api/v1/workflows/${workflowId}`); }
 export function controlWorkflow(workflowId: string, action: "pause" | "resume" | "cancel" | "retry") { return request<Workflow>(`/api/v1/workflows/${workflowId}/${action}`, { method: "POST" }); }
@@ -73,7 +74,15 @@ export async function subscribeWorkflowEvents(workflowId: string, onEvent: (even
   while (!options.signal?.aborted) {
   const headers: Record<string, string> = {};
   if (lastEventId > 0) headers["Last-Event-ID"] = String(lastEventId);
-  const response = await fetch(`/api/v1/workflows/${encodeURIComponent(workflowId)}/events`, { credentials: "include", headers, signal: options.signal });
+  let response: Response | undefined;
+  try {
+    response = await fetch(`/api/v1/workflows/${encodeURIComponent(workflowId)}/events`, { credentials: "include", headers, signal: options.signal });
+  } catch {
+    if (options.signal?.aborted) return;
+    await new Promise(resolve => setTimeout(resolve, options.reconnectDelayMs ?? 1000));
+    continue;
+  }
+  if (!response) continue;
   if (!response.ok) throw new ApiError(response.status, `Workflow event stream failed (${response.status})`);
   if (!response.body) {
     await new Promise(resolve => setTimeout(resolve, options.reconnectDelayMs ?? 1000));

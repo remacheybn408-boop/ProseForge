@@ -29,7 +29,7 @@ export function SettingsView() {
   const modelsQuery = useModelsQuery(provider);
 
   useEffect(() => {
-    listCredentials().then(setCredentials).catch(() => undefined);
+    listCredentials().then(rows => setCredentials(current => rows.reduce(upsertCredential, current))).catch(() => undefined);
     listModelProfiles().then(setProfiles).catch(() => undefined);
   }, []);
 

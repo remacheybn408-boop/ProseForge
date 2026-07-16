@@ -14,16 +14,33 @@ const messages = {
 } as const;
 
 const extraMessages = {
-  "zh-CN": { usage: "用量", startChapter: "起始章节", endChapter: "结束章节", logout: "退出登录" },
-  "en-US": { usage: "Usage", startChapter: "Start chapter", endChapter: "End chapter", logout: "Sign out" },
+  "zh-CN": {
+    usage: "用量", startChapter: "起始章节", endChapter: "结束章节", logout: "退出登录",
+    outlineInitialMessage: "导入大纲或在下方描述你的故事。", outlineNeedsAnswers: "还需要补充一些信息。", outlineReady: "可以确认。", outlineImportFailed: "大纲导入失败，请检查内容后重试。", outlineMoreAnswers: "还需要更多回答。", outlineAnswerFailed: "无法保存回答，请重试。", outlineConfirmedWorkflow: "大纲已确认，工作流已创建。", outlineCompleteAnswers: "请先完成必填回答。",
+    workflowNotStarted: "尚未创建工作流。", workflowActionUnavailable: "当前状态不支持此操作。", workflowStatus: "工作流状态",
+    usageTitle: "Token 用量", usageDescription: "实际服务商用量与本地估算会明确分开显示。", usageLoading: "正在加载用量…", usageUnavailable: "当前无法获取用量。", actualInput: "实际输入", actualOutput: "实际输出", estimatedTotal: "估算总量", actual: "实际", estimated: "估算", limit: "上限", costUnavailable: "费用不可用", tokenUsage: "Token 用量", used: "已使用", available: "可用", outputReserve: "预留输出", contextBudget70: "上下文已使用 70%，请留意可用空间。", contextBudget85: "上下文已使用 85%，建议精简记忆。", contextBudget95: "上下文接近上限，请先精简记忆。",
+    versionHistory: "版本历史", savedVersionsEmpty: "保存的版本会显示在这里。", version: "版本", activeVersion: "当前使用", words: "字", changedLines: "变更行数", compare: "对比", restore: "恢复", changes: "变更", chapter: "章节", chapterEditor: "章节编辑器", diff: "差异", unsavedDraft: "未保存草稿", saved: "已保存", loadSavedChapterFailed: "无法加载已保存章节。", saveConflict: "保存冲突，请重新加载最新版本。", restoredVersion: "已恢复版本。", restoreFailed: "无法恢复该版本。", diffLoaded: "差异已加载", diffFailed: "无法加载版本差异。", chatQueueFailed: "聊天消息未能加入队列，请检查 Worker 和模型设置。", alternativeBranch: "备选分支", alternativeBranchCreated: "备选分支已创建。", alternativeBranchFailed: "无法创建备选分支。", exportFailed: "无法准备导出文件。", email: "邮箱", password: "密码", unableSignIn: "无法登录。",
+  },
+  "en-US": {
+    usage: "Usage", startChapter: "Start chapter", endChapter: "End chapter", logout: "Sign out",
+    outlineInitialMessage: "Import an outline or describe your story below.", outlineNeedsAnswers: "A few answers are needed before confirmation.", outlineReady: "Ready to confirm.", outlineImportFailed: "Outline import failed. Check the content and try again.", outlineMoreAnswers: "More answers are needed.", outlineAnswerFailed: "Could not save the answer. Please try again.", outlineConfirmedWorkflow: "Outline confirmed; workflow created.", outlineCompleteAnswers: "Complete the required answers first.",
+    workflowNotStarted: "No workflow has been started yet.", workflowActionUnavailable: "That action is not available in the current state.", workflowStatus: "Workflow status",
+    usageTitle: "Token usage", usageDescription: "Actual provider usage and local estimates stay visibly separate.", usageLoading: "Loading usage…", usageUnavailable: "Usage is unavailable right now.", actualInput: "Actual input", actualOutput: "Actual output", estimatedTotal: "Estimated total", actual: "actual", estimated: "estimated", limit: "limit", costUnavailable: "Cost unavailable", tokenUsage: "Token usage", used: "used", available: "available", outputReserve: "output reserve", contextBudget70: "70% of the context is in use; keep an eye on the remaining space.", contextBudget85: "85% of the context is in use; consider trimming memories.", contextBudget95: "The context is near its limit; trim memories before continuing.",
+    versionHistory: "Version history", savedVersionsEmpty: "Saved versions will appear here.", version: "Version", activeVersion: "Active", words: "words", changedLines: "changed lines", compare: "Compare", restore: "Restore", changes: "Changes", chapter: "Chapter", chapterEditor: "Chapter editor", diff: "Diff", unsavedDraft: "Unsaved draft", saved: "Saved", loadSavedChapterFailed: "Unable to load the saved chapter.", saveConflict: "Save conflict: reload the latest version.", restoredVersion: "Restored version.", restoreFailed: "Could not restore that version.", diffLoaded: "Diff loaded", diffFailed: "Could not load the version diff.", chatQueueFailed: "Chat could not be queued; check the worker and provider settings.", alternativeBranch: "Alternative", alternativeBranchCreated: "Alternative branch created.", alternativeBranchFailed: "Could not create an alternative branch.", exportFailed: "Export could not be prepared.", email: "Email", password: "Password", unableSignIn: "Unable to sign in.",
+  },
 } as const;
 
 const credentialMessages: Record<Language, Record<string, string>> = {
-  "zh-CN": { removeCredential: "鍒犻櫎凭据", removeCredentialConfirm: "纭畾鍒犻櫎此凭据吗？", credentialRemoved: "凭据已删除", workflowEventsUnavailable: "宸ヤ綔娴佺姸鎬佹洿鏂版殏鏃朵笉鍙敤" },
+  "zh-CN": { removeCredential: "删除凭据", removeCredentialConfirm: "确定删除此凭据吗？", credentialRemoved: "凭据已删除", workflowEventsUnavailable: "工作流状态更新暂时不可用" },
   "en-US": { removeCredential: "Remove credential", removeCredentialConfirm: "Remove this credential?", credentialRemoved: "Credential removed.", workflowEventsUnavailable: "Live workflow updates are temporarily unavailable." },
 };
 
-export type TranslationKey = keyof typeof messages["zh-CN"] | keyof typeof extraMessages["zh-CN"] | keyof typeof credentialMessages["zh-CN"];
+const contextMessages = {
+  "zh-CN": { tokens: "个 Token", priority: "优先级", excluded: "排除", editMemory: "编辑记忆", saveMemory: "保存记忆", deleteMemory: "删除记忆", confirmDeleteMemory: "确定删除这条故事记忆吗？", contextActionFailed: "故事记忆操作失败，请重试。", collapseAssistant: "收起助手", expandAssistant: "展开助手" },
+  "en-US": { tokens: "tokens", priority: "Priority", excluded: "Excluded", editMemory: "Edit", saveMemory: "Save memory", deleteMemory: "Delete", confirmDeleteMemory: "Delete this story memory?", contextActionFailed: "The story memory action failed. Try again.", collapseAssistant: "Collapse assistant", expandAssistant: "Expand assistant" },
+} as const;
+
+export type TranslationKey = keyof typeof messages["zh-CN"] | keyof typeof extraMessages["zh-CN"] | keyof typeof credentialMessages["zh-CN"] | keyof typeof contextMessages["zh-CN"];
 export type Translator = (key: TranslationKey) => string;
 
 export function loadLanguage(): Language {
@@ -37,7 +54,7 @@ export function saveLanguage(language: Language): void {
 }
 
 export function createTranslator(language: Language): Translator {
-  return key => messages[language][key as keyof typeof messages["zh-CN"]] ?? extraMessages[language][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[language][key] ?? messages[defaultLanguage][key as keyof typeof messages["zh-CN"]] ?? extraMessages[defaultLanguage][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[defaultLanguage][key] ?? key;
+  return key => messages[language][key as keyof typeof messages["zh-CN"]] ?? extraMessages[language][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[language][key] ?? contextMessages[language][key as keyof typeof contextMessages["zh-CN"]] ?? messages[defaultLanguage][key as keyof typeof messages["zh-CN"]] ?? extraMessages[defaultLanguage][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[defaultLanguage][key] ?? contextMessages[defaultLanguage][key as keyof typeof contextMessages["zh-CN"]] ?? key;
 }
 
 type LanguageContextValue = { language: Language; setLanguage: (language: Language) => void; t: Translator };
