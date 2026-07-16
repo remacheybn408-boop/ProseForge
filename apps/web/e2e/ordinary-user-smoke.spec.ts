@@ -30,6 +30,9 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByLabel("Endpoint URL (optional)").fill("http://provider-mock:8080/v1");
   await page.getByRole("button", { name: "Save model service" }).click();
   await expect(page.getByRole("heading", { name: "Configured" })).toBeVisible();
+  await page.getByLabel("Profile name").fill("E2E Writer");
+  await page.getByLabel("Model name / Model ID").fill("gpt-4.1-mini");
+  await page.getByRole("button", { name: "Save model profile" }).click();
   await page.getByRole("button", { name: "Test connection" }).last().click();
   await expect(page.getByText("openai · Connected")).toBeVisible();
   await page.getByRole("button", { name: "Outline intake" }).click();
@@ -56,6 +59,7 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await expect(page.getByText(/Saved version \d+/)).toBeVisible();
 
   await page.getByRole("button", { name: "Story memory" }).click();
+  await expect(page.getByLabel("Model profile")).toBeVisible();
   await page.getByLabel("Add a story memory").fill("Mira fears deep water.");
   await page.getByRole("button", { name: "Add memory" }).click();
   await expect(page.getByText("Mira fears deep water.")).toBeVisible();
