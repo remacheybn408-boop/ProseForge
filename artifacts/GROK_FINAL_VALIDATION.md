@@ -1,6 +1,6 @@
 # ProseForge Grok Product Completion - Final Validation
 
-Validation source commit: `f596fed`
+Validation source commit: `46e2524`
 Branch: `feat/grok-product-completion`
 Base: `origin/master` at `df2c211`
 Date: 2026-07-16
@@ -16,7 +16,7 @@ All test and runtime validation commands below were executed through Docker Comp
 | Provider contract | `docker compose ... run --rm contract-test` | 0 | 19 passed |
 | Migration/database | `docker compose ... run --rm migration-test` | 0 | 27 passed |
 | Recovery | `docker compose ... run --rm recovery-test` | 0 | 5 passed |
-| Web typecheck/unit/build | `docker compose ... run --rm web-test` | 0 | 14 files, 32 tests passed; typecheck/build passed |
+| Web typecheck/unit/build | `docker compose ... run --rm web-test` | 0 | 14 files, 33 tests passed; typecheck/build passed |
 | Authenticated E2E | `docker compose ... run --rm e2e` | 0 | 10 passed |
 | Startup check | `docker compose ... exec -T api python -m proseforge.operations.startup_check` | 0 | passed |
 | Worker health | Celery inspect ping in worker container | 0 | 1 node online, pong |
@@ -42,7 +42,7 @@ Fault injection and durability:
 - Backup archive: `/data/backups/proseforge-20260716T122029Z.tar.gz`; SHA-256 `34c8b4833275054cf4afe622075b8da01ca72c2526a83774cc8e21011e292233`.
 - Current-code backup verification and file restore passed with 1 manifest file; restore to fresh `proseforge_validation_staging_1348` passed and restored project count was 1. Existing staging databases were not overwritten.
 
-Implemented safeguards include model-catalog context windows, durable workflow SSE polling plus web subscription/replay headers, state-aware workflow controls, safe workflow lease release at pause/cancel/budget/failure/completion points, post-usage workflow budget blocking, writer/editor/rewriter usage attribution, project attribution for Chat usage, owner-scoped credential replacement/deletion and model-profile boundary evidence, login rate limiting, aligned release versions, Docker CI quality gates, localized logout/usage/navigation labels, mobile navigation/touch sizing, project context injection into Chat, workflow state restoration after refresh, a visible model-profile context selector, authentication UI extracted from the application shell, and project-list UI extracted into a feature module.
+Implemented safeguards include model-catalog context windows, durable workflow SSE polling plus web subscription/replay headers, state-aware workflow controls, safe workflow lease release at pause/cancel/budget/failure/completion points, post-usage workflow budget blocking, writer/editor/rewriter usage attribution, project attribution for Chat usage, owner-scoped credential replacement/deletion and model-profile boundary evidence, login rate limiting, aligned release versions, Docker CI quality gates, localized logout/usage/navigation labels, mobile navigation/touch sizing, project context injection into Chat, workflow state restoration after refresh, a visible model-profile context selector, authentication UI extracted from the application shell, project-list UI extracted into a feature module, and outline-intake UI extracted into a feature module.
 
 Known limitations and uncompleted items:
 
