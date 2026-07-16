@@ -11,8 +11,8 @@ test("authenticated user can inspect actual and estimated usage", async ({ page,
   await request.post("/api/v1/auth/setup", { data: { email, password } });
 
   await page.goto("/");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("邮箱").fill(email);
+  await page.getByLabel("密码").fill(password);
   const summaryResponse = page.waitForResponse(response => response.url().includes("/api/v1/usage/summary") && response.request().method() === "GET" && response.status() === 200);
   await page.locator(".auth-card button.primary").click();
   await expect(page.getByRole("button", { name: "English", exact: true })).toBeVisible();

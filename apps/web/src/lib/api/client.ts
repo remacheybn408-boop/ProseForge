@@ -73,7 +73,15 @@ export async function subscribeWorkflowEvents(workflowId: string, onEvent: (even
   while (!options.signal?.aborted) {
   const headers: Record<string, string> = {};
   if (lastEventId > 0) headers["Last-Event-ID"] = String(lastEventId);
-  const response = await fetch(`/api/v1/workflows/${encodeURIComponent(workflowId)}/events`, { credentials: "include", headers, signal: options.signal });
+  let response: Response | undefined;
+  try {
+    response = await fetch(`/api/v1/workflows/${encodeURIComponent(workflowId)}/events`, { credentials: "include", headers, signal: options.signal });
+  } catch {
+    if (options.signal?.aborted) return;
+    await new Promise(resolve => setTimeout(resolve, options.reconnectDelayMs ?? 1000));
+    continue;
+  }
+  if (!response) continue;
   if (!response.ok) throw new ApiError(response.status, `Workflow event stream failed (${response.status})`);
   if (!response.body) {
     await new Promise(resolve => setTimeout(resolve, options.reconnectDelayMs ?? 1000));
