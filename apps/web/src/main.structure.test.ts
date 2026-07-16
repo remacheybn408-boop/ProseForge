@@ -7,4 +7,11 @@ describe("web entrypoint structure", () => {
     expect(source).not.toMatch(/function (Login|Projects|Studio|OutlineView|ContextView|WorkflowView|SettingsView|App)\b/);
     expect(source.split("\n").length).toBeLessThan(30);
   });
+
+  it("uses the translated label for the usage navigation item", () => {
+    const source = (import.meta.glob("./workspace.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./workspace.tsx"];
+
+    expect(source).toContain('nav("usage", t("usage"))');
+    expect(source).not.toContain('nav("usage", "Usage")');
+  });
 });
