@@ -11,7 +11,7 @@ from proseforge.api.sse.encoder import encode_sse
 from proseforge.application.auth.service import AuthUser
 from proseforge.application.workflows.control import WorkflowControlService, workflow_command
 from proseforge.domain.chapter.entity import Chapter
-from proseforge.domain.workflow.state import ALLOWED_TRANSITIONS
+from proseforge.application.workflows.control import decode_checkpoint
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
 router = APIRouter(prefix="/api/v1", tags=["workflows"])
@@ -23,10 +23,17 @@ class NovelWorkflowRequest(BaseModel):
     provider: str = "openai"
     model: str = "gpt-4.1-mini"
     editor_model: str | None = None
+    token_limit: int = Field(default=0, ge=0)
 
 
-def _response(run) -> dict[str, str]:
-    return {"id": run.id, "project_id": run.project_id, "workflow_type": run.workflow_type, "status": run.status}
+def _response(run) -> dict[str, object]:
+    checkpoint = decode_checkpoint(run.checkpoint)
+    return {
+        "id": run.id, "project_id": run.project_id, "workflow_type": run.workflow_type, "status": run.status,
+        "estimated_cost": float(getattr(run, "estimated_cost", 0) or 0), "cost_limit": float(getattr(run, "cost_limit", 0) or 0),
+        "used_tokens": int(getattr(run, "used_tokens", 0) or 0), "token_limit": int(getattr(run, "token_limit", 0) or 0),
+        "checkpoint": checkpoint.get("phase", run.checkpoint), "last_error": getattr(run, "last_error", None),
+    }
 
 
 @router.post("/projects/{project_id}/workflows/novel", status_code=status.HTTP_201_CREATED)
@@ -45,7 +52,7 @@ async def create_workflow(
         for chapter_no in payload.chapter_numbers:
             if chapter_no not in existing:
                 await uow.chapters.add(Chapter.create(project_id=project.id, chapter_no=chapter_no, title=f"Chapter {chapter_no}"))
-        return_value = await uow.workflows.create(project.id, "NOVEL", cost_limit=payload.cost_limit)
+        return_value = await uow.workflows.create(project.id, "NOVEL", cost_limit=payload.cost_limit, token_limit=payload.token_limit)
         command = workflow_command(user_id=user.id, chapter_numbers=payload.chapter_numbers, provider=payload.provider, model=payload.model, editor_model=payload.editor_model or payload.model)
         await uow.workflows.set_command(return_value, command)
         await uow.commit()
