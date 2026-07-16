@@ -34,3 +34,17 @@ def test_backup_contains_database_dump_and_manifest(tmp_path):
     verified = service.verify(created.archive)
     assert verified.metadata["migration_revision"] == "0004_users"
     assert verified.metadata["entries"][-1]["path"] == "database.dump"
+
+
+def test_backup_source_can_contain_backup_root(tmp_path):
+    source = tmp_path / "data"
+    backup_root = source / "backups"
+    source.mkdir()
+    (source / "project.json").write_text('{"title":"Durable"}', encoding="utf-8")
+    service = BackupService(backup_root)
+
+    created = service.create(source)
+
+    verified = service.verify(created.archive)
+    assert verified.files == 1
+    assert verified.sha256 == created.sha256
