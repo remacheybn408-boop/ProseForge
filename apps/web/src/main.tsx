@@ -6,7 +6,7 @@ import {
   activateChapterVersion, addContext, answerOutline, confirmOutline, controlWorkflow, createConversation, createProject, createWorkflow,
   getChapterDiff, getHealth, getWorkflow, importOutline, listChapters, listChapterVersions, listContext, listCredentials, listOutlines,
   forkConversation, listMessages, listProjects, login, probeProvider, saveChapterVersion, saveCredential, sendMessage, setupAdmin, subscribeConversationEvents, updateContext,
-  listModelProfiles, saveModelProfile, type Chapter, type ChapterVersion, type ContextItem, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
+  listModelProfiles, requestExport, saveModelProfile, type Chapter, type ChapterVersion, type ContextItem, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
 } from "./lib/api/client";
 import { loadDraft, saveDraft } from "./lib/drafts";
 import { ProjectVersionHistory } from "./features/VersionHistory";
@@ -83,7 +83,7 @@ function ContextView({ project }: { project: Project }) {
   const { t } = useLanguage();
   const [items, setItems] = useState<ContextItem[]>([]); const [used, setUsed] = useState(0); const [content, setContent] = useState("");
   const reload = () => listContext(project.id).then(result => { setItems(result.items); setUsed(result.used_tokens); }).catch(() => undefined);
-  useEffect(reload, [project.id]);
+  useEffect(() => { void reload(); }, [project.id]);
   const add = async () => { if (!content.trim()) return; const item = await addContext(project.id, content); setItems([...items, item]); setContent(""); };
   const pin = async (item: ContextItem) => { const updated = await updateContext(item.id, { pinned: !item.pinned }); setItems(items.map(value => value.id === item.id ? updated : value)); };
   return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">{t("context")}</p><h2>{t("contextHero")}</h2><p>{t("contextIntro")}</p></div><div className="settings-form"><label>{t("addMemory")}<textarea value={content} onChange={event => setContent(event.target.value)} placeholder={t("addMemoryPlaceholder")} /></label><button className="primary" onClick={add}>{t("addContext")}</button></div><div className="detail-list">{items.map(item => <div className="detail-card" key={item.id}><div><strong>{item.pinned ? "📌 " : ""}{item.source_type}</strong><span>{item.content}</span></div><button onClick={() => pin(item)}>{item.pinned ? t("unpin") : t("pin")}</button></div>)}</div></section>;

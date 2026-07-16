@@ -71,7 +71,7 @@ services:
     volumes:
       - .:/app
       - web-node-modules:/app/apps/web/node_modules
-    command: ["sh", "-lc", "corepack enable && pnpm install --frozen-lockfile && pnpm test -- --run && pnpm build"]
+    command: ["sh", "-lc", "corepack enable && pnpm install --frozen-lockfile && pnpm typecheck && pnpm test:unit && pnpm build"]
 
   e2e:
     image: mcr.microsoft.com/playwright:v1.61.1-noble
