@@ -60,4 +60,6 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await expect(page.getByText("Alternative branch created.")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("button", { name: /Chapter 1/i })).toBeVisible();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByRole("heading", { name: /sign in to your writing space/i })).toBeVisible();
 });
