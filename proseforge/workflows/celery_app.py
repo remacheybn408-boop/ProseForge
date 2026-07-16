@@ -284,6 +284,7 @@ async def _generate_chat(payload: dict[str, object]) -> str:
     import json
 
     from proseforge.application.conversations.generate_reply import GenerateReply
+    from proseforge.application.conversations.project_context import build_project_context
     from proseforge.application.conversations.request import build_chat_request
     from proseforge.application.conversations.terminal_state import terminal_message_status
     from proseforge.domain.ports.model_provider import GenerationRequest
@@ -291,7 +292,6 @@ async def _generate_chat(payload: dict[str, object]) -> str:
     from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
     from proseforge.infrastructure.events.database import DatabaseEventStream
     from proseforge.infrastructure.security.credential_cipher import CredentialCipher
-    from proseforge.context_engine.compiler import compile_context
     from proseforge.providers.factory import build_provider
     from proseforge.settings import get_settings
 
@@ -319,12 +319,11 @@ async def _generate_chat(payload: dict[str, object]) -> str:
                 await uow.commit()
                 return "provider-not-configured"
             context_items = [item for item in await uow.context.list_owned(project.id, user_id) if not item.excluded]
-            context_blocks = [
-                {"id": item.id, "source_type": item.source_type, "source_ids": [item.source_id], "content": item.content, "pinned": item.pinned, "priority": item.priority}
-                for item in context_items
-            ]
-            compiled_context = compile_context("chat", context_blocks, input_budget=8000)
-            context_text = "\n".join(str(block.get("content", "")) for block in compiled_context.blocks)
+            context_text = build_project_context(
+                context_items=context_items,
+                active_chapters=await uow.chapters.active_contents(project.id, user_id),
+                input_budget=8000,
+            )
             try:
                 raw = base64.b64decode(settings.master_key.get_secret_value(), validate=True)
             except (ValueError, binascii.Error):
