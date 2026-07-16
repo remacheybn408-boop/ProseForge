@@ -30,10 +30,16 @@ def _payload(request: OutlineImportRequest) -> dict[str, object]:
 
 
 def _response(outline) -> dict[str, object]:
+    payload = json.loads(outline.payload)
+    missing_fields = [field for field in intake.REQUIRED if not payload.get(field)]
+    if payload.get("planned_volumes") is None and payload.get("planned_chapters") is None:
+        missing_fields.append("planned_chapters")
+    if payload.get("chapter_word_target") is None:
+        missing_fields.append("chapter_word_target")
     return {
         "id": outline.id, "project_id": outline.project_id, "title": outline.title,
-        "status": outline.status, "payload": json.loads(outline.payload),
-        "missing_questions": json.loads(outline.missing_questions), "confirmed": outline.confirmed,
+        "status": outline.status, "payload": payload,
+        "missing_questions": json.loads(outline.missing_questions), "missing_fields": missing_fields, "confirmed": outline.confirmed,
     }
 
 

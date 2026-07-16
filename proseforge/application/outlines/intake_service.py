@@ -20,12 +20,19 @@ class OutlineSpec:
 class OutlineIntakeService:
     REQUIRED = ("title", "genre", "characters", "point_of_view")
 
+    @staticmethod
+    def _optional_int(value: object) -> int | None:
+        try:
+            return int(value) if value not in (None, "") else None
+        except (TypeError, ValueError):
+            return None
+
     def parse(self, payload: dict[str, object]) -> OutlineSpec:
         spec = OutlineSpec(
             title=str(payload.get("title", "")), genre=str(payload.get("genre", "")), style=str(payload.get("style", "")),
             protagonist=str(payload.get("protagonist", "")), characters=tuple(str(item) for item in payload.get("characters", ()) or ()),
-            point_of_view=str(payload.get("point_of_view", "")), planned_volumes=payload.get("planned_volumes"),
-            planned_chapters=payload.get("planned_chapters"), chapter_word_target=payload.get("chapter_word_target"),
+            point_of_view=str(payload.get("point_of_view", "")), planned_volumes=self._optional_int(payload.get("planned_volumes")),
+            planned_chapters=self._optional_int(payload.get("planned_chapters")), chapter_word_target=self._optional_int(payload.get("chapter_word_target")),
         )
         missing = tuple(field for field in self.REQUIRED if not getattr(spec, field))
         return OutlineSpec(**{**spec.__dict__, "missing_required_fields": missing})
