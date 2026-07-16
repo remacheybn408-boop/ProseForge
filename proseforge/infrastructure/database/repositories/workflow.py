@@ -65,6 +65,14 @@ class SqlAlchemyWorkflowRepository:
         await self.session.flush()
         return True
 
+    async def release_lease(self, run: WorkflowRunModel, owner: str) -> None:
+        if run.lease_owner not in {None, owner}:
+            raise PermissionError("workflow lease is not owned by caller")
+        run.lease_owner = None
+        run.lease_expires_at = None
+        run.heartbeat_at = None
+        await self.session.flush()
+
     async def heartbeat(self, run: WorkflowRunModel, owner: str, ttl_seconds: int = 60) -> None:
         if run.lease_owner != owner:
             raise PermissionError("workflow lease is not owned by caller")

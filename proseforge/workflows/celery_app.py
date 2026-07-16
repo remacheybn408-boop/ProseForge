@@ -84,6 +84,7 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
             chapters = await uow.chapters.list_owned(run.project_id, owner_id)
             if credential is None or project is None:
                 await uow.workflows.transition(run, "FAILED")
+                await uow.workflows.release_lease(run, lease_owner)
                 await uow.commit()
                 return "provider-or-project-not-configured"
             associated = f"{owner_id}:{provider_id}:{credential.id}".encode()
@@ -99,6 +100,7 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
             targets = [chapter for chapter in chapters if not requested or chapter.chapter_no in requested]
             if not targets:
                 await uow.workflows.transition(run, "FAILED")
+                await uow.workflows.release_lease(run, lease_owner)
                 await uow.commit()
                 return "no-chapters"
             context_items = [item for item in await uow.context.list_owned(run.project_id, owner_id) if not item.excluded]
@@ -115,11 +117,16 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                 if run is None:
                     return "workflow-not-found"
                 if should_abort_workflow(run.status):
+                    await uow.workflows.release_lease(run, lease_owner)
+                    await uow.commit()
                     return "cancelled"
                 if run.status == "PAUSED":
+                    await uow.workflows.release_lease(run, lease_owner)
+                    await uow.commit()
                     return "paused"
                 if budget_blocked(used_tokens=int(getattr(run, "used_tokens", 0) or 0), token_limit=int(getattr(run, "token_limit", 0) or 0), estimated_next_tokens=1, estimated_cost=float(run.estimated_cost or 0), cost_limit=float(run.cost_limit or 0), estimated_next_cost=None):
                     await uow.workflows.transition(run, "BUDGET_BLOCKED")
+                    await uow.workflows.release_lease(run, lease_owner)
                     await uow.commit()
                     return "budget-blocked"
                 await uow.workflows.heartbeat(run, lease_owner)
@@ -148,11 +155,16 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                 if run is None:
                     return "workflow-not-found"
                 if should_abort_workflow(run.status):
+                    await uow.workflows.release_lease(run, lease_owner)
+                    await uow.commit()
                     return "cancelled"
                 if run.status == "PAUSED":
+                    await uow.workflows.release_lease(run, lease_owner)
+                    await uow.commit()
                     return "paused"
                 if budget_exceeded_after_usage(run):
                     await uow.workflows.transition(run, "BUDGET_BLOCKED")
+                    await uow.workflows.release_lease(run, lease_owner)
                     await uow.commit()
                     return "budget-blocked"
                 version = await uow.chapters.append_version(chapter_id=chapter.id, content=content)
@@ -162,9 +174,12 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             run = await uow.workflows.get_owned(workflow_id, owner_id)
             if run is not None and should_abort_workflow(run.status):
+                await uow.workflows.release_lease(run, lease_owner)
+                await uow.commit()
                 return "cancelled"
             if run is not None and run.status == "RUNNING":
                 await uow.workflows.transition(run, "COMPLETED")
+                await uow.workflows.release_lease(run, lease_owner)
                 await uow.commit()
         return "completed"
     except Exception as error:
@@ -173,6 +188,7 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
             if run is not None and run.status in {"RUNNING", "RETRYING", "RECOVERING"}:
                 run.last_error = type(error).__name__
                 await uow.workflows.transition(run, "FAILED")
+                await uow.workflows.release_lease(run, lease_owner)
                 await uow.commit()
         raise
     finally:

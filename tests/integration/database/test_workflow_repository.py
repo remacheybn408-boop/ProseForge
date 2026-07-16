@@ -48,3 +48,19 @@ async def test_workflow_lease_checkpoint_recovery_and_cost_guard(session_factory
         assert await repository.recover_expired() == 1
         await session.commit()
         assert run.status == "RECOVERING"
+
+
+@pytest.mark.asyncio
+async def test_releasing_a_paused_lease_allows_resume_worker(session_factory):
+    async with session_factory() as session:
+        session.add(ProjectModel(id="p-pause-lease", owner_id="u1", slug="pause-lease", title="Pause lease"))
+        await session.flush()
+        repository = SqlAlchemyWorkflowRepository(session)
+        run = await repository.create("p-pause-lease", "NOVEL")
+        assert await repository.acquire_lease(run, "worker-a", ttl_seconds=60)
+
+        await repository.release_lease(run, "worker-a")
+
+        assert run.lease_owner is None
+        assert run.lease_expires_at is None
+        assert await repository.acquire_lease(run, "worker-b", ttl_seconds=60)
