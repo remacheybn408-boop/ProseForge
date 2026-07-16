@@ -30,4 +30,12 @@ describe("web entrypoint structure", () => {
     expect(workspace).not.toMatch(/function Projects\b/);
     expect(projects).toContain("export function Projects");
   });
+
+  it("keeps outline intake UI outside the application shell", () => {
+    const workspace = (import.meta.glob("./workspace.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./workspace.tsx"];
+    const outline = (import.meta.glob("./features/outlines/OutlineView.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./features/outlines/OutlineView.tsx"];
+
+    expect(workspace).not.toMatch(/function OutlineView\b/);
+    expect(outline).toContain("export function OutlineView");
+  });
 });

@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import "./styles/tokens.css";
 import "./styles/views.css";
 import {
-  activateChapterVersion, answerOutline, confirmOutline, controlWorkflow, createConversation, createWorkflow,
-  getChapterDiff, importOutline, listChapters, listChapterVersions, listCredentials,
+  activateChapterVersion, controlWorkflow, createConversation,
+  getChapterDiff, listChapters, listChapterVersions, listCredentials,
   forkConversation, listMessages, probeProvider, saveChapterVersion, saveCredential, sendMessage, subscribeConversationEvents,
-  getWorkflow, listModelProfiles, logout, requestExport, saveModelProfile, deleteCredential, subscribeWorkflowEvents, type Chapter, type ChapterVersion, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
+  getWorkflow, listModelProfiles, logout, requestExport, saveModelProfile, deleteCredential, subscribeWorkflowEvents, type Chapter, type ChapterVersion, type Credential, type ModelProfile, type Project, type Workflow,
 } from "./lib/api/client";
 import { loadDraft, saveDraft } from "./lib/drafts";
 import { ProjectVersionHistory } from "./features/VersionHistory";
@@ -21,6 +21,7 @@ import { removeCredential, upsertCredential } from "./features/providers/credent
 import { canApplyWorkflowAction } from "./features/workflows/WorkflowStatus";
 import { Login } from "./features/auth/Login";
 import { Projects } from "./features/projects/Projects";
+import { OutlineView } from "./features/outlines/OutlineView";
 
 function newClientId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -47,22 +48,6 @@ function Studio({ project }: { project: Project }) {
   const fork = async () => { if (!conversation || !chat.length) return; try { const latest = await listMessages(conversation.id, conversation.branch_id); const point = [...latest].reverse().find(item => item.role === "assistant") ?? latest.at(-1); if (!point) return; const branch = await forkConversation(conversation.id, point.id, `Alternative ${new Date().toLocaleTimeString()}`); setConversation({ id: conversation.id, branch_id: branch.id }); setChat(await listMessages(conversation.id, branch.id)); setMessage("Alternative branch created."); } catch { setMessage("Could not create an alternative branch."); } };
   const downloadMarkdown = async () => { try { const result = await requestExport(project.id, "md"); window.open(result.download_url, "_blank", "noopener,noreferrer"); } catch { setMessage("Export could not be prepared."); } };
   return <section className="studio-layout"><aside className="chapter-tree"><strong>{t("chapters")}</strong>{chapters.map(item => <button className={chapter?.id === item.id ? "selected" : ""} key={item.id} onClick={() => setChapter(item)}>{String(item.chapter_no).padStart(2, "0")} · {item.title}</button>)}{!chapters.length && <small>{message}</small>}</aside><div className="editor-pane"><div className="chapter-head"><span>{chapter ? `${t("chapters")} ${String(chapter.chapter_no).padStart(2, "0")}` : project.title}</span><span className="status">{message}</span></div><textarea className="editor" value={content} onChange={event => { setContent(event.target.value); setDirty(true); }} placeholder={t("waitingForWorker")} /><div className="version-actions">{versions.map(version => <span key={version.id}><button onClick={() => restore(version)}>v{version.version_no}</button><button onClick={() => showDiff(version)} aria-label={`Diff version ${version.version_no}`}>Diff</button></span>)}</div>{diff.length > 0 && <pre className="diff-preview">{diff.join("\n")}</pre>}<button className="primary" onClick={save} disabled={!chapter}>{t("saveVersion")}</button><button onClick={downloadMarkdown}>{t("downloadMarkdown")}</button></div><div className="review-pane chat-pane"><strong>{t("writingCompanion")}</strong>{profiles.length > 0 && <label>{t("modelProfile")}<select value={profileId} onChange={event => setProfileId(event.target.value)}>{profiles.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}<div className="chat-messages">{chat.length === 0 && <p>{t("askCompanion")}</p>}{chat.map(item => <div className={`chat-message ${item.role}`} key={item.id}>{item.content || t("waitingForWorker")}<small>{item.status}</small></div>)}</div><div className="chat-composer"><textarea value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder={t("askCompanion")} /><button onClick={fork} disabled={!conversation || !chat.length}>{t("forkBranch")}</button><button className="primary" onClick={send}>{t("send")}</button></div></div></section>;
-}
-
-function OutlineView({ project, onWorkflow }: { project: Project; onWorkflow: (workflow: Workflow) => void }) {
-  const { t } = useLanguage();
-  const [outline, setOutline] = useState<Outline | null>(null);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [startChapter, setStartChapter] = useState(1);
-  const [endChapter, setEndChapter] = useState(1);
-  const [message, setMessage] = useState("Import an outline or describe your story below.");
-  const submit = async () => { try { const item = await importOutline(project.id, { title: title || "Untitled outline", content }); setOutline(item); setMessage(item.missing_questions.length ? "A few answers are needed before confirmation." : "Ready to confirm."); } catch { setMessage("Outline import failed"); } };
-  const answerField = (question: string, index: number) => outline?.missing_fields[index] ?? question.match(/：(.+)/)?.[1] ?? `question_${index}`;
-  const answerMissing = async () => { if (!outline || !Object.values(answers).some(value => value.trim())) return; try { const normalized = Object.fromEntries(Object.entries(answers).map(([key, value]) => [key, /^\d+$/.test(value) ? Number(value) : key === "characters" ? [value] : value])); const item = await answerOutline(outline.id, normalized); setOutline(item); setAnswers({}); setMessage(item.missing_questions.length ? "More answers are needed." : "Ready to confirm."); } catch { setMessage("Could not save the answer"); } };
-  const confirm = async () => { if (!outline) return; try { await confirmOutline(outline.id); const workflow = await createWorkflow(project.id, Array.from({ length: Math.max(1, endChapter - startChapter + 1) }, (_, index) => startChapter + index)); onWorkflow(workflow); setMessage("Outline confirmed; workflow created."); } catch { setMessage("Complete the required answers first."); } };
-  return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">{t("outlineIntake")}</p><h2>{t("outlineHero")}</h2><p>{t("outlineIntro")}</p></div><div className="settings-form"><label>{t("outlineTitle")}<input value={title} onChange={event => setTitle(event.target.value)} placeholder={t("outlineTitlePlaceholder")} /></label><label>{t("outlineNotes")}<textarea value={content} onChange={event => setContent(event.target.value)} placeholder={t("outlineNotesPlaceholder")} /></label><button className="primary" onClick={submit}>{t("importAnalyze")}</button></div>{outline && <div className="outline-status"><strong>{outline.title}</strong><span>{t("status")}: {outline.status}</span>{outline.missing_questions.map((question, index) => <label key={question}>{question}<input value={answers[answerField(question, index)] ?? ""} onChange={event => setAnswers(current => ({ ...current, [answerField(question, index)]: event.target.value }))} placeholder={t("answerMissing")} /></label>)}{outline.missing_questions.length > 0 && <button onClick={answerMissing}>{t("saveAnswer")}</button>}{outline.missing_questions.length === 0 && <><div className="answer-row"><label>Start chapter<input type="number" min="1" value={startChapter} onChange={event => setStartChapter(Number(event.target.value))} /></label><label>End chapter<input type="number" min={startChapter} value={endChapter} onChange={event => setEndChapter(Number(event.target.value))} /></label></div><button className="primary" onClick={confirm}>{t("confirmWorkflow")}</button></>}</div>}<p className="form-message" aria-live="polite">{message}</p></section>;
 }
 
 function WorkflowView({ project, workflow, onWorkflow }: { project: Project; workflow: Workflow | null; onWorkflow: (workflow: Workflow) => void }) {
