@@ -58,6 +58,7 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
     from proseforge.settings import get_settings
     from proseforge.domain.workflow.budget import budget_blocked
     from proseforge.application.workflows.budget import budget_exceeded_after_usage
+    from proseforge.application.usage.call_tracker import UsageCallTracker
     from proseforge.context_engine.compiler import compile_context
     from proseforge.workflows.novel_generation import run_writer_editor_loop
 
@@ -132,8 +133,9 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                 await uow.workflows.heartbeat(run, lease_owner)
                 await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_DRAFTING")
                 await uow.commit()
+            usage_calls = UsageCallTracker(workflow_id, chapter.id)
             async def record_usage(role: str, model: str, data: dict[str, object], final: bool) -> None:
-                call_id = hashlib.sha256(f"workflow:{workflow_id}:chapter:{chapter.id}:{role}".encode()).hexdigest()
+                call_id = usage_calls.call_id(role, final=final)
                 async with SqlAlchemyUnitOfWork(session_factory) as usage_uow:
                     delta = normalize_provider_usage(provider_id, data, final=final)
                     await usage_uow.usage.record(
