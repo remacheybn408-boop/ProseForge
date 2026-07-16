@@ -22,4 +22,12 @@ describe("web entrypoint structure", () => {
     expect(workspace).not.toMatch(/function Login\b/);
     expect(login).toContain("export function Login");
   });
+
+  it("keeps project-list UI outside the application shell", () => {
+    const workspace = (import.meta.glob("./workspace.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./workspace.tsx"];
+    const projects = (import.meta.glob("./features/projects/Projects.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>)["./features/projects/Projects.tsx"];
+
+    expect(workspace).not.toMatch(/function Projects\b/);
+    expect(projects).toContain("export function Projects");
+  });
 });
