@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError, request } from "./client";
+import { ApiError, listContext, request } from "./client";
 
 describe("api request responses", () => {
   it("accepts a successful 204 without trying to parse JSON", async () => {
@@ -24,5 +24,14 @@ describe("api request responses", () => {
       name: "ApiError",
       status: 401,
     } satisfies Partial<ApiError>));
+  });
+
+  it("requests context using the selected model profile", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [], used_tokens: 0, context_window: 200000, available_tokens: 200000 }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await listContext("project-1", { profileId: "profile-1" });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/projects/project-1/context?profile_id=profile-1", expect.objectContaining({ credentials: "include" }));
   });
 });

@@ -4,7 +4,7 @@ import hashlib
 import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -46,16 +46,50 @@ def _snapshot_response(snapshot) -> dict[str, object]:
     }
 
 
+def resolve_context_window(model: object | None, fallback: int = 128000) -> int:
+    if model is None:
+        return fallback
+    direct = getattr(model, "context_window", None)
+    if isinstance(direct, int) and direct > 0:
+        return direct
+    capabilities = getattr(model, "capabilities", {})
+    if isinstance(capabilities, dict):
+        value = capabilities.get("context_window")
+        if isinstance(value, int) and value > 0:
+            return value
+    return fallback
+
+
 @router.get("/projects/{project_id}/context")
-async def list_context(project_id: str, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> dict[str, object]:
+async def list_context(
+    project_id: str,
+    user: Annotated[AuthUser, Depends(current_user)],
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+    profile_id: str | None = Query(default=None),
+    provider: str | None = Query(default=None),
+    model: str | None = Query(default=None),
+) -> dict[str, object]:
     async with uow:
         if await uow.projects.get_by_id(user.id, project_id) is None:
             raise HTTPException(status_code=404, detail="project not found")
+        if profile_id:
+            profile = await uow.model_profiles.get_owned(user.id, profile_id)
+            if profile is None:
+                raise HTTPException(status_code=404, detail="model profile not found")
+            profile_config = json.loads(profile.config or "{}")
+            provider = provider or profile_config.get("provider")
+            model = model or profile_config.get("model")
+        catalog_model = None
+        if provider and model:
+            catalog_model = next(
+                (item for item in await uow.model_catalog.list(provider, model, available_only=False) if item.model_id == model),
+                None,
+            )
         items = await uow.context.list_owned(project_id, user.id)
         tokenizer = ConservativeTokenizer()
         used_tokens = sum(tokenizer.count(item.content) for item in items if not item.excluded)
-        context_window = 128000
-        return {"items": [_response(item) for item in items], "used_tokens": used_tokens, "context_window": context_window, "available_tokens": max(0, context_window - used_tokens)}
+        context_window = resolve_context_window(catalog_model)
+        return {"items": [_response(item) for item in items], "used_tokens": used_tokens, "context_window": context_window, "available_tokens": max(0, context_window - used_tokens), "provider": provider, "model": model}
 
 
 @router.post("/projects/{project_id}/context/items", status_code=status.HTTP_201_CREATED)
