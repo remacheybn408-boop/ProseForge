@@ -30,4 +30,9 @@ test("authenticated writing studio keeps the assistant visible on mobile", async
   await expect(page.locator(".review-pane")).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expect(page.locator(".chat-composer textarea")).toBeVisible();
+  await page.getByRole("button", { name: "Collapse assistant" }).click();
+  await expect(page.getByRole("button", { name: "Expand assistant" })).toBeVisible();
+  await expect(page.getByText("Writing companion", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Expand assistant" }).click();
+  await expect(page.locator(".chat-composer textarea")).toBeVisible();
 });

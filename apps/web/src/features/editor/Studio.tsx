@@ -30,6 +30,7 @@ export function Studio({ project }: { project: Project }) {
   const [draft, setDraft] = useState("");
   const [profiles, setProfiles] = useState<ModelProfile[]>([]);
   const [profileId, setProfileId] = useState("");
+  const [assistantOpen, setAssistantOpen] = useState(true);
 
   useEffect(() => {
     listChapters(project.id)
@@ -243,11 +244,13 @@ export function Studio({ project }: { project: Project }) {
       <button className="primary" onClick={save} disabled={!chapter}>{t("saveVersion")}</button>
       <button onClick={downloadMarkdown}>{t("downloadMarkdown")}</button>
     </div>
-    <div className="review-pane chat-pane">
-      <strong>{t("writingCompanion")}</strong>
-      {profiles.length > 0 && <label>{t("modelProfile")}<select value={profileId} onChange={event => setProfileId(event.target.value)}>{profiles.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
-      <div className="chat-messages">{chat.length === 0 && <p>{t("askCompanion")}</p>}{chat.map(item => <div className={"chat-message " + item.role} key={item.id}>{item.content || t("waitingForWorker")}<small>{item.status}</small></div>)}</div>
-      <div className="chat-composer"><textarea value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder={t("askCompanion")} /><button onClick={fork} disabled={!conversation || !chat.length}>{t("forkBranch")}</button><button className="primary" onClick={send}>{t("send")}</button></div>
+    <div className={`review-pane chat-pane${assistantOpen ? "" : " is-collapsed"}`}>
+      <div className="assistant-heading"><strong>{t("writingCompanion")}</strong><button className="assistant-toggle" type="button" aria-expanded={assistantOpen} aria-controls="assistant-content" aria-label={assistantOpen ? t("collapseAssistant") : t("expandAssistant")} onClick={() => setAssistantOpen(value => !value)}>{assistantOpen ? "−" : "+"}</button></div>
+      <div id="assistant-content" className="assistant-content" aria-hidden={!assistantOpen}>
+        {profiles.length > 0 && <label>{t("modelProfile")}<select value={profileId} onChange={event => setProfileId(event.target.value)}>{profiles.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+        <div className="chat-messages">{chat.length === 0 && <p>{t("askCompanion")}</p>}{chat.map(item => <div className={"chat-message " + item.role} key={item.id}>{item.content || t("waitingForWorker")}<small>{item.status}</small></div>)}</div>
+        <div className="chat-composer"><textarea value={draft} onChange={event => setDraft(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder={t("askCompanion")} /><button onClick={fork} disabled={!conversation || !chat.length}>{t("forkBranch")}</button><button className="primary" onClick={send}>{t("send")}</button></div>
+      </div>
     </div>
   </section>;
 }

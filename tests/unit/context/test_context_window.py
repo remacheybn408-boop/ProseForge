@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import SimpleNamespace
 
-from proseforge.api.routes.context import context_budget, resolve_context_window
+from proseforge.api.routes.context import context_budget, context_item_response, resolve_context_window
 
 
 @dataclass
@@ -29,3 +30,19 @@ def test_context_budget_reserves_model_output_without_mixing_historical_usage():
         "output_reserve_tokens": 4000,
         "available_tokens": 11000,
     }
+
+
+def test_context_item_response_exposes_a_conservative_token_estimate():
+    item = SimpleNamespace(
+        id="item-1",
+        project_id="project-1",
+        source_type="manual",
+        source_id="manual",
+        content="Mira 深水",
+        pinned=False,
+        priority=10,
+        excluded=False,
+        provenance="{}",
+    )
+
+    assert context_item_response(item)["token_estimate"] == 4

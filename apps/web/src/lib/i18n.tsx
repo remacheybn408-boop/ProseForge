@@ -35,7 +35,12 @@ const credentialMessages: Record<Language, Record<string, string>> = {
   "en-US": { removeCredential: "Remove credential", removeCredentialConfirm: "Remove this credential?", credentialRemoved: "Credential removed.", workflowEventsUnavailable: "Live workflow updates are temporarily unavailable." },
 };
 
-export type TranslationKey = keyof typeof messages["zh-CN"] | keyof typeof extraMessages["zh-CN"] | keyof typeof credentialMessages["zh-CN"];
+const contextMessages = {
+  "zh-CN": { tokens: "个 Token", priority: "优先级", excluded: "排除", editMemory: "编辑记忆", saveMemory: "保存记忆", deleteMemory: "删除记忆", confirmDeleteMemory: "确定删除这条故事记忆吗？", contextActionFailed: "故事记忆操作失败，请重试。", collapseAssistant: "收起助手", expandAssistant: "展开助手" },
+  "en-US": { tokens: "tokens", priority: "Priority", excluded: "Excluded", editMemory: "Edit", saveMemory: "Save memory", deleteMemory: "Delete", confirmDeleteMemory: "Delete this story memory?", contextActionFailed: "The story memory action failed. Try again.", collapseAssistant: "Collapse assistant", expandAssistant: "Expand assistant" },
+} as const;
+
+export type TranslationKey = keyof typeof messages["zh-CN"] | keyof typeof extraMessages["zh-CN"] | keyof typeof credentialMessages["zh-CN"] | keyof typeof contextMessages["zh-CN"];
 export type Translator = (key: TranslationKey) => string;
 
 export function loadLanguage(): Language {
@@ -49,7 +54,7 @@ export function saveLanguage(language: Language): void {
 }
 
 export function createTranslator(language: Language): Translator {
-  return key => messages[language][key as keyof typeof messages["zh-CN"]] ?? extraMessages[language][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[language][key] ?? messages[defaultLanguage][key as keyof typeof messages["zh-CN"]] ?? extraMessages[defaultLanguage][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[defaultLanguage][key] ?? key;
+  return key => messages[language][key as keyof typeof messages["zh-CN"]] ?? extraMessages[language][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[language][key] ?? contextMessages[language][key as keyof typeof contextMessages["zh-CN"]] ?? messages[defaultLanguage][key as keyof typeof messages["zh-CN"]] ?? extraMessages[defaultLanguage][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[defaultLanguage][key] ?? contextMessages[defaultLanguage][key as keyof typeof contextMessages["zh-CN"]] ?? key;
 }
 
 type LanguageContextValue = { language: Language; setLanguage: (language: Language) => void; t: Translator };

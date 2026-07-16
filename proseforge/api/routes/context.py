@@ -30,12 +30,18 @@ class ContextUpdateRequest(BaseModel):
     excluded: bool | None = None
 
 
-def _response(item) -> dict[str, object]:
+def context_item_response(item) -> dict[str, object]:
     return {
         "id": item.id, "project_id": item.project_id, "source_type": item.source_type,
         "source_id": item.source_id, "content": item.content, "pinned": item.pinned,
-        "priority": item.priority, "excluded": item.excluded, "provenance": json.loads(item.provenance or "{}"),
+        "priority": item.priority, "excluded": item.excluded,
+        "token_estimate": ConservativeTokenizer().count(item.content),
+        "provenance": json.loads(item.provenance or "{}"),
     }
+
+
+def _response(item) -> dict[str, object]:
+    return context_item_response(item)
 
 
 def _snapshot_response(snapshot) -> dict[str, object]:
