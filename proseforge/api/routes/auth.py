@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
-from proseforge.api.dependencies import current_user, unit_of_work
+from proseforge.api.dependencies import current_user, require_same_origin, unit_of_work
 from proseforge.application.auth.service import AuthUser
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
@@ -32,6 +32,7 @@ async def setup_admin(
     payload: SetupRequest,
     http_request: Request,
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+    _csrf: Annotated[None, Depends(require_same_origin)],
 ) -> dict[str, str]:
     async with uow:
         if await uow.users.count() > 0:
@@ -50,6 +51,7 @@ async def login(
     http_request: Request,
     response: Response,
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+    _csrf: Annotated[None, Depends(require_same_origin)],
 ) -> dict[str, str]:
     async with uow:
         user = await uow.users.get_by_email(payload.email)
@@ -66,12 +68,14 @@ async def login(
         raise HTTPException(status_code=401, detail="invalid credentials")
     from proseforge.application.auth.service import AuthUser
     token = http_request.app.state.auth.issue_token(AuthUser(user_id, email, role))
-    response.set_cookie("proseforge_session", token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
+    is_public_https = http_request.app.state.settings.public_url.lower().startswith("https://")
+    is_production = http_request.app.state.settings.environment.lower() in {"production", "prod"}
+    response.set_cookie("proseforge_session", token, httponly=True, secure=is_public_https or is_production, samesite="lax", max_age=3600, path="/")
     return {"access_token": token, "token_type": "bearer"}
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(response: Response) -> None:
+async def logout(response: Response, _csrf: Annotated[None, Depends(require_same_origin)]) -> None:
     response.delete_cookie("proseforge_session", path="/")
 
 
@@ -86,6 +90,7 @@ async def change_password(
     user: Annotated[AuthUser, Depends(current_user)],
     http_request: Request,
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+    _csrf: Annotated[None, Depends(require_same_origin)],
 ) -> None:
     async with uow:
         record = await uow.users.get_by_id(user.id)
