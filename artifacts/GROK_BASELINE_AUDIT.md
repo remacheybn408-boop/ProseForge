@@ -47,6 +47,18 @@ After rebuilding the current API image:
 - live `projects` count: 1
 - staging `projects` count: 1
 
+## Fault-injection observations
+
+- Stopping Redis produced readiness `503`; after Redis restart the service remained
+  `503` because the prior shared `api-test` database fixture had removed all business
+  tables. Running the existing non-destructive schema bootstrap recreated the missing
+  tables and readiness returned `200`.
+- PostgreSQL durable-volume check: a marker project count was 1 before a PostgreSQL
+  stop/start and remained 1 after restart.
+- The shared test volume cleanup behavior is a baseline defect to address before
+  claiming a continuous Docker fault matrix: test cleanup must not leave a runtime
+  container with an Alembic head and no business tables.
+
 ## Current evidence gaps
 
 - Only `ordinary-user-smoke.spec.ts` is a real authenticated browser flow. It covers
