@@ -63,6 +63,9 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByRole("textbox", { name: "" }).first().fill("A first draft written through the browser.");
   await page.getByRole("button", { name: "Save version" }).click();
   await expect(page.getByText(/Saved version \d+/)).toBeVisible();
+  await page.getByPlaceholder(/Ask your companion/i).fill("What does the saved chapter say?");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("Context received: A first draft written through the browser.")).toBeVisible({ timeout: 15_000 });
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download Markdown" }).click();
   const download = await downloadPromise;
