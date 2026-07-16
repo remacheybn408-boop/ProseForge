@@ -43,3 +43,11 @@ async def test_writer_editor_loop_requires_structured_editor_pass():
     assert content == "A chapter."
     assert rounds == 0
     assert review["status"] == "PASS"
+
+
+@pytest.mark.asyncio
+async def test_writer_prompt_includes_compiled_story_context():
+    provider = Writer()
+    await generate_chapter_content(provider, model="writer-model", project_title="Book", chapter_title="Opening", context_text="Mira remembers the lighthouse.")
+
+    assert "Mira remembers the lighthouse." in provider.request.input_blocks[0]["text"]

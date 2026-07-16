@@ -56,6 +56,7 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
     from proseforge.providers.factory import build_provider
     from proseforge.settings import get_settings
     from proseforge.domain.workflow.budget import budget_blocked
+    from proseforge.context_engine.compiler import compile_context
     from proseforge.workflows.novel_generation import run_writer_editor_loop
 
     settings = get_settings()
@@ -98,8 +99,12 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                 await uow.workflows.transition(run, "FAILED")
                 await uow.commit()
                 return "no-chapters"
-            # Persist the lease/checkpoint before leaving the transaction.
-            await uow.workflows.checkpoint(run, lease_owner, "PREPARING")
+            context_items = [item for item in await uow.context.list_owned(run.project_id, owner_id) if not item.excluded]
+            context_blocks = [{"id": item.id, "source_type": item.source_type, "content": item.content, "pinned": item.pinned, "priority": item.priority} for item in context_items]
+            snapshot = await uow.context.snapshot(run.project_id, context_items)
+            compiled_context = compile_context(snapshot.id, context_blocks, input_budget=8000)
+            context_text = "\n".join(str(block.get("content", "")) for block in compiled_context.blocks)
+            await uow.workflows.checkpoint(run, lease_owner, f"PREPARING_CONTEXT_{snapshot.snapshot_hash}")
             await uow.commit()
 
         for chapter in targets:
@@ -118,7 +123,7 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                 await uow.workflows.heartbeat(run, lease_owner)
                 await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_DRAFTING")
                 await uow.commit()
-            content, rewrite_rounds, _review = await run_writer_editor_loop(provider, writer_model=model_id, editor_model=str(payload.get("editor_model", model_id)), project_title=project.title, chapter_title=chapter.title)
+            content, rewrite_rounds, _review = await run_writer_editor_loop(provider, writer_model=model_id, editor_model=str(payload.get("editor_model", model_id)), project_title=project.title, chapter_title=chapter.title, context_text=context_text)
             async with SqlAlchemyUnitOfWork(session_factory) as uow:
                 run = await uow.workflows.get_owned(workflow_id, owner_id)
                 if run is None:
