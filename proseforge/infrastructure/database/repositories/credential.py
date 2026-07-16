@@ -17,6 +17,14 @@ class SqlAlchemyCredentialRepository:
         await self.session.flush()
         return record
 
+    async def upsert(self, user_id: str, provider: str, encrypted_payload: str, record_id: str | None = None) -> ProviderCredentialModel:
+        record = await self.get_for_user(user_id, provider)
+        if record is None:
+            return await self.create(user_id, provider, encrypted_payload, record_id)
+        record.encrypted_payload = encrypted_payload
+        await self.session.flush()
+        return record
+
     async def list_for_user(self, user_id: str) -> list[ProviderCredentialModel]:
         rows = await self.session.scalars(
             select(ProviderCredentialModel).where(ProviderCredentialModel.user_id == user_id).order_by(ProviderCredentialModel.provider)

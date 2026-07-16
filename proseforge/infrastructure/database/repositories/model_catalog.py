@@ -14,12 +14,15 @@ class SqlAlchemyModelCatalogRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def list(self, provider: str | None = None) -> list[ProviderModel]:
+    async def list(self, provider: str | None = None, search: str | None = None, available_only: bool = False) -> list[ProviderModel]:
         query = select(ModelCatalogModel).order_by(ModelCatalogModel.provider, ModelCatalogModel.model_id)
         if provider:
             query = query.where(ModelCatalogModel.provider == provider)
+        if search:
+            query = query.where(ModelCatalogModel.model_id.ilike(f"%{search}%"))
         rows = await self.session.scalars(query)
-        return [self._entity(row) for row in rows]
+        entities = [self._entity(row) for row in rows]
+        return [item for item in entities if not available_only or item.capabilities.get("availability", "available") == "available"]
 
     async def upsert(self, models: list[ProviderModel]) -> None:
         for model in models:

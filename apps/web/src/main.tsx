@@ -12,7 +12,7 @@ import { loadDraft, saveDraft } from "./lib/drafts";
 import { ProjectVersionHistory } from "./features/VersionHistory";
 import { chapterDraftKey as makeChapterDraftKey, shouldApplyServerVersion } from "./features/editor/documentState";
 import { LanguageProvider, useLanguage } from "./lib/i18n";
-import { AppQueryProvider, useHealthQuery, useProjectsQuery, useUsageSummaryQuery, queryClient } from "./app/query";
+import { AppQueryProvider, useHealthQuery, useModelsQuery, useProjectsQuery, useProvidersQuery, useUsageSummaryQuery, queryClient } from "./app/query";
 import { navigateRoute, useAppRoute, type AppView } from "./app/router";
 import { ApiError } from "./lib/api/client";
 import { ContextBudgetBar } from "./features/usage/ContextBudgetBar";
@@ -76,12 +76,15 @@ function OutlineView({ project, onWorkflow }: { project: Project; onWorkflow: (w
   const [outline, setOutline] = useState<Outline | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [answer, setAnswer] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [startChapter, setStartChapter] = useState(1);
+  const [endChapter, setEndChapter] = useState(1);
   const [message, setMessage] = useState("Import an outline or describe your story below.");
   const submit = async () => { try { const item = await importOutline(project.id, { title: title || "Untitled outline", content }); setOutline(item); setMessage(item.missing_questions.length ? "A few answers are needed before confirmation." : "Ready to confirm."); } catch { setMessage("Outline import failed"); } };
-  const answerMissing = async () => { if (!outline || !answer.trim()) return; try { const item = await answerOutline(outline.id, { characters: [answer], genre: "小说", point_of_view: "third-person", title: outline.title, planned_chapters: 12, chapter_word_target: 1500 }); setOutline(item); setAnswer(""); setMessage(item.missing_questions.length ? "More answers are needed." : "Ready to confirm."); } catch { setMessage("Could not save the answer"); } };
-  const confirm = async () => { if (!outline) return; try { await confirmOutline(outline.id); const workflow = await createWorkflow(project.id, [1]); onWorkflow(workflow); setMessage("Outline confirmed; workflow created."); } catch { setMessage("Complete the required answers first."); } };
-  return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">{t("outlineIntake")}</p><h2>{t("outlineHero")}</h2><p>{t("outlineIntro")}</p></div><div className="settings-form"><label>{t("outlineTitle")}<input value={title} onChange={event => setTitle(event.target.value)} placeholder={t("outlineTitlePlaceholder")} /></label><label>{t("outlineNotes")}<textarea value={content} onChange={event => setContent(event.target.value)} placeholder={t("outlineNotesPlaceholder")} /></label><button className="primary" onClick={submit}>{t("importAnalyze")}</button></div>{outline && <div className="outline-status"><strong>{outline.title}</strong><span>{t("status")}: {outline.status}</span>{outline.missing_questions.map(question => <span key={question}>{question}</span>)}{outline.missing_questions.length > 0 && <div className="answer-row"><input value={answer} onChange={event => setAnswer(event.target.value)} placeholder={t("answerMissing")} /><button onClick={answerMissing}>{t("saveAnswer")}</button></div>}{outline.missing_questions.length === 0 && <button className="primary" onClick={confirm}>{t("confirmWorkflow")}</button>}</div>}<p className="form-message" aria-live="polite">{message}</p></section>;
+  const answerField = (question: string, index: number) => outline?.missing_fields[index] ?? question.match(/：(.+)/)?.[1] ?? `question_${index}`;
+  const answerMissing = async () => { if (!outline || !Object.values(answers).some(value => value.trim())) return; try { const normalized = Object.fromEntries(Object.entries(answers).map(([key, value]) => [key, /^\d+$/.test(value) ? Number(value) : key === "characters" ? [value] : value])); const item = await answerOutline(outline.id, normalized); setOutline(item); setAnswers({}); setMessage(item.missing_questions.length ? "More answers are needed." : "Ready to confirm."); } catch { setMessage("Could not save the answer"); } };
+  const confirm = async () => { if (!outline) return; try { await confirmOutline(outline.id); const workflow = await createWorkflow(project.id, Array.from({ length: Math.max(1, endChapter - startChapter + 1) }, (_, index) => startChapter + index)); onWorkflow(workflow); setMessage("Outline confirmed; workflow created."); } catch { setMessage("Complete the required answers first."); } };
+  return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">{t("outlineIntake")}</p><h2>{t("outlineHero")}</h2><p>{t("outlineIntro")}</p></div><div className="settings-form"><label>{t("outlineTitle")}<input value={title} onChange={event => setTitle(event.target.value)} placeholder={t("outlineTitlePlaceholder")} /></label><label>{t("outlineNotes")}<textarea value={content} onChange={event => setContent(event.target.value)} placeholder={t("outlineNotesPlaceholder")} /></label><button className="primary" onClick={submit}>{t("importAnalyze")}</button></div>{outline && <div className="outline-status"><strong>{outline.title}</strong><span>{t("status")}: {outline.status}</span>{outline.missing_questions.map((question, index) => <label key={question}>{question}<input value={answers[answerField(question, index)] ?? ""} onChange={event => setAnswers(current => ({ ...current, [answerField(question, index)]: event.target.value }))} placeholder={t("answerMissing")} /></label>)}{outline.missing_questions.length > 0 && <button onClick={answerMissing}>{t("saveAnswer")}</button>}{outline.missing_questions.length === 0 && <><div className="answer-row"><label>Start chapter<input type="number" min="1" value={startChapter} onChange={event => setStartChapter(Number(event.target.value))} /></label><label>End chapter<input type="number" min={startChapter} value={endChapter} onChange={event => setEndChapter(Number(event.target.value))} /></label></div><button className="primary" onClick={confirm}>{t("confirmWorkflow")}</button></>}</div>}<p className="form-message" aria-live="polite">{message}</p></section>;
 }
 
 function ContextView({ project }: { project: Project }) {
@@ -114,11 +117,13 @@ function SettingsView() {
   const [profileRole, setProfileRole] = useState<"writer" | "editor">("writer");
   const [probeStates, setProbeStates] = useState<Record<string, "connected" | "failed">>({});
   const [message, setMessage] = useState(t("secretsNeverPrefilled"));
+  const providersQuery = useProvidersQuery();
+  const modelsQuery = useModelsQuery(provider);
   useEffect(() => { listCredentials().then(setCredentials).catch(() => undefined); listModelProfiles().then(setProfiles).catch(() => undefined); }, []);
   const save = async () => { if (!apiKey.trim()) return setMessage(t("apiKeyHelp")); try { const record = await saveCredential({ provider, api_key: apiKey, base_url: baseUrl || undefined }); setCredentials([...credentials, record]); setApiKey(""); setMessage(t("configured")); } catch { setMessage(t("genericError")); } };
   const probe = async (item: Credential) => { setMessage(`${item.provider}…`); try { await probeProvider(item.provider); setProbeStates(states => ({ ...states, [item.id]: "connected" })); setMessage(`${item.provider} · ${t("connected")}`); } catch { setProbeStates(states => ({ ...states, [item.id]: "failed" })); setMessage(`${item.provider} · ${t("checkFailed")}`); } };
   const saveProfile = async () => { if (!profileName.trim() || !modelId.trim()) return setMessage(t("modelIdHelp")); try { const profile = await saveModelProfile({ name: profileName.trim(), role: profileRole, config: { provider, model: modelId.trim() } }); setProfiles([...profiles, profile]); setProfileName(""); setModelId(""); setMessage(t("configured")); } catch { setMessage(t("genericError")); } };
-  const providers = ["openai", "anthropic", "google", "deepseek", "kimi", "dashscope", "zhipu", "volcengine", "baidu", "tencent", "minimax", "xai", "mistral", "cohere", "ollama", "vllm"];
+  const providers = providersQuery.data?.map(item => item.id) ?? [];
   return <section className="detail-view settings-page">
     <div className="detail-heading"><p className="eyebrow">{t("modelSettings")}</p><h2>{t("providerConnections")}</h2><p>{t("providerIntro")}</p></div>
     <section className="settings-section"><div className="settings-section-heading"><h3>{t("providerConnections")}</h3><p>{t("apiKeyHelp")}</p></div><div className="settings-form">
@@ -131,7 +136,7 @@ function SettingsView() {
     <section className="settings-section"><div className="settings-section-heading"><h3>{t("writerEditor")}</h3><p>{t("writerEditorIntro")}</p></div><div className="settings-form">
       <label>{t("writerEditor")}<select value={profileRole} onChange={event => setProfileRole(event.target.value as "writer" | "editor")}><option value="writer">{t("writerModel")}</option><option value="editor">{t("editorModel")}</option></select></label>
       <label>{t("profileName")}<input value={profileName} onChange={event => setProfileName(event.target.value)} placeholder={t("profileNamePlaceholder")} /></label>
-      <label>{t("modelId")}<input value={modelId} onChange={event => setModelId(event.target.value)} placeholder="gpt-4.1-mini" /></label><small className="field-help">{t("modelIdHelp")}</small>
+      <label>{t("modelId")}<input list="model-options" value={modelId} onChange={event => setModelId(event.target.value)} placeholder="gpt-4.1-mini" /></label><datalist id="model-options">{modelsQuery.data?.map(item => <option key={`${item.provider}:${item.model_id}`} value={item.model_id}>{item.display_name}</option>)}</datalist><small className="field-help">{t("modelIdHelp")}</small>
       <button onClick={saveProfile}>{t("saveProfile")}</button>
     </div><div className="settings-list">{profiles.map(profile => <div className="settings-row" key={profile.id}><div><strong>{String(profile.config.role ?? "writer") === "writer" ? t("writerModel") : t("editorModel")} · {profile.name}</strong><span>{String(profile.config.provider)} / {String(profile.config.model)}</span></div><span className="connection-status connected">{t("configured")}</span></div>)}</div></section>
   </section>;

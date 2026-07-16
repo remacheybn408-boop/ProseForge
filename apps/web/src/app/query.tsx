@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { getHealth, getUsageSummary, listProjects, type Project } from "../lib/api/client";
+import { getHealth, getUsageSummary, listModels, listProjects, listProviders, type Project } from "../lib/api/client";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,4 +26,12 @@ export function useHealthQuery() {
 
 export function useUsageSummaryQuery(projectId?: string) {
   return useQuery({ queryKey: ["usage", "summary", projectId ?? "user"], queryFn: () => getUsageSummary(projectId ? { project_id: projectId } : {}), enabled: Boolean(projectId) });
+}
+
+export function useProvidersQuery() {
+  return useQuery({ queryKey: ["providers"], queryFn: listProviders, staleTime: 300_000 });
+}
+
+export function useModelsQuery(provider?: string) {
+  return useQuery({ queryKey: ["models", provider ?? "all"], queryFn: () => listModels(provider ? { provider } : {}), enabled: Boolean(provider), staleTime: 300_000 });
 }

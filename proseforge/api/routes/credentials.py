@@ -47,12 +47,14 @@ async def save_credential(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     async with uow:
-        record_id = new_id()
+        existing = await uow.credentials.get_for_user(user.id, payload.provider)
+        record_id = existing.id if existing else new_id()
         associated_data = f"{user.id}:{payload.provider}:{record_id}".encode()
         encrypted = cipher_for(request).encrypt(json.dumps({"api_key": payload.api_key, "base_url": payload.base_url}).encode(), associated_data=associated_data)
-        record = await uow.credentials.create(user.id, payload.provider, base64.b64encode(encrypted).decode(), record_id)
+        record = await uow.credentials.upsert(user.id, payload.provider, base64.b64encode(encrypted).decode(), record_id)
         await uow.commit()
-        return {"id": record.id, "provider": record.provider, "masked_key": f"{payload.api_key[:3]}****{payload.api_key[-4:]}" if len(payload.api_key) > 7 else "****"}
+    await request.app.state.queue.enqueue("proseforge.providers.sync_all_models", {})
+    return {"id": record.id, "provider": record.provider, "masked_key": f"{payload.api_key[:3]}****{payload.api_key[-4:]}" if len(payload.api_key) > 7 else "****"}
 
 
 @router.get("/credentials")

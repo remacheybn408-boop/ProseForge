@@ -37,10 +37,13 @@ async def list_models(
     request: Request,
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+    provider: str | None = None,
+    q: str | None = None,
+    available_only: bool = True,
 ) -> list[dict[str, object]]:
     del request, user
     async with uow:
-        return [model.__dict__ for model in await uow.model_catalog.list()]
+        return [{"provider": model.provider, "model_id": model.model_id, "display_name": model.display_name, "capabilities": model.capabilities, "context_window": model.context_window, "max_output_tokens": model.max_output_tokens} for model in await uow.model_catalog.list(provider, q, available_only)]
 
 
 @router.post("/models", status_code=201)

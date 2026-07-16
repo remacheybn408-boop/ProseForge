@@ -1,6 +1,6 @@
 export type Project = { id: string; slug: string; title: string; genre: string; style: string; language: string; status: string };
 export type Credential = { id: string; provider: string; masked_key: string };
-export type Outline = { id: string; project_id: string; title: string; status: string; payload: Record<string, unknown>; missing_questions: string[]; confirmed: boolean };
+export type Outline = { id: string; project_id: string; title: string; status: string; payload: Record<string, unknown>; missing_questions: string[]; missing_fields: string[]; confirmed: boolean };
 export type ContextItem = { id: string; project_id: string; source_type: string; content: string; pinned: boolean; priority: number; excluded: boolean; provenance: Record<string, unknown> };
 export type Chapter = { id: string; project_id: string; chapter_no: number; title: string; status: string; active_version_id?: string | null };
 export type ChapterVersion = { id: string; chapter_id: string; version_no: number; content: string; word_count: number };
@@ -9,6 +9,8 @@ export type ChatMessage = { id: string; role: "user" | "assistant"; content: str
 export type ModelProfile = { id: string; name: string; config: Record<string, unknown> };
 export type UsageBucket = { input_tokens: number; output_tokens: number; cached_input_tokens: number; reasoning_tokens: number; total_tokens: number; cost_usd: number | null };
 export type UsageSummary = { scope: string; project_id?: string | null; conversation_id?: string | null; workflow_id?: string | null; actual: UsageBucket; estimated: UsageBucket };
+export type ProviderOption = { id: string; status: string };
+export type CatalogModel = { provider: string; model_id: string; display_name: string; capabilities: Record<string, unknown>; context_window?: number | null; max_output_tokens?: number | null };
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string, public readonly detail = "") {
@@ -33,6 +35,8 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function getHealth() { return request<{ status: string }>("/api/v1/health/live"); }
+export function listProviders() { return request<ProviderOption[]>("/api/v1/providers"); }
+export function listModels(filters: { provider?: string; q?: string; available_only?: boolean } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined) as [string, string][]).toString(); return request<CatalogModel[]>(`/api/v1/models${query ? `?${query}` : ""}`); }
 export function listProjects() { return request<Project[]>("/api/v1/projects"); }
 export function listCredentials() { return request<Credential[]>("/api/v1/credentials"); }
 export function saveCredential(payload: { provider: string; api_key: string; base_url?: string }) { return request<Credential>("/api/v1/credentials", { method: "POST", body: JSON.stringify(payload) }); }
