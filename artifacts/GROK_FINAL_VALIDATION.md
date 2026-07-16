@@ -1,6 +1,6 @@
 # ProseForge Grok Product Completion - Final Validation
 
-Validation source commit: `ff61040`
+Validation source commit: `5d1dd03`
 Branch: `feat/grok-product-completion`
 Base: `origin/master` at `df2c211`
 Date: 2026-07-16
@@ -24,7 +24,7 @@ All test and runtime validation commands below were executed through Docker Comp
 
 Authenticated E2E paths:
 
-- `ordinary-user-smoke.spec.ts`: setup/login, project creation, provider credential replacement without a duplicate row, model profile, outline clarification, workflow generation, live workflow `/events` subscription request, refresh recovery, chapter editing/version save, model-specific Story memory context, Chat context echo, branch fork, credential deletion confirmation/feedback, logout/login screen.
+- `ordinary-user-smoke.spec.ts`: setup/login, project creation, provider credential replacement without a duplicate row, model profile, outline clarification, workflow generation, live workflow `/events` subscription request, refresh recovery, chapter editing/version save, authenticated Markdown download containing saved chapter text, model-specific Story memory context, Chat context echo, branch fork, credential deletion confirmation/feedback, logout/login screen.
 - `token-usage.spec.ts`: authenticated login, HTTP 200 usage summary, Usage page, and separate Actual input/output and Estimated total sections; unauthenticated 401 protection remains covered.
 - `responsive-assistant.spec.ts`: responsive shell.
 - `localization.spec.ts`: localization shell.
