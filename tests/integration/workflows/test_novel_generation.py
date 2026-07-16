@@ -17,6 +17,34 @@ class Writer:
 
 
 @pytest.mark.asyncio
+async def test_writer_editor_loop_reports_usage_for_each_role():
+    events = []
+
+    class UsageWriter(Writer):
+        async def stream(self, request):
+            async for event in super().stream(request):
+                yield event
+            yield GenerationEvent("response.completed", data={"usage": {"input_tokens": 4, "output_tokens": 3, "total_tokens": 7}})
+
+    async def record(role, model, data, final):
+        events.append((role, model, data, final))
+
+    await run_writer_editor_loop(
+        UsageWriter(),
+        writer_model="writer-model",
+        editor_model="editor-model",
+        project_title="Book",
+        chapter_title="Opening",
+        usage_handler=record,
+    )
+
+    assert [(role, model, final) for role, model, _data, final in events] == [
+        ("writer", "writer-model", True),
+        ("editor", "editor-model", True),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_writer_stream_is_collected_without_empty_success():
     provider = Writer()
     result = await generate_chapter_content(provider, model="writer-model", project_title="Book", chapter_title="Opening")

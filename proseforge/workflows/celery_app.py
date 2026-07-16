@@ -54,6 +54,7 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
     from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
     from proseforge.infrastructure.security.credential_cipher import CredentialCipher
     from proseforge.providers.factory import build_provider
+    from proseforge.providers.usage import normalize_provider_usage
     from proseforge.settings import get_settings
     from proseforge.domain.workflow.budget import budget_blocked
     from proseforge.context_engine.compiler import compile_context
@@ -123,7 +124,24 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                 await uow.workflows.heartbeat(run, lease_owner)
                 await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_DRAFTING")
                 await uow.commit()
-            content, rewrite_rounds, _review = await run_writer_editor_loop(provider, writer_model=model_id, editor_model=str(payload.get("editor_model", model_id)), project_title=project.title, chapter_title=chapter.title, context_text=context_text)
+            async def record_usage(role: str, model: str, data: dict[str, object], final: bool) -> None:
+                call_id = hashlib.sha256(f"workflow:{workflow_id}:chapter:{chapter.id}:{role}".encode()).hexdigest()
+                async with SqlAlchemyUnitOfWork(session_factory) as usage_uow:
+                    delta = normalize_provider_usage(provider_id, data, final=final)
+                    await usage_uow.usage.record(
+                        user_id=owner_id,
+                        provider=provider_id,
+                        model_id=model,
+                        call_id=call_id,
+                        delta=delta,
+                        project_id=project.id,
+                        workflow_run_id=workflow_id,
+                        workflow_step=role,
+                        metadata={"role": role},
+                    )
+                    await usage_uow.commit()
+
+            content, rewrite_rounds, _review = await run_writer_editor_loop(provider, writer_model=model_id, editor_model=str(payload.get("editor_model", model_id)), project_title=project.title, chapter_title=chapter.title, context_text=context_text, usage_handler=record_usage)
             async with SqlAlchemyUnitOfWork(session_factory) as uow:
                 run = await uow.workflows.get_owned(workflow_id, owner_id)
                 if run is None:
