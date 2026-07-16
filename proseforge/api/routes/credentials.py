@@ -64,3 +64,15 @@ async def list_credentials(
 ) -> list[dict[str, str]]:
     async with uow:
         return [{"id": row.id, "provider": row.provider, "masked_key": "configured"} for row in await uow.credentials.list_for_user(user.id)]
+
+
+@router.delete("/credentials/{credential_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_credential(
+    credential_id: str,
+    user: Annotated[AuthUser, Depends(current_user)],
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+) -> None:
+    async with uow:
+        if not await uow.credentials.delete_for_user(user.id, credential_id):
+            raise HTTPException(status_code=404, detail="credential not found")
+        await uow.commit()
