@@ -9,13 +9,15 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await expect(health.json()).resolves.toEqual({ status: "ok" });
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /sign in to your writing space/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /登录你的写作空间/i })).toBeVisible();
   await expect(page.getByLabel("Email")).toHaveAttribute("type", "email");
   await expect(page.getByLabel("Password")).toHaveAttribute("type", "password");
 
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "登录" }).click();
+  await expect(page.getByRole("button", { name: "项目", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "English", exact: true }).click();
   await page.getByRole("button", { name: "Projects", exact: true }).click();
   await expect(page.locator("h2", { hasText: "Projects" })).toBeVisible();
 
@@ -25,11 +27,11 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await expect(page.getByRole("heading", { name: /start from your story idea/i })).toBeVisible();
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByLabel("API key").fill("mock-api-key");
-  await page.getByLabel("Base URL (optional)").fill("http://provider-mock:8080/v1");
-  await page.getByRole("button", { name: "Save provider" }).click();
-  await expect(page.getByText("Saved securely. The key is now masked.")).toBeVisible();
+  await page.getByLabel("Endpoint URL (optional)").fill("http://provider-mock:8080/v1");
+  await page.getByRole("button", { name: "Save model service" }).click();
+  await expect(page.getByRole("heading", { name: "Configured" })).toBeVisible();
   await page.getByRole("button", { name: "Test connection" }).last().click();
-  await expect(page.getByText("openai connection is healthy.")).toBeVisible();
+  await expect(page.getByText("openai · Connected")).toBeVisible();
   await page.getByRole("button", { name: "Outline intake" }).click();
   await page.getByLabel("Outline title").fill("E2E Outline");
   await page.getByLabel("Outline or story notes").fill("A complete story about a cartographer who returns home and chooses hope.");
