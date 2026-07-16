@@ -10,6 +10,7 @@ from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.api.sse.encoder import encode_sse
 from proseforge.application.auth.service import AuthUser
 from proseforge.application.workflows.control import WorkflowControlService, workflow_command
+from proseforge.application.workflows.event_stream import iter_workflow_events
 from proseforge.domain.chapter.entity import Chapter
 from proseforge.application.workflows.control import decode_checkpoint
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
@@ -113,10 +114,10 @@ async def workflow_events(
     async with uow:
         if await uow.workflows.get_owned(workflow_id, user.id) is None:
             raise HTTPException(status_code=404, detail="workflow not found")
-        events = await uow.workflows.events(workflow_id, after)
 
     async def body():
-        for event in events:
+        event_factory = lambda: SqlAlchemyUnitOfWork(request.app.state.session_factory)
+        async for event in iter_workflow_events(event_factory, workflow_id, after=after):
             yield encode_sse(event_id=str(event["id"]), event=str(event["event"]), data=event["data"])
 
     return StreamingResponse(body(), media_type="text/event-stream", headers={"cache-control": "no-cache", "x-accel-buffering": "no"})
