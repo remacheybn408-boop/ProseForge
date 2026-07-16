@@ -1,6 +1,6 @@
 # ProseForge Grok Product Completion - Final Validation
 
-Validation source commit: `f3b20366002a76366d07cc69ce4f17e42ecb7a83`
+Validation source commit: `d99948dbcca2777fcf5e674da3104f34a56d222c`
 Branch: `feat/grok-product-completion`
 Base: `origin/master` at `4dbbe0d`
 Date: 2026-07-16
@@ -12,11 +12,11 @@ All test and runtime validation commands below were executed through Docker Comp
 | Compose contract | `docker compose -f compose.yaml -f compose.test.yaml config --quiet` | 0 | valid |
 | CI contract | `docker compose ... run --rm api-test pytest -q tests/docker/test_ci_contract.py` | 0 | 1 passed |
 | Legacy unit | `docker compose ... run --rm legacy-test` | 0 | 408 passed |
-| API unit/integration | `docker compose ... run --rm api-test` | 0 | 566 passed, 1 skipped |
+| API unit/integration | `docker compose ... run --rm api-test` | 0 | 570 passed, 1 skipped |
 | Provider contract | `docker compose ... run --rm contract-test` | 0 | 19 passed |
-| Migration/database | `docker compose ... run --rm migration-test` | 0 | 25 passed |
+| Migration/database | `docker compose ... run --rm migration-test` | 0 | 27 passed |
 | Recovery | `docker compose ... run --rm recovery-test` | 0 | 5 passed |
-| Web typecheck/unit/build | `docker compose ... run --rm web-test` | 0 | 13 files, 24 tests passed; typecheck/build passed |
+| Web typecheck/unit/build | `docker compose ... run --rm web-test` | 0 | 14 files, 27 tests passed; typecheck/build passed |
 | Authenticated E2E | `docker compose ... run --rm e2e` | 0 | 6 passed |
 | Startup check | `docker compose ... exec -T api python -m proseforge.operations.startup_check` | 0 | passed |
 | Worker health | Celery inspect ping in worker container | 0 | 1 node online, pong |
@@ -24,7 +24,7 @@ All test and runtime validation commands below were executed through Docker Comp
 
 Authenticated E2E paths:
 
-- `ordinary-user-smoke.spec.ts`: setup/login, project creation, provider credential, model profile, outline clarification, workflow generation, refresh recovery, chapter editing/version save, model-specific Story memory context, Chat context echo, branch fork, logout/login screen.
+- `ordinary-user-smoke.spec.ts`: setup/login, project creation, provider credential replacement without a duplicate row, model profile, outline clarification, workflow generation, refresh recovery, chapter editing/version save, model-specific Story memory context, Chat context echo, branch fork, credential deletion confirmation/feedback, logout/login screen.
 - `responsive-assistant.spec.ts`: responsive shell.
 - `localization.spec.ts`: localization shell.
 - `editor-draft-and-export.spec.ts`: protected export path.
@@ -36,9 +36,9 @@ Fault injection and durability:
 - Redis stopped: `/api/v1/health/ready` returned HTTP 503.
 - Redis restarted: readiness returned HTTP 200 and `redis-cli ping` returned `PONG`.
 - Backup archive: `/data/backups/proseforge-20260716T122029Z.tar.gz`; SHA-256 `34c8b4833275054cf4afe622075b8da01ca72c2526a83774cc8e21011e292233`.
-- Backup verification and restore to fresh `proseforge_staging_20260716` passed; restored project count was 1. Existing staging databases were not overwritten.
+- Current-code backup verification and file restore passed with 1 manifest file; restore to fresh `proseforge_validation_staging_1348` passed and restored project count was 1. Existing staging databases were not overwritten.
 
-Implemented safeguards include model-catalog context windows, durable workflow SSE polling, post-usage workflow budget blocking, writer/editor/rewriter usage attribution, project attribution for Chat usage, owner-scoped credential deletion, login rate limiting, aligned release versions, Docker CI quality gates, localized logout/navigation labels, mobile navigation/touch sizing, project context injection into Chat, workflow state restoration after refresh, and a visible model-profile context selector.
+Implemented safeguards include model-catalog context windows, durable workflow SSE polling, post-usage workflow budget blocking, writer/editor/rewriter usage attribution, project attribution for Chat usage, owner-scoped credential replacement/deletion and model-profile boundary evidence, login rate limiting, aligned release versions, Docker CI quality gates, localized logout/navigation labels, mobile navigation/touch sizing, project context injection into Chat, workflow state restoration after refresh, and a visible model-profile context selector.
 
 Known limitations and uncompleted items:
 
