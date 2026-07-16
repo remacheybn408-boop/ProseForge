@@ -90,7 +90,7 @@ async def test_usage_events_are_forwarded_without_being_dropped():
     repo, events = Repo(), EventStream()
     await GenerateReply(lambda: Uow(repo), UsageProvider(), events).execute(message_id="m", request=object())
     usage = [payload for topic, payload in events.events if payload.get("event") == "usage.updated"]
-    assert usage == [{
+    assert usage[0] == {
         "event": "usage.updated",
         "message_id": "m",
         "input_tokens": 4,
@@ -100,7 +100,8 @@ async def test_usage_events_are_forwarded_without_being_dropped():
         "total_tokens": 7,
         "source": "provider",
         "final": False,
-    }]
+    }
+    assert usage[-1]["final"] is True
 
 
 @pytest.mark.asyncio

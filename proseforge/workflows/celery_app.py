@@ -55,6 +55,7 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
     from proseforge.infrastructure.security.credential_cipher import CredentialCipher
     from proseforge.providers.factory import build_provider
     from proseforge.settings import get_settings
+    from proseforge.domain.workflow.budget import budget_blocked
     from proseforge.workflows.novel_generation import run_writer_editor_loop
 
     settings = get_settings()
@@ -110,6 +111,10 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                     return "cancelled"
                 if run.status == "PAUSED":
                     return "paused"
+                if budget_blocked(used_tokens=int(getattr(run, "used_tokens", 0) or 0), token_limit=int(getattr(run, "token_limit", 0) or 0), estimated_next_tokens=1, estimated_cost=float(run.estimated_cost or 0), cost_limit=float(run.cost_limit or 0), estimated_next_cost=None):
+                    await uow.workflows.transition(run, "BUDGET_BLOCKED")
+                    await uow.commit()
+                    return "budget-blocked"
                 await uow.workflows.heartbeat(run, lease_owner)
                 await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_DRAFTING")
                 await uow.commit()
@@ -134,10 +139,11 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                 await uow.workflows.transition(run, "COMPLETED")
                 await uow.commit()
         return "completed"
-    except Exception:
+    except Exception as error:
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             run = await uow.workflows.get_owned(workflow_id, owner_id)
             if run is not None and run.status in {"RUNNING", "RETRYING", "RECOVERING"}:
+                run.last_error = type(error).__name__
                 await uow.workflows.transition(run, "FAILED")
                 await uow.commit()
         raise
@@ -283,7 +289,7 @@ async def _generate_chat(payload: dict[str, object]) -> str:
             input_blocks.append({"role": "assistant", "text": message.content})
             input_blocks.append({"role": "user", "text": "Continue from the saved partial response without repeating existing text."})
         request = GenerationRequest(model=model, system_blocks=(), input_blocks=tuple(input_blocks))
-        await GenerateReply(lambda: SqlAlchemyUnitOfWork(session_factory), provider, DatabaseEventStream(session_factory)).execute(message_id=message_id, request=request)
+        await GenerateReply(lambda: SqlAlchemyUnitOfWork(session_factory), provider, DatabaseEventStream(session_factory)).execute(message_id=message_id, request=request, user_id=user_id, provider=provider_id, model=model)
         return "completed"
     finally:
         await engine.dispose()
