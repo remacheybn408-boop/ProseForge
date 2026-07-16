@@ -109,4 +109,23 @@ describe("api request responses", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1][1]).toEqual(expect.objectContaining({ headers: { "Last-Event-ID": "7" } }));
   });
+
+  it("reconnects when the workflow stream cannot be opened", async () => {
+    const encoder = new TextEncoder();
+    const completedStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('id: 8\nevent: COMPLETED\ndata: {"status":"COMPLETED"}\n\n'));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error("connection unavailable"))
+      .mockResolvedValueOnce(new Response(completedStream, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await subscribeWorkflowEvents("workflow-1", () => undefined, { lastEventId: 7, reconnectDelayMs: 0 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][1]).toEqual(expect.objectContaining({ headers: { "Last-Event-ID": "7" } }));
+  });
 });

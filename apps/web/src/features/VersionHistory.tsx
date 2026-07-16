@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { activateChapterVersion, getChapterDiff, listChapterVersions, listChapters, type Chapter, type ChapterVersion, type Project } from "../lib/api/client";
+import { useLanguage } from "../lib/i18n";
 
 type Props = {
   versions: ChapterVersion[];
@@ -10,11 +11,13 @@ type Props = {
 };
 
 export function VersionHistory({ versions, activeVersion, diff = [], onRestore, onDiff }: Props) {
-  if (versions.length === 0) return <section className="version-history"><strong>Version history</strong><p className="empty">Saved versions will appear here.</p></section>;
-  return <section className="version-history" aria-label="Version history"><strong>Version history</strong>{versions.slice().reverse().map(version => <div className="version-row" key={version.id}><div><b>Version {version.version_no}</b>{version.version_no === activeVersion && <span className="version-active">Active</span>}<small>{version.word_count} words</small></div><div className="version-actions"><button onClick={() => onDiff(version)} aria-label={`Compare version ${version.version_no}`}>Compare</button><button onClick={() => onRestore(version)} aria-label={`Restore version ${version.version_no}`} disabled={version.version_no === activeVersion}>Restore</button></div></div>)}{diff.length > 0 && <div className="version-diff" aria-label="Version diff"><b>Changes</b>{diff.map((line, index) => <code key={`${index}-${line}`}>{line}</code>)}</div>}</section>;
+  const { t } = useLanguage();
+  if (versions.length === 0) return <section className="version-history"><strong>{t("versionHistory")}</strong><p className="empty">{t("savedVersionsEmpty")}</p></section>;
+  return <section className="version-history" aria-label={t("versionHistory")}><strong>{t("versionHistory")}</strong>{versions.slice().reverse().map(version => <div className="version-row" key={version.id}><div><b>{t("version")} {version.version_no}</b>{version.version_no === activeVersion && <span className="version-active">{t("activeVersion")}</span>}<small>{version.word_count} {t("words")}</small></div><div className="version-actions"><button onClick={() => onDiff(version)} aria-label={`${t("compare")} ${t("version")} ${version.version_no}`}>{t("compare")}</button><button onClick={() => onRestore(version)} aria-label={`${t("restore")} ${t("version")} ${version.version_no}`} disabled={version.version_no === activeVersion}>{t("restore")}</button></div></div>)}{diff.length > 0 && <div className="version-diff" aria-label={t("changes")}><b>{t("changes")}</b>{diff.map((line, index) => <code key={`${index}-${line}`}>{line}</code>)}</div>}</section>;
 }
 
 export function ProjectVersionHistory({ project }: { project: Project }) {
+  const { t } = useLanguage();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [chapterId, setChapterId] = useState<string>();
   const [versions, setVersions] = useState<ChapterVersion[]>([]);
@@ -25,5 +28,5 @@ export function ProjectVersionHistory({ project }: { project: Project }) {
   if (!chapterId) return null;
   const restore = async (version: ChapterVersion) => { await activateChapterVersion(chapterId, version.id); setActiveVersion(version.version_no); };
   const showDiff = async (version: ChapterVersion) => { if (!activeVersion || version.version_no === activeVersion) return setDiff([]); const result = await getChapterDiff(chapterId, version.version_no, activeVersion); setDiff(result.diff); };
-  return <section><label className="version-chapter">Chapter<select value={chapterId} onChange={event => { setChapterId(event.target.value); setDiff([]); }}>{chapters.map(chapter => <option key={chapter.id} value={chapter.id}>Chapter {chapter.chapter_no}: {chapter.title}</option>)}</select></label><VersionHistory versions={versions} activeVersion={activeVersion} diff={diff} onRestore={restore} onDiff={showDiff} /></section>;
+  return <section><label className="version-chapter">{t("chapter")}<select value={chapterId} onChange={event => { setChapterId(event.target.value); setDiff([]); }}>{chapters.map(chapter => <option key={chapter.id} value={chapter.id}>{t("chapter")} {chapter.chapter_no}: {chapter.title}</option>)}</select></label><VersionHistory versions={versions} activeVersion={activeVersion} diff={diff} onRestore={restore} onDiff={showDiff} /></section>;
 }

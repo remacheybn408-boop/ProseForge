@@ -6,7 +6,7 @@ import { canApplyWorkflowAction } from "./WorkflowStatus";
 export function WorkflowView({ project, workflow, onWorkflow }: { project: Project; workflow: Workflow | null; onWorkflow: (workflow: Workflow) => void }) {
   const { t } = useLanguage();
   const [current, setCurrent] = useState(workflow);
-  const [message, setMessage] = useState("No workflow has been started yet.");
+  const [message, setMessage] = useState(t("workflowNotStarted"));
 
   useEffect(() => {
     if (workflow) setCurrent(workflow);
@@ -34,9 +34,9 @@ export function WorkflowView({ project, workflow, onWorkflow }: { project: Proje
       const result = await controlWorkflow(current.id, name);
       setCurrent(result);
       onWorkflow(result);
-      setMessage(`Workflow ${result.status.toLowerCase()}.`);
+      setMessage(`${t("workflowStatus")}: ${result.status}`);
     } catch {
-      setMessage("That action is not available in the current state.");
+      setMessage(t("workflowActionUnavailable"));
     }
   };
 

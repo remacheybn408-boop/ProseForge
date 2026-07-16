@@ -65,5 +65,5 @@ h1 { font: 500 24px/1.2 Georgia, "Songti SC", serif; margin: 0; letter-spacing: 
 .inspector h3 { font-size: 12px; margin: 0 0 19px; }
 .inspector p { color: var(--ink-soft); }
 .inspector small { color: var(--ink-faint); line-height: 1.6; }
-@media(max-width:1000px) { .shell { grid-template-columns: 74px 1fr; } .rail { padding: 25px 10px; } .brand { padding-left: 13px; } .nav { text-align: center; } .inspector { display: none; } .main { padding: 25px; } }
+@media(max-width:1199px) { .shell { grid-template-columns: 74px 1fr; } .rail { padding: 25px 10px; } .brand { padding-left: 13px; } .nav { text-align: center; } .inspector { display: none; } .main { padding: 25px; } }
 @media(max-width:560px) { .main { padding: 20px; } .rail { width: 64px; } .shell { grid-template-columns: 64px 1fr; } .language-switcher { display: grid; gap: 2px; justify-items: center; } .language-switcher span { display: none; } }
