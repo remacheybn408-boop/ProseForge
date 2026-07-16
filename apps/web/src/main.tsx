@@ -6,7 +6,7 @@ import {
   activateChapterVersion, addContext, answerOutline, confirmOutline, controlWorkflow, createConversation, createProject, createWorkflow,
   getChapterDiff, importOutline, listChapters, listChapterVersions, listContext, listCredentials,
   forkConversation, listMessages, login, probeProvider, saveChapterVersion, saveCredential, sendMessage, setupAdmin, subscribeConversationEvents, updateContext,
-  listModelProfiles, requestExport, saveModelProfile, type Chapter, type ChapterVersion, type ContextItem, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
+  listModelProfiles, logout, requestExport, saveModelProfile, type Chapter, type ChapterVersion, type ContextItem, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
 } from "./lib/api/client";
 import { loadDraft, saveDraft } from "./lib/drafts";
 import { ProjectVersionHistory } from "./features/VersionHistory";
@@ -89,9 +89,9 @@ function OutlineView({ project, onWorkflow }: { project: Project; onWorkflow: (w
 
 function ContextView({ project }: { project: Project }) {
   const { t } = useLanguage();
-  const [items, setItems] = useState<ContextItem[]>([]); const [used, setUsed] = useState(0); const [contextWindow, setContextWindow] = useState(128000); const [content, setContent] = useState(""); const [profiles, setProfiles] = useState<ModelProfile[]>([]); const [profileId, setProfileId] = useState("");
+  const [items, setItems] = useState<ContextItem[]>([]); const [used, setUsed] = useState(0); const [contextWindow, setContextWindow] = useState(128000); const [content, setContent] = useState(""); const [profileId, setProfileId] = useState("");
   const reload = () => listContext(project.id, profileId ? { profileId } : {}).then(result => { setItems(result.items); setUsed(result.used_tokens); setContextWindow(result.context_window); }).catch(() => undefined);
-  useEffect(() => { listModelProfiles().then(items => { setProfiles(items); setProfileId(current => current || items[0]?.id || ""); }).catch(() => undefined); }, []);
+  useEffect(() => { listModelProfiles().then(items => { setProfileId(current => current || items[0]?.id || ""); }).catch(() => undefined); }, []);
   useEffect(() => { void reload(); }, [project.id, profileId]);
   const add = async () => { if (!content.trim()) return; const item = await addContext(project.id, content); setItems([...items, item]); setContent(""); };
   const pin = async (item: ContextItem) => { const updated = await updateContext(item.id, { pinned: !item.pinned }); setItems(items.map(value => value.id === item.id ? updated : value)); };
@@ -152,6 +152,7 @@ function App() {
   const projects = projectsQuery.data ?? [];
   const usageQuery = useUsageSummaryQuery(project?.id);
   const connection = healthQuery.isSuccess ? "Online" : healthQuery.isError ? "Offline" : "Checking";
+  const signOut = async () => { await logout(); queryClient.clear(); setProject(null); setWorkflow(null); setAuthenticated(false); navigateRoute({ view: "projects" }); };
   const load = async () => {
     const result = await projectsQuery.refetch();
     if (result.error) {
@@ -177,7 +178,7 @@ function App() {
   if (authenticated === false) return <main className="auth-shell"><Login onLoggedIn={load} /></main>;
   if (authenticated === null) return <main className="auth-shell"><p>{t("connectionChecking")}…</p></main>;
   const view = route.view;
-  const nav = (next: AppView, label: string) => <button onClick={() => navigateRoute(project && next !== "projects" && next !== "settings" && next !== "usage" ? { view: next, projectId: project.id } : { view: next })} className={`nav ${view === next ? "active" : ""}`}>{label}</button>;
+  const nav = (next: AppView, label: string) => <><button onClick={() => navigateRoute(project && next !== "projects" && next !== "settings" && next !== "usage" ? { view: next, projectId: project.id } : { view: next })} className={`nav ${view === next ? "active" : ""}`}>{label}</button>{next === "usage" && <button onClick={signOut} className="nav">{t("logout")}</button>}</>;
   return <div className="shell"><aside className="rail"><div className="brand">P<span>F</span></div><nav>{nav("projects", t("projects"))}{nav("studio", t("writingStudio"))}{nav("outline", t("outlineIntake"))}{nav("context", t("context"))}{nav("workflow", t("workflow"))}{nav("settings", t("settings"))}{nav("usage", "Usage")}</nav><div className="rail-bottom"><div className="language-switcher" aria-label="Language"><button className={language === "zh-CN" ? "selected" : ""} onClick={() => setLanguage("zh-CN")}>{t("languageChinese")}</button><span>/</span><button className={language === "en-US" ? "selected" : ""} onClick={() => setLanguage("en-US")}>{t("languageEnglish")}</button></div><span>{connection === "Online" ? t("apiOnline") : connection === "Offline" ? t("apiOffline") : t("connectionChecking")}</span></div></aside><main className="main"><header><div><p className="eyebrow">{t("currentProject")}</p><h1>{project?.title ?? t("projects")}</h1></div>{usageQuery.data && <TokenMeter actual={usageQuery.data.actual.total_tokens} estimated={usageQuery.data.estimated.total_tokens} cost={usageQuery.data.actual.cost_usd} />}{project && <button className="ghost" onClick={() => navigateRoute({ view: "projects" })}>{t("allProjects")}</button>}</header>{view === "projects" && <Projects projects={projects} onOpen={item => { setProject(item); window.localStorage.setItem("proseforge.current-project", item.id); navigateRoute({ view: "studio", projectId: item.id }); }} onCreated={item => { void queryClient.invalidateQueries({ queryKey: ["projects"] }); setProject(item); window.localStorage.setItem("proseforge.current-project", item.id); navigateRoute({ view: "outline", projectId: item.id }); }} />}{project && view === "studio" && <><Studio project={project} /><ProjectVersionHistory project={project} /></>}{project && view === "outline" && <OutlineView project={project} onWorkflow={item => { setWorkflow(item); navigateRoute({ view: "workflow", projectId: project.id }); }} />}{project && view === "context" && <ContextView project={project} />}{project && view === "workflow" && <WorkflowView project={project} workflow={workflow} onWorkflow={setWorkflow} />}{view === "settings" && <SettingsView />}{view === "usage" && <UsagePage projectId={project?.id} />}</main><aside className="inspector"><section><h3>{t("projectStatus")}</h3><p>{project ? t("readyToContinue") : t("noProjects")}</p><small>{t("dockerSaved")}</small></section><section><h3>{t("workflow")}</h3><p>{workflow ? workflow.status : t("notStarted")}</p><button className="link" onClick={() => project && navigateRoute({ view: "workflow", projectId: project.id })}>{t("openWorkflow")}</button></section></aside></div>;
 }
 

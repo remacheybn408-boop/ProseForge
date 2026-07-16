@@ -13,6 +13,7 @@ describe("web language preferences", () => {
     saveLanguage("en-US");
     expect(loadLanguage()).toBe("en-US");
     expect(createTranslator("en-US")("projects")).toBe("Projects");
+    expect(createTranslator("en-US")("usage")).toBe("Usage");
   });
 
   it("rejects invalid stored values", () => {

@@ -116,3 +116,20 @@
 .usage-grid strong { font: 500 24px var(--font-reading); }
 .usage-grid span { color: var(--ink-60); font-size: 12px; }
 @media(max-width:600px) { .usage-grid { grid-template-columns: 1fr; } }
+
+@media(max-width:700px) {
+  .shell { display: block; min-width: 0; }
+  .rail { position: sticky; top: 0; padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .brand { padding: 0 0 8px; }
+  nav { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+  .nav { flex: 0 0 auto; min-width: max-content; padding: 10px 12px; white-space: nowrap; }
+  .rail-bottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 0; }
+  .main { padding: 18px 14px; }
+  header { gap: 12px; align-items: center; }
+  .studio-layout { padding-top: 22px; }
+  .detail-view { padding-top: 22px; }
+  .detail-card { grid-template-columns: 1fr auto; gap: 12px; }
+  .detail-card span { grid-column: 1 / -1; }
+  .workflow-actions { flex-wrap: wrap; }
+  .workflow-actions button { flex: 1 1 44%; }
+}

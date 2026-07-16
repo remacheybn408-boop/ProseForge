@@ -13,7 +13,12 @@ const messages = {
   }
 } as const;
 
-export type TranslationKey = keyof typeof messages["zh-CN"];
+const extraMessages = {
+  "zh-CN": { usage: "用量", startChapter: "起始章节", endChapter: "结束章节", logout: "退出登录" },
+  "en-US": { usage: "Usage", startChapter: "Start chapter", endChapter: "End chapter", logout: "Sign out" },
+} as const;
+
+export type TranslationKey = keyof typeof messages["zh-CN"] | keyof typeof extraMessages["zh-CN"];
 export type Translator = (key: TranslationKey) => string;
 
 export function loadLanguage(): Language {
@@ -27,7 +32,7 @@ export function saveLanguage(language: Language): void {
 }
 
 export function createTranslator(language: Language): Translator {
-  return key => messages[language][key] ?? messages[defaultLanguage][key] ?? key;
+  return key => messages[language][key as keyof typeof messages["zh-CN"]] ?? extraMessages[language][key as keyof typeof extraMessages["zh-CN"]] ?? messages[defaultLanguage][key as keyof typeof messages["zh-CN"]] ?? extraMessages[defaultLanguage][key as keyof typeof extraMessages["zh-CN"]] ?? key;
 }
 
 type LanguageContextValue = { language: Language; setLanguage: (language: Language) => void; t: Translator };
