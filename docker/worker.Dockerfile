@@ -4,7 +4,8 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
 COPY proseforge ./proseforge
-RUN python -m pip install --no-cache-dir -e ".[api,worker]"
+RUN python -m pip install --no-cache-dir --upgrade pip \
+    && python -m pip install --no-cache-dir -e ".[api,worker]"
 COPY . .
 
 RUN addgroup --system --gid 10001 proseforge \

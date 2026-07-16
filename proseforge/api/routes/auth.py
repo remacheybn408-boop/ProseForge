@@ -61,10 +61,11 @@ async def login(
             password_hash = user.password_hash
             user_id = user.id
             email = user.email
+            role = user.role
     if password_hash is None or not http_request.app.state.auth.verify_password(payload.password, password_hash):
         raise HTTPException(status_code=401, detail="invalid credentials")
     from proseforge.application.auth.service import AuthUser
-    token = http_request.app.state.auth.issue_token(AuthUser(user_id, email))
+    token = http_request.app.state.auth.issue_token(AuthUser(user_id, email, role))
     response.set_cookie("proseforge_session", token, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
     return {"access_token": token, "token_type": "bearer"}
 
@@ -76,7 +77,7 @@ async def logout(response: Response) -> None:
 
 @router.get("/me")
 async def me(user: Annotated[AuthUser, Depends(current_user)]) -> dict[str, str]:
-    return {"id": user.id, "email": user.email}
+    return {"id": user.id, "email": user.email, "role": user.role}
 
 
 @router.put("/password", status_code=status.HTTP_204_NO_CONTENT)

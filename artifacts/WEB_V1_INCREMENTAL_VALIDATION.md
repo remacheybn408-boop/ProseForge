@@ -58,3 +58,18 @@ All commands below were executed in Docker containers.
 - Backup restore regression: `3 passed`; tampered members are rejected and database restore requires an explicit staging target
 - Runtime container contract: `2 passed`; API/worker/scheduler run as UID/GID `10001` and Nginx SSE buffering is disabled
 - Same-production-Compose `down`/`up` persistence probe preserved PostgreSQL data; the temporary probe table was removed afterward
+- Version history UI regression: Docker Vitest `4 passed`; users can compare and restore chapter versions from the Writing Studio
+- Fork race regression: latest-message reload before branch creation fixed a real 404; rebuilt Docker Chromium E2E `1 passed` after the fix
+- Chapter selector refinement: version history now follows any selected chapter and uses its persisted active version; final Docker Web Vitest `4 passed`, Vite build passed, Chromium E2E `1 passed`
+- Admin maintenance recovery: authenticated role propagation, 403 protection, transaction commit, and expired-workflow recovery endpoint covered; full Docker API `525 passed, 1 skipped`, Ruff `All checks passed`
+- Blob integrity maintenance: read-only SHA-256 attachment scan reports valid/missing/corrupt objects and is admin-protected; full Docker API `527 passed, 1 skipped`, Ruff `All checks passed`
+- Live Docker fault matrix: API stop produced unavailable health traffic and recovered to HTTP `200`; Worker stop/start restored Celery `pong`; Redis stop made readiness return HTTP `503` with `redis=error`, restart restored HTTP `200`; recovery suite `5 passed`
+- Celery worker-loss reliability: Docker test enforces late acknowledgements, reject-on-worker-lost, and prefetch `1`; PostgreSQL stop returned readiness `503` with database checks failing, restart restored readiness `200`; full Docker API `528 passed, 1 skipped`
+- Maintenance audit trail and download integrity: admin recovery/blob checks write audit records; attachment downloads reject SHA-256 tampering; full Docker API `530 passed, 1 skipped`, Ruff `All checks passed`
+- Chapter editor draft durability: IndexedDB now restores unsaved chapter text and clears it after a durable version save; Docker Web Vitest `4 passed`, Vite build passed, Chromium E2E `1 passed`
+- Final release gate: Legacy `408 passed`; contract `17 passed`; migration `22 passed`; recovery `5 passed`; production API/worker/scheduler/web images rebuilt; final Chromium E2E `1 passed`; auth role DetachedInstanceError found during gate and fixed before the passing rerun
+- Post-fix full API gate: `530 passed, 1 skipped`; auth, maintenance, Blob integrity, Celery reliability, and download checksum changes remain green together
+- Security gate: Docker `pip-audit` reports no known vulnerabilities after upgrading cryptography/pip/pytest; Docker `pnpm audit --audit-level high` clean; Trivy source scan reports 0 vulnerabilities and 0 secrets; Gitleaks source-directory scans clean (local pnpm cache false positives excluded)
+- Final dependency-image rebuild: production API/Worker/Scheduler rebuilt with upgraded security baselines; all Compose services healthy; Chromium E2E `1 passed`
+- User-facing API errors: Web client now maps common 401/403/404/409/429/5xx responses to actionable messages; Docker Web `5 passed`, Vite build passed, Chromium E2E `1 passed`
+- Provider error classification: timeout, connection, authentication, rate-limit, and upstream failures now have retry-aware domain codes while unknown exceptions preserve existing recovery behavior; full Docker API `531 passed, 1 skipped`, Ruff clean, rebuilt Worker/API E2E `1 passed`

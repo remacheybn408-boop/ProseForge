@@ -11,6 +11,7 @@ from passlib.context import CryptContext
 class AuthUser:
     id: str
     email: str
+    role: str = "USER"
 
 
 class AuthService:
@@ -29,10 +30,10 @@ class AuthService:
 
     def issue_token(self, user: AuthUser) -> str:
         now = datetime.now(UTC)
-        return jwt.encode({"sub": user.id, "email": user.email, "iat": now, "exp": now + timedelta(minutes=self.token_minutes)}, self.jwt_secret, algorithm="HS256")
+        return jwt.encode({"sub": user.id, "email": user.email, "role": user.role, "iat": now, "exp": now + timedelta(minutes=self.token_minutes)}, self.jwt_secret, algorithm="HS256")
 
     def decode_token(self, token: str) -> AuthUser:
         payload = jwt.decode(token, self.jwt_secret, algorithms=["HS256"])
         if not payload.get("sub") or not payload.get("email"):
             raise ValueError("invalid session token")
-        return AuthUser(str(payload["sub"]), str(payload["email"]))
+        return AuthUser(str(payload["sub"]), str(payload["email"]), str(payload.get("role", "USER")))

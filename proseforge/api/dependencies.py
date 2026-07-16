@@ -24,5 +24,11 @@ async def current_user(
         raise HTTPException(status_code=401, detail="invalid session token") from exc
 
 
+def require_admin(user: AuthUser) -> AuthUser:
+    if user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="administrator access required")
+    return user
+
+
 def unit_of_work(request: Request) -> SqlAlchemyUnitOfWork:
     return SqlAlchemyUnitOfWork(request.app.state.session_factory)

@@ -13,6 +13,7 @@ from proseforge.api.routes.credentials import router as credentials_router
 from proseforge.api.routes.outlines import router as outlines_router
 from proseforge.api.routes.context import router as context_router
 from proseforge.api.routes.model_profiles import router as model_profiles_router
+from proseforge.api.routes.maintenance import router as maintenance_router
 from proseforge.application.auth.service import AuthService
 from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
 from proseforge.infrastructure.events.database import DatabaseEventStream
@@ -68,6 +69,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(outlines_router)
     application.include_router(context_router)
     application.include_router(model_profiles_router)
+    application.include_router(maintenance_router)
     return application
 
 

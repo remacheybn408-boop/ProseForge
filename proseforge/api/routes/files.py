@@ -8,7 +8,7 @@ from fastapi.responses import Response
 
 from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.application.auth.service import AuthUser
-from proseforge.application.files.upload_service import validate_upload
+from proseforge.application.files.upload_service import validate_upload, verify_download_digest
 from proseforge.infrastructure.blob.local import LocalBlobStore
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
@@ -81,6 +81,8 @@ async def download_file(
         data = await LocalBlobStore(request.app.state.settings.blob_root).get(storage_key)
     except (FileNotFoundError, ValueError) as exc:
         raise HTTPException(status_code=404, detail="file content not found") from exc
+    if not verify_download_digest(data, attachment.sha256):
+        raise HTTPException(status_code=500, detail="file integrity check failed")
     return Response(content=data, media_type="application/octet-stream", headers={"content-disposition": f'attachment; filename="{filename}"'})
 
 

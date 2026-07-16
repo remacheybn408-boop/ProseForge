@@ -27,6 +27,10 @@ class SqlAlchemyAttachmentRepository:
         )
         return list(rows)
 
+    async def list_all(self) -> list[AttachmentModel]:
+        rows = await self.session.scalars(select(AttachmentModel).order_by(AttachmentModel.id))
+        return list(rows)
+
     async def get_owned(self, attachment_id: str, owner_id: str) -> AttachmentModel | None:
         return await self.session.scalar(
             select(AttachmentModel)

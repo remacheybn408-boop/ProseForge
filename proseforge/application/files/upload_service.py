@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import hashlib
 import zipfile
 from dataclasses import dataclass
 from pathlib import PurePath
@@ -27,3 +28,7 @@ def validate_upload(filename: str, data: bytes, media_type: str, limits: UploadL
             compressed = max(1, sum(item.compress_size for item in entries))
             if sum(item.file_size for item in entries) / compressed > limits.max_expansion_ratio:
                 raise ValueError("zip expansion ratio exceeds limit")
+
+
+def verify_download_digest(data: bytes, expected_sha256: str) -> bool:
+    return hashlib.sha256(data).hexdigest() == expected_sha256

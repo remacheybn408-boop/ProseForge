@@ -22,6 +22,19 @@
 .chapter-tree small { color: var(--faint); line-height: 1.5; }
 .editor-pane { display: grid; grid-template-rows: auto 1fr auto; gap: 14px; min-height: 560px; }
 .editor { width: 100%; min-height: 470px; resize: vertical; border: 1px solid var(--line); border-radius: 10px; padding: 22px; background: var(--surface); color: var(--text); font: 17px/1.8 Georgia, serif; }
+.version-history { max-width: 760px; margin: 24px 0 40px; border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 10px; }
+.version-chapter { display: flex; align-items: center; gap: 8px; color: var(--secondary); font-size: 12px; }
+.version-chapter select { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--surface); color: var(--text); }
+.version-history > strong { font-size: 13px; }
+.version-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; border-bottom: 1px solid var(--line); padding: 9px 0; }
+.version-row div:first-child { display: grid; gap: 3px; }
+.version-row small, .version-active { color: var(--faint); font-size: 11px; }
+.version-active { color: var(--primary); }
+.version-actions { display: flex; gap: 6px; }
+.version-actions button { border: 1px solid var(--line); background: var(--surface); color: var(--secondary); border-radius: 6px; padding: 5px 8px; cursor: pointer; font-size: 11px; }
+.version-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.version-diff { display: grid; gap: 4px; padding: 10px; background: var(--muted); border-radius: 7px; max-height: 140px; overflow: auto; }
+.version-diff code { white-space: pre-wrap; font-size: 11px; color: var(--secondary); }
 .review-pane { border-left: 1px solid var(--line); padding-left: 20px; color: var(--secondary); font-size: 13px; line-height: 1.6; }
 .review-pane strong { color: var(--text); display: block; margin-bottom: 12px; }
 .review-pane span { color: var(--faint); }

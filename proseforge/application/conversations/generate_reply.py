@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from proseforge.providers.errors import classify_provider_error
+
 
 class GenerateReply:
     def __init__(self, uow_factory, provider, event_stream=None):
@@ -34,9 +36,9 @@ class GenerateReply:
             async with self.uow_factory() as uow:
                 await uow.conversations.set_message_status(message_id, "COMPLETED")
                 await uow.commit()
-        except Exception:
+        except Exception as error:
             async with self.uow_factory() as uow:
                 await uow.conversations.set_message_status(message_id, "PARTIAL")
                 await uow.commit()
-            raise
+            raise classify_provider_error(error) from error
         return chunks

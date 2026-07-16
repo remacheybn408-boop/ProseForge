@@ -7,7 +7,8 @@ RUN apt-get update \
 COPY pyproject.toml README.md ./
 COPY src ./src
 COPY proseforge ./proseforge
-RUN python -m pip install --no-cache-dir -e ".[api]"
+RUN python -m pip install --no-cache-dir --upgrade pip \
+    && python -m pip install --no-cache-dir -e ".[api]"
 COPY . .
 
 RUN addgroup --system --gid 10001 proseforge \
