@@ -57,6 +57,7 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
     from proseforge.providers.usage import normalize_provider_usage
     from proseforge.settings import get_settings
     from proseforge.domain.workflow.budget import budget_blocked
+    from proseforge.application.workflows.budget import budget_exceeded_after_usage
     from proseforge.context_engine.compiler import compile_context
     from proseforge.workflows.novel_generation import run_writer_editor_loop
 
@@ -150,6 +151,10 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                     return "cancelled"
                 if run.status == "PAUSED":
                     return "paused"
+                if budget_exceeded_after_usage(run):
+                    await uow.workflows.transition(run, "BUDGET_BLOCKED")
+                    await uow.commit()
+                    return "budget-blocked"
                 version = await uow.chapters.append_version(chapter_id=chapter.id, content=content)
                 await uow.chapters.set_active_version(chapter.id, version.id)
                 await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_COMMITTED_REWRITES_{rewrite_rounds}")
