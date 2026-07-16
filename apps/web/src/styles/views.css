@@ -134,3 +134,4 @@
   .workflow-actions { flex-wrap: wrap; }
   .workflow-actions button { flex: 1 1 44%; }
 }
+.workflow-actions button:disabled, .workflow-status button:disabled { opacity: .45; cursor: not-allowed; }

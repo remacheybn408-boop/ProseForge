@@ -18,6 +18,7 @@ import { ApiError } from "./lib/api/client";
 import { TokenMeter } from "./features/usage/TokenMeter";
 import { UsagePage } from "./features/usage/UsagePage";
 import { removeCredential, upsertCredential } from "./features/providers/credentialState";
+import { canApplyWorkflowAction } from "./features/workflows/WorkflowStatus";
 
 function newClientId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -105,7 +106,7 @@ function WorkflowView({ project, workflow, onWorkflow }: { project: Project; wor
     return () => controller.abort();
   }, [current?.id, onWorkflow, t]);
   const action = async (name: "pause" | "resume" | "cancel" | "retry") => { if (!current) return; try { const result = await controlWorkflow(current.id, name); setCurrent(result); onWorkflow(result); setMessage(`Workflow ${result.status.toLowerCase()}.`); } catch { setMessage("That action is not available in the current state."); } };
-  return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">{t("workflow")}</p><h2>{current ? t("workflowHero") : t("notStarted")}</h2><p>{current ? `${project.title} · ${current.status}` : message}</p></div>{current ? <><div className="timeline"><div className="timeline-item done"><b>1</b><div><strong>{t("outlineConfirmed")}</strong><span>{t("savedToPostgres")}</span></div></div><div className="timeline-item current"><b>2</b><div><strong>{t("draftChapter")}</strong><span>{current.status}</span></div></div><div className="timeline-item"><b>3</b><div><strong>{t("reviewCommit")}</strong><span>{t("waiting")}</span></div></div></div><div className="workflow-actions"><button onClick={() => action("pause")}>{t("pause")}</button><button onClick={() => action("resume")}>{t("resume")}</button><button onClick={() => action("cancel")}>{t("cancel")}</button><button onClick={() => action("retry")}>{t("retry")}</button></div></> : <p className="form-message">{t("outlineIntake")}</p>}</section>;
+  return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">{t("workflow")}</p><h2>{current ? t("workflowHero") : t("notStarted")}</h2><p>{current ? `${project.title} · ${current.status}` : message}</p></div>{current ? <><div className="timeline"><div className="timeline-item done"><b>1</b><div><strong>{t("outlineConfirmed")}</strong><span>{t("savedToPostgres")}</span></div></div><div className="timeline-item current"><b>2</b><div><strong>{t("draftChapter")}</strong><span>{current.status}</span></div></div><div className="timeline-item"><b>3</b><div><strong>{t("reviewCommit")}</strong><span>{t("waiting")}</span></div></div></div><div className="workflow-actions"><button disabled={!canApplyWorkflowAction(current.status, "pause")} onClick={() => action("pause")}>{t("pause")}</button><button disabled={!canApplyWorkflowAction(current.status, "resume")} onClick={() => action("resume")}>{t("resume")}</button><button disabled={!canApplyWorkflowAction(current.status, "cancel")} onClick={() => action("cancel")}>{t("cancel")}</button><button disabled={!canApplyWorkflowAction(current.status, "retry")} onClick={() => action("retry")}>{t("retry")}</button></div></> : <p className="form-message">{t("outlineIntake")}</p>}</section>;
 }
 
 function SettingsView() {
