@@ -1,6 +1,6 @@
 # ProseForge Grok Product Completion - Final Validation
 
-Validation source commit: `d32a2e0`
+Validation source commit: `499d467`
 Branch: `feat/grok-product-completion`
 Base: `origin/master` at `df2c211`
 Date: 2026-07-16
@@ -17,7 +17,7 @@ All test and runtime validation commands below were executed through Docker Comp
 | Migration/database | `docker compose ... run --rm migration-test` | 0 | 27 passed |
 | Recovery | `docker compose ... run --rm recovery-test` | 0 | 5 passed |
 | Web typecheck/unit/build | `docker compose ... run --rm web-test` | 0 | 14 files, 30 tests passed; typecheck/build passed |
-| Authenticated E2E | `docker compose ... run --rm e2e` | 0 | 8 passed |
+| Authenticated E2E | `docker compose ... run --rm e2e` | 0 | 9 passed |
 | Startup check | `docker compose ... exec -T api python -m proseforge.operations.startup_check` | 0 | passed |
 | Worker health | Celery inspect ping in worker container | 0 | 1 node online, pong |
 | Formatting | `git diff --check` | 0 | clean |
@@ -27,6 +27,7 @@ Authenticated E2E paths:
 - `ordinary-user-smoke.spec.ts`: setup/login, project creation, provider credential replacement without a duplicate row, model profile, outline clarification, workflow generation, live workflow `/events` subscription request, refresh recovery, chapter editing/version save, authenticated Markdown download containing saved chapter text, model-specific Story memory context, Chat context echo, branch fork, credential deletion confirmation/feedback, logout/login screen.
 - `token-usage.spec.ts`: authenticated login, HTTP 200 usage summary, Usage page, and separate Actual input/output and Estimated total sections; unauthenticated 401 protection remains covered.
 - `workflow-control.spec.ts`: authenticated project/outline/workflow creation, durable `FAILED` state polling, state-aware Pause/Cancel/Retry controls, and successful Retry requeue response; unauthenticated 401 protection remains covered.
+- `localization.spec.ts`: authenticated language switching verifies English navigation labels and that Chinese mode removes those English labels; unauthenticated shell rendering remains covered.
 - `responsive-assistant.spec.ts`: responsive shell.
 - `localization.spec.ts`: localization shell.
 - `editor-draft-and-export.spec.ts`: protected export path.
@@ -46,7 +47,7 @@ Known limitations and uncompleted items:
 
 - `docs/plans/PROSEFORGE_GROK_PRODUCT_COMPLETION_PLAN.md` was not present in the supplied repository or remote branches, so its exact task numbering and commit-message requirements could not be independently executed.
 - GitHub Actions was contract-validated locally; no hosted GitHub Actions run was available in this workspace.
-- Three E2E specs remain protection/shell checks rather than full authenticated business flows; ordinary-user, token-usage, and workflow-control flows are authenticated business paths.
+- Two E2E specs remain protection/shell checks rather than full authenticated business flows; ordinary-user, token-usage, workflow-control, and localization flows are authenticated business paths.
 - The legacy RAG test remains skipped because `chromadb` is not installed in the API test image.
 - The web entrypoint is now small, but `workspace.tsx` still contains several feature views and has not been fully split into independent route modules.
 - API test fixtures can remove business rows from the shared test database after the suite; runtime schema is recreated by bootstrap, and durable production data is not deleted by migration code.
