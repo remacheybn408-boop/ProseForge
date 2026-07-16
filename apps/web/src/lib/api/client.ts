@@ -67,24 +67,33 @@ export function updateContext(itemId: string, payload: Partial<Pick<ContextItem,
 export function createWorkflow(projectId: string, chapterNumbers: number[]) { return request<Workflow>(`/api/v1/projects/${projectId}/workflows/novel`, { method: "POST", body: JSON.stringify({ chapter_numbers: chapterNumbers }) }); }
 export function getWorkflow(workflowId: string) { return request<Workflow>(`/api/v1/workflows/${workflowId}`); }
 export function controlWorkflow(workflowId: string, action: "pause" | "resume" | "cancel" | "retry") { return request<Workflow>(`/api/v1/workflows/${workflowId}/${action}`, { method: "POST" }); }
-export async function subscribeWorkflowEvents(workflowId: string, onEvent: (event: WorkflowEvent) => void, options: { lastEventId?: number; signal?: AbortSignal } = {}): Promise<void> {
+export async function subscribeWorkflowEvents(workflowId: string, onEvent: (event: WorkflowEvent) => void, options: { lastEventId?: number; signal?: AbortSignal; reconnectDelayMs?: number } = {}): Promise<void> {
+  let lastEventId = options.lastEventId ?? 0;
+  const terminalStatuses = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
+  while (!options.signal?.aborted) {
   const headers: Record<string, string> = {};
-  if (options.lastEventId !== undefined) headers["Last-Event-ID"] = String(options.lastEventId);
+  if (lastEventId > 0) headers["Last-Event-ID"] = String(lastEventId);
   const response = await fetch(`/api/v1/workflows/${encodeURIComponent(workflowId)}/events`, { credentials: "include", headers, signal: options.signal });
   if (!response.ok) throw new ApiError(response.status, `Workflow event stream failed (${response.status})`);
-  if (!response.body) return;
+  if (!response.body) {
+    await new Promise(resolve => setTimeout(resolve, options.reconnectDelayMs ?? 1000));
+    continue;
+  }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let id = 0;
   let event = "message";
   let dataLines: string[] = [];
+  let terminal = false;
   const dispatch = () => {
     if (dataLines.length === 0) return;
     const raw = dataLines.join("\n");
     let data: Record<string, unknown>;
     try { data = JSON.parse(raw) as Record<string, unknown>; } catch { data = { raw }; }
+    if (id > 0) lastEventId = Math.max(lastEventId, id);
     onEvent({ id, event, data });
+    terminal = terminalStatuses.has(typeof data.status === "string" ? data.status : event);
     id = 0;
     event = "message";
     dataLines = [];
@@ -98,16 +107,23 @@ export async function subscribeWorkflowEvents(workflowId: string, onEvent: (even
     if (field === "event") event = value || "message";
     if (field === "data") dataLines.push(value);
   };
-  while (true) {
-    const result = await reader.read();
-    buffer += decoder.decode(result.value ?? new Uint8Array(), { stream: !result.done });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) consumeLine(line.endsWith("\r") ? line.slice(0, -1) : line);
-    if (result.done) break;
+  try {
+    while (true) {
+      const result = await reader.read();
+      buffer += decoder.decode(result.value ?? new Uint8Array(), { stream: !result.done });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) consumeLine(line.endsWith("\r") ? line.slice(0, -1) : line);
+      if (result.done) break;
+    }
+    if (buffer) consumeLine(buffer.endsWith("\r") ? buffer.slice(0, -1) : buffer);
+    dispatch();
+  } catch {
+    if (options.signal?.aborted) return;
   }
-  if (buffer) consumeLine(buffer.endsWith("\r") ? buffer.slice(0, -1) : buffer);
-  dispatch();
+  if (terminal || options.signal?.aborted) return;
+  await new Promise(resolve => setTimeout(resolve, options.reconnectDelayMs ?? 1000));
+  }
 }
 export function createConversation(projectId: string) { return request<{ id: string; branch_id: string; title: string }>("/api/v1/conversations", { method: "POST", body: JSON.stringify({ project_id: projectId, title: "Writing companion" }) }); }
 export function sendMessage(conversationId: string, payload: { branch_id: string; content: string; client_request_id: string; provider?: string; model?: string }) { return request<{ user_message_id: string; assistant_message_id: string; task_id: string }>(`/api/v1/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(payload) }); }

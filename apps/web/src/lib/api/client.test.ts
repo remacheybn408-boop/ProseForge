@@ -63,4 +63,50 @@ describe("api request responses", () => {
       { id: 8, event: "COMPLETED", data: { status: "COMPLETED" } },
     ]);
   });
+
+  it("reconnects after a stream ends and resumes from the last event", async () => {
+    const encoder = new TextEncoder();
+    const stream = (payload: string) => new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(payload));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(stream('id: 7\nevent: RUNNING\ndata: {"status":"RUNNING"}\n\n'), { status: 200 }))
+      .mockResolvedValueOnce(new Response(stream('id: 8\nevent: COMPLETED\ndata: {"status":"COMPLETED"}\n\n'), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const events: WorkflowEvent[] = [];
+
+    await subscribeWorkflowEvents("workflow-1", event => events.push(event), { reconnectDelayMs: 0 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][1]).toEqual(expect.objectContaining({ headers: { "Last-Event-ID": "7" } }));
+    expect(events.at(-1)).toEqual({ id: 8, event: "COMPLETED", data: { status: "COMPLETED" } });
+  });
+
+  it("reconnects when the workflow stream drops during a read", async () => {
+    const encoder = new TextEncoder();
+    const droppedStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('id: 7\nevent: RUNNING\ndata: {"status":"RUNNING"}\n\n'));
+        setTimeout(() => controller.error(new Error("connection dropped")), 0);
+      },
+    });
+    const completedStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('id: 8\nevent: COMPLETED\ndata: {"status":"COMPLETED"}\n\n'));
+        controller.close();
+      },
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(droppedStream, { status: 200 }))
+      .mockResolvedValueOnce(new Response(completedStream, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await subscribeWorkflowEvents("workflow-1", () => undefined, { reconnectDelayMs: 0 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][1]).toEqual(expect.objectContaining({ headers: { "Last-Event-ID": "7" } }));
+  });
 });
