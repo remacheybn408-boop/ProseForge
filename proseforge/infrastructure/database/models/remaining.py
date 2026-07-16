@@ -114,6 +114,9 @@ class WorkflowRunModel(Base):
     checkpoint: Mapped[str | None] = mapped_column(Text, nullable=True)
     estimated_cost: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default="0")
     cost_limit: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default="0")
+    used_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    token_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class WorkflowStepModel(Base):

@@ -17,8 +17,8 @@ class SqlAlchemyWorkflowRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create(self, project_id: str, workflow_type: str, status: str = "QUEUED", cost_limit: float = 0.0) -> WorkflowRunModel:
-        run = WorkflowRunModel(id=new_id(), project_id=project_id, workflow_type=workflow_type, status=status, cost_limit=cost_limit)
+    async def create(self, project_id: str, workflow_type: str, status: str = "QUEUED", cost_limit: float = 0.0, token_limit: int = 0) -> WorkflowRunModel:
+        run = WorkflowRunModel(id=new_id(), project_id=project_id, workflow_type=workflow_type, status=status, cost_limit=cost_limit, token_limit=token_limit)
         self.session.add(run)
         await self.session.flush()
         await self.append_event(run.id, status, {"status": status})

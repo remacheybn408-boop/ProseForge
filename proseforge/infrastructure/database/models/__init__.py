@@ -3,6 +3,7 @@
 from .chapter import ChapterModel, ChapterVersionModel
 from .conversation import ConversationBranchModel, ConversationEventModel, ConversationModel, MessageChunkModel, MessageModel
 from .project import ProjectModel
+from .usage import ModelUsageRecordModel
 from .auth import UserModel
 from .remaining import (
     ArtifactModel,
@@ -31,5 +32,5 @@ __all__ = [
     "ContextItemModel", "ContextSnapshotModel", "EmbeddingModel", "HealthCheckModel",
     "ModelCallModel", "ModelCatalogModel", "ModelProfileModel", "OutlineModel",
     "OutlineVersionModel", "ProviderCredentialModel", "QualityReportModel",
-    "WorkflowEventModel", "WorkflowRunModel", "WorkflowStepModel",
+    "WorkflowEventModel", "WorkflowRunModel", "WorkflowStepModel", "ModelUsageRecordModel",
 ]
