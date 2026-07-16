@@ -46,6 +46,8 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByRole("button", { name: "Save answer" }).click();
   await page.getByRole("button", { name: /confirm and create workflow/i }).click();
   await expect(page.getByRole("heading", { name: "Chapter workflow" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Chapter workflow" })).toBeVisible();
   await page.getByRole("button", { name: "Writing Studio" }).click();
   await expect(page.getByRole("button", { name: /Chapter 1/i })).toBeVisible();
   await expect(page.locator("textarea.editor")).toHaveValue("Mock provider response", { timeout: 15_000 });

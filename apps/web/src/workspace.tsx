@@ -5,7 +5,7 @@ import {
   activateChapterVersion, addContext, answerOutline, confirmOutline, controlWorkflow, createConversation, createProject, createWorkflow,
   getChapterDiff, importOutline, listChapters, listChapterVersions, listContext, listCredentials,
   forkConversation, listMessages, login, probeProvider, saveChapterVersion, saveCredential, sendMessage, setupAdmin, subscribeConversationEvents, updateContext,
-  listModelProfiles, logout, requestExport, saveModelProfile, type Chapter, type ChapterVersion, type ContextItem, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
+  getWorkflow, listModelProfiles, logout, requestExport, saveModelProfile, type Chapter, type ChapterVersion, type ContextItem, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
 } from "./lib/api/client";
 import { loadDraft, saveDraft } from "./lib/drafts";
 import { ProjectVersionHistory } from "./features/VersionHistory";
@@ -151,7 +151,7 @@ export function App() {
   const projects = projectsQuery.data ?? [];
   const usageQuery = useUsageSummaryQuery(project?.id);
   const connection = healthQuery.isSuccess ? "Online" : healthQuery.isError ? "Offline" : "Checking";
-  const signOut = async () => { await logout(); queryClient.clear(); setProject(null); setWorkflow(null); setAuthenticated(false); navigateRoute({ view: "projects" }); };
+  const signOut = async () => { await logout(); queryClient.clear(); setProject(null); setWorkflow(null); window.localStorage.removeItem("proseforge.current-workflow"); setAuthenticated(false); navigateRoute({ view: "projects" }); };
   const load = async () => {
     const result = await projectsQuery.refetch();
     if (result.error) {
@@ -174,6 +174,15 @@ export function App() {
       setAuthenticated(false);
     }
   }, [projectsQuery.isSuccess, projectsQuery.error, projects, route.view]);
+  useEffect(() => {
+    if (authenticated !== true) return;
+    const workflowId = window.localStorage.getItem("proseforge.current-workflow");
+    if (!workflowId) return;
+    getWorkflow(workflowId).then(setWorkflow).catch(() => window.localStorage.removeItem("proseforge.current-workflow"));
+  }, [authenticated]);
+  useEffect(() => {
+    if (workflow) window.localStorage.setItem("proseforge.current-workflow", workflow.id);
+  }, [workflow]);
   if (authenticated === false) return <main className="auth-shell"><Login onLoggedIn={load} /></main>;
   if (authenticated === null) return <main className="auth-shell"><p>{t("connectionChecking")}…</p></main>;
   const view = route.view;
