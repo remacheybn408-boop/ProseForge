@@ -8,7 +8,7 @@ export type Workflow = { id: string; project_id: string; workflow_type: string; 
 export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; status: string };
 export type ModelProfile = { id: string; name: string; config: Record<string, unknown> };
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...init, credentials: "include", headers: { "content-type": "application/json", ...(init?.headers ?? {}) } });
   if (!response.ok) {
     let detail = "";
@@ -16,7 +16,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const messages: Record<number, string> = { 401: "Your session expired. Please sign in again.", 403: "You do not have permission to perform this action.", 404: "That item is no longer available.", 409: "This changed elsewhere. Reload the latest version and try again.", 429: "The provider is rate-limiting requests. Please wait and try again.", 500: "The service could not complete that request. Try again shortly.", 502: "The provider is unavailable. Check the connection and try again.", 503: "The workspace is temporarily unavailable. Try again shortly." };
     throw new Error(messages[response.status] || detail || `Request failed (${response.status})`);
   }
-  return response.json() as Promise<T>;
+  if (response.status === 204) return undefined as T;
+  const body = await response.text();
+  if (!body) return undefined as T;
+  try { return JSON.parse(body) as T; } catch { /* successful plain-text responses are valid */ }
+  return body as T;
 }
 
 export function getHealth() { return request<{ status: string }>("/api/v1/health/live"); }
