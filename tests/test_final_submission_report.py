@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
 """Test final_submission_report — 最终投稿报告聚合测试"""
-import sys, json
-from pathlib import Path
 
 from src.pipeline.final_submission_report import (
     aggregate_reports,
-    load_reports_from_dir,
-    _extract_top_revision_tasks,
-    _generate_submission_advice,
 )
 
 

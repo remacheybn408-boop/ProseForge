@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -11,7 +11,7 @@ RUN python -m pip install --upgrade pip
 
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN python -m pip install --no-cache-dir -e ".[rag]" pytest
+RUN python -m pip install --no-cache-dir -e ".[api,dev,rag]" pytest
 
 ARG SOURCE_REV=dev
 RUN echo "building ProseForge source revision ${SOURCE_REV}"

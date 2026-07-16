@@ -1,7 +1,6 @@
 """
 test_canon_evidence_guard.py — 防幻觉来源证据门禁测试
 """
-import pytest, json, sys, os
 from src.guards.canon_evidence_guard import run_canon_evidence_check
 
 

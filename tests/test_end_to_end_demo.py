@@ -4,8 +4,9 @@ test_end_to_end_demo.py — v0.3.0 端到端流程测试
 v0.8.3 (M11): tempfile.mkdtemp + 裸 os.chdir → tmp_path + monkeypatch.chdir。
 DB 路径直接拼在 tmp_path 下，让 pytest 自动清理。
 """
-import pytest, sqlite3, json
-from pathlib import Path
+import pytest
+import sqlite3
+import json
 
 from src.db import init_db
 from src.pipeline._base import App

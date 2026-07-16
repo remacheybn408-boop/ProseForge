@@ -12,9 +12,6 @@ from src.guards.dialogue_structure_guard import (
     count_interruptions,
     count_unfinished_sentences,
     count_action_beats,
-    compute_address_variation_score,
-    compute_speaker_length_cv,
-    compute_dialogue_structure_score,
 )
 from src.guards.anti_ai_guard import run_anti_ai_check_result
 

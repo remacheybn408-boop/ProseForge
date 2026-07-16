@@ -4,8 +4,9 @@ test_skeleton_flow.py — Phase 2 端到端测试
 v0.8.3 (M11): DB / chapters_dir / exports_root 改走 pytest tmp_path / tmp_db
 fixture（conftest.py），不再用 tempfile.mkdtemp 散落各处。
 """
-import pytest, sqlite3, json
-from pathlib import Path
+import pytest
+import sqlite3
+import json
 
 from src.pipeline._base import App, DEFAULT_CONFIG
 from src.pipeline.pre import run_pre

@@ -12,7 +12,6 @@ Uses json.load to load pack JSON files directly, with proper field mapping
 """
 
 import json
-import sys
 from pathlib import Path
 
 

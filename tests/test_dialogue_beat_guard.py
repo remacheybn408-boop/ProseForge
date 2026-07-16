@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Test dialogue_beat_guard — 对白节拍门禁测试"""
-import sys
-from pathlib import Path
 
 from src.guards.dialogue_beat_guard import run_dialogue_beat_check
 

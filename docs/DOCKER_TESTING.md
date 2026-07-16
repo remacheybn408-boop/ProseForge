@@ -1,51 +1,47 @@
-# Docker-only 运行与测试
+# Docker-only testing
 
-宿主机不需要安装 Python、pytest、RAG 依赖或项目虚拟环境。所有命令都在 Docker 容器中执行。
+All ProseForge builds, tests, migrations, and browser runs execute inside Docker. The host only needs Docker Desktop, Compose, and Git; do not run the Python or Node toolchains directly on the host.
 
-## 首次构建
-
-```bash
-docker compose build proseforge
-```
-
-## 测试
-
-运行完整测试并把 JUnit 报告保留在 `artifacts/pytest.xml`：
+## Production stack
 
 ```bash
-docker compose run --rm test
+docker compose -f compose.yaml up -d
+docker compose -f compose.yaml ps
 ```
 
-运行单个测试文件：
+Wait for PostgreSQL, Redis, API, worker, scheduler, and web to report `healthy`.
+
+## Isolated test stack
+
+`compose.test.yaml` overrides PostgreSQL and Redis with `postgres-test-data` and `redis-test-data`. Never use `down -v`: named volumes contain durable user data.
+
+Run the main suites with:
 
 ```bash
-docker compose run --rm test -m pytest tests/test_quality_gate_enforcement.py -q
+docker compose -f compose.yaml -f compose.test.yaml run --rm legacy-test
+docker compose -f compose.yaml -f compose.test.yaml run --rm api-test
+docker compose -f compose.yaml -f compose.test.yaml run --rm contract-test
+docker compose -f compose.yaml -f compose.test.yaml run --rm migration-test
+docker compose -f compose.yaml -f compose.test.yaml run --rm recovery-test
+docker compose -f compose.yaml -f compose.test.yaml run --rm web-test
 ```
 
-## 日常运行
+## Browser E2E after a test-volume switch
 
-正式 CLI（仍在容器内执行）：
+When the combined Compose project replaces the database volume, force-recreate the API and dependent services so their startup migration/bootstrap runs against the same database:
 
 ```bash
-docker compose run --rm proseforge -m src.interfaces.cli doctor
-docker compose run --rm proseforge -m src.interfaces.cli project create --slug my_novel --title "我的小说"
-docker compose run --rm proseforge -m src.interfaces.cli chapter pre 1
+docker compose -f compose.yaml -f compose.test.yaml up -d --force-recreate api worker scheduler web
+docker compose -f compose.yaml -f compose.test.yaml run --rm e2e
 ```
 
-一次性执行任务：
+This prevents a running API from retaining a connection to the previous database volume. The E2E stack includes a local mock provider and verifies setup/login, project creation, outline clarification, chapter workflow, version save, encrypted provider setup, and worker-backed chat streaming.
+
+## Return to production
 
 ```bash
-docker compose run --rm proseforge plugin/proseforge-codex/scripts/nf_project.py --help
+docker compose -f compose.yaml up -d
+docker compose -f compose.yaml exec -T api python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready').read().decode())"
 ```
 
-启动常驻容器：
-
-```bash
-docker compose up -d proseforge
-docker compose exec proseforge -m pytest -q
-```
-
-工作区和测试报告挂载到宿主机；RAG 模型、向量数据和 Python 依赖保存在 Docker volume 中。
-
-章节 post 的完整审计产物按 `exports/runs/post/chapter_NNN/run_<id>/` 保存；旧版
-`exports/reports/` 路径仅作为兼容镜像保留。
+Do not run `docker compose down -v`; ordinary `down` preserves PostgreSQL, Redis, BlobStore, and backup volumes.

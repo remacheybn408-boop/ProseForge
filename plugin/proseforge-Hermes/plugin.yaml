@@ -1,8 +1,0 @@
-name: proseforge-engine
-version: 0.8.0
-description: "ProseForge 引擎 — 2 个工具覆盖全流水线：nf_pipeline（写/审/改/卷）+ nf_project（建/管/导）"
-author: "ProseForge Team"
-provides_tools:
-  - nf_pipeline
-  - nf_project
-enabled: true

@@ -1,7 +1,6 @@
 """
 test_continuity_evidence_guard.py — 章章连续证据门禁测试
 """
-import pytest, json, sys, os
 from src.guards.continuity_evidence_guard import run_continuity_evidence_check
 
 

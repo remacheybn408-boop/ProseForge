@@ -1,3 +1,6 @@
+Exit code: 0
+Wall time: 0.2 seconds
+Output:
 # 系统架构
 
 ## 总览
@@ -274,3 +277,4 @@ FTS5 全文检索覆盖 chapter/character/world/plot/chunk 等。
    - **审读 Agent = fail-closed**：某个 Agent 崩溃 → `orchestrator.py` 给它 `status=FAIL, score=100`（问题分，越高越差），从而把 `overall_status` 推成 FAIL。理由：审读是"建议性复查"，宁可显式报红引起注意，也不要把崩溃悄悄当通过。
    - 两者方向相反是有意的：门禁卡 ingest（要稳，故 fail-open），审读只给建议（要醒目，故 fail-closed）。调用方据此理解为何同样"崩溃"在两处结局不同。
    - **分数方向**：审读 `overall_score` 是**问题分，越低越好**（`base_agent`: higher = more issues），报告里带 `score_direction: "lower_is_better"` 显式标注，避免误读成"越高越好"。
+

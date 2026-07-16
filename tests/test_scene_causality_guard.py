@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Test scene_causality_guard — 场景因果链门禁测试"""
-import sys, json
-from pathlib import Path
 
 from src.guards.scene_causality_guard import (
     detect_cause,
@@ -12,7 +10,6 @@ from src.guards.scene_causality_guard import (
     detect_hook,
     split_into_scenes,
     analyze_scene,
-    analyze_scenes,
     run_scene_causality_check,
 )
 

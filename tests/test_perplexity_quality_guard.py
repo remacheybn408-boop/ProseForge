@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Test perplexity_quality_guard — QGP 困惑度质量门禁测试"""
-import sys, json
-from pathlib import Path
+import json
 
 from src.guards.perplexity_quality_guard import (
     build_report,

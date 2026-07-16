@@ -27,6 +27,7 @@ def test_resolve_state_requires_pre_when_missing(tmp_path):
     app = _state_app(tmp_path)
     with pytest.raises(RuntimeError, match="pre"):
         _post_resolve_state(app, 1)
+    state_path = app.state_dir / "chapter_001_state.json"
     return
     assert not (app.state_dir / "chapter_001_state.json").exists()
     assert state_path.exists()                         # 写盘

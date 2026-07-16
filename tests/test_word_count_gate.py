@@ -1,7 +1,7 @@
 """
 test_word_count_gate.py — 字数门禁 V5 测试
 """
-import pytest, sys, os
+import pytest
 from copy import deepcopy
 
 import src.pipeline.post as post_m
@@ -30,7 +30,7 @@ class TestWordCountGateV5:
         post_m.app = app
         content = "测试" * 600  # 1200
         result, wc, eff_min = post_m.word_count_gate(content, 1, "normal")
-        assert result == False
+        assert not result
 
     def test_normal_authorized_short_passes_when_allowed(self, app):
         """allow_short_chapter lets normal chapters pass inside authorized_short range."""
@@ -45,14 +45,14 @@ class TestWordCountGateV5:
         post_m.app = app
         content = "字" * 299
         result, wc, eff_min = post_m.word_count_gate(content, 1, "normal")
-        assert result == False
+        assert not result
 
     def test_normal_short_above_authorized_max_fails(self, app):
         """Short-chapter permission does not pass chapters above authorized_short.max."""
         post_m.app = app
         content = "字" * 1100
         result, wc, eff_min = post_m.word_count_gate(content, 1, "normal")
-        assert result == False
+        assert not result
 
     def test_normal_short_fails_when_not_allowed(self, app):
         """400-char normal chapters fail when allow_short_chapter is disabled."""
@@ -60,7 +60,7 @@ class TestWordCountGateV5:
         post_m.app = app
         content = "字" * 400
         result, wc, eff_min = post_m.word_count_gate(content, 1, "normal")
-        assert result == False
+        assert not result
 
     def test_normal_1900_passes(self, app):
         """Normal 1900 passes (best range)"""

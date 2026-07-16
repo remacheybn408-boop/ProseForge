@@ -1,0 +1,75 @@
+# ProseForge Web v1 incremental Docker validation
+
+Date: 2026-07-16
+
+All commands below were executed in Docker containers.
+
+- Playwright browser smoke: `1 passed`
+- API/contract/unit regression: final Docker API `522 passed, 1 skipped`; contract `17 passed`
+- Legacy top-level regression isolated from Web/API integration tests: `408 passed in 209.28s`
+- Frontend Vitest: `3 passed`; Vite production build passed
+- Backup archive verification passed
+- Backup database restore completed into PostgreSQL `proseforge_staging`; `alembic_version` exists and application tables were created
+- `proseforge --version` works inside the rebuilt API image
+- API, Worker, and Scheduler run as UID/GID `10001`
+- Provider contracts: `17 passed` including domestic Chat Completions adapters and native Ollama NDJSON
+- Native Cohere V2 contract: `1 passed`; Settings connection probe is covered by browser E2E
+- Capability validation: `3 passed` for modality, structured output, reasoning, max output, and context overflow
+- Fault injection and interrupted-stream recovery: `2 passed`; unavailable PostgreSQL/Redis returns readiness `503`
+- Workflow recovery migration and repository tests: `13 passed`; leases, checkpoints, cost limits, and expired-run recovery verified
+- Docker API/unit/provider/fault regression after workflow changes: `38 passed`; backup/recovery suite: `4 passed`
+- Conversation idempotency and branch persistence: `3 passed`; duplicate client requests reuse the existing assistant task
+- Durable SSE replay and concurrent event publication: `2 passed`; per-conversation event IDs remain unique and ordered
+- Affected API/provider/fault regression after event-stream changes: `33 passed`
+- Context snapshot persistence/control and file ownership flows: `2 + 10 passed`; snapshot validation/download and file download/delete paths are covered
+- Auth session controls and project archive/restore: `10 + 3 passed`; CLI reports release version `1.0.0`
+- Chapter version activation and unified diff controls: `11 passed`; ownership and version selection are covered
+- Reversible context deduplication, structured summary validation, and compiler fallback coverage: `4 passed`; raw source blocks remain available
+- Conversation branch isolation: `4 passed`; fork points are now constrained to the requested conversation and owner
+- Chat stop/retry/continue and partial-stream continuation: `5 passed`; recovery resumes at the next durable chunk index
+- Worker continuation request compilation passed in Docker; saved partial assistant text is included as continuation context
+- Writer/Editor profile roles and frontend settings build: Vitest `2 passed`; Vite production build passed
+- Durable Novel Writer task and streamed chapter collection: `5 passed`; empty provider output is rejected and successful chapters activate only after persistence
+- Structured Editor review gate and rewrite-loop integration: `5 passed`; invalid review output cannot commit a chapter; Ruff passed
+- Legacy database migration repair: API upgraded an existing database missing workflow tables and reached healthy state; migration coverage `2 passed`
+- Concurrent chapter version allocation: `3 passed`; PostgreSQL advisory locking prevents duplicate version numbers
+- Full rebuilt Docker browser flow: Playwright `1 passed` in `5.3s`; frontend now waits for durable chat completion and restores the selected project after refresh
+- Startup health round-trip, migration, and workflow-table checks: recovery `2 passed`, API health `3 passed`; BlobStore probe is removed after verification
+- Export request contract and Writing Studio Markdown download control: Web Vitest `2 passed` + Vite build; API/unit regression `10 passed`
+- Manual future-model registration and catalog retention: `3 passed`; custom models are marked manual and protected from sync disappearance
+- Final rebuilt API/worker/scheduler production stack: all services healthy, readiness `ok`, Celery `pong`
+- Docker E2E was rerun after forced recreation of API/worker/web against the isolated test volume: `1 passed`
+- Production readiness after returning to the base Compose stack: API/blob/backup/database/redis all `ok`; Celery `inspect ping` returned `pong`
+- After API container recreation, the Web/Nginx proxy still served `/api/v1/health/live` successfully via Docker DNS resolution
+- Compose services were healthy after rebuild/restart
+- Final Docker API regression: `522 passed, 1 skipped`; test entrypoint now runs Alembic plus schema bootstrap before pytest
+- Final Docker contract/migration/recovery suites: `17 passed`, `22 passed`, and `5 passed`
+- Final Docker frontend validation: Vitest `3 passed`, Vite production build passed, and Playwright E2E `1 passed`
+- Frontend draft durability and reconnectable conversation SSE: Vitest `3 passed`; browser E2E remained green after the streaming client change
+- Writing Studio now reloads the active chapter version from PostgreSQL after project/chapter navigation; Docker build and E2E remained green after the persistence fix
+- E2E test volume repair was verified: forcing API bootstrap recreated missing application tables when an old volume had only `alembic_version`; login and browser flow then passed
+- Latest chapter persistence build: Web Vitest `3 passed`, Vite build passed, and browser E2E `1 passed` after forced API bootstrap recreation
+- Browser E2E now configures the mock provider before workflow confirmation and verified Worker Writer/Editor generation reached the editor; Playwright `1 passed`
+- Readiness now verifies master-key validity, pgvector availability, partial-message visibility, and expired workflow leases; bootstrap repairs missing PostgreSQL extensions idempotently
+- Live Docker fault injection: stopping Redis made `/api/v1/health/ready` return `503`; restarting Redis restored `200` and all readiness checks to `ok`
+- Rebuilt production API/worker/scheduler/web images after health changes; production readiness returned `200` with `pgvector`, `master_key`, `partial_messages`, and `expired_workflows` checks
+- Final Docker gate rerun: legacy `408 passed`; API `522 passed, 1 skipped`; contract `17 passed`; migration `22 passed`; recovery `5 passed`; web `3 passed`; E2E `1 passed`
+- Full repository Ruff gate: `All checks passed` for `proseforge` and `tests` inside the Docker test image
+- Backup restore regression: `3 passed`; tampered members are rejected and database restore requires an explicit staging target
+- Runtime container contract: `2 passed`; API/worker/scheduler run as UID/GID `10001` and Nginx SSE buffering is disabled
+- Same-production-Compose `down`/`up` persistence probe preserved PostgreSQL data; the temporary probe table was removed afterward
+- Version history UI regression: Docker Vitest `4 passed`; users can compare and restore chapter versions from the Writing Studio
+- Fork race regression: latest-message reload before branch creation fixed a real 404; rebuilt Docker Chromium E2E `1 passed` after the fix
+- Chapter selector refinement: version history now follows any selected chapter and uses its persisted active version; final Docker Web Vitest `4 passed`, Vite build passed, Chromium E2E `1 passed`
+- Admin maintenance recovery: authenticated role propagation, 403 protection, transaction commit, and expired-workflow recovery endpoint covered; full Docker API `525 passed, 1 skipped`, Ruff `All checks passed`
+- Blob integrity maintenance: read-only SHA-256 attachment scan reports valid/missing/corrupt objects and is admin-protected; full Docker API `527 passed, 1 skipped`, Ruff `All checks passed`
+- Live Docker fault matrix: API stop produced unavailable health traffic and recovered to HTTP `200`; Worker stop/start restored Celery `pong`; Redis stop made readiness return HTTP `503` with `redis=error`, restart restored HTTP `200`; recovery suite `5 passed`
+- Celery worker-loss reliability: Docker test enforces late acknowledgements, reject-on-worker-lost, and prefetch `1`; PostgreSQL stop returned readiness `503` with database checks failing, restart restored readiness `200`; full Docker API `528 passed, 1 skipped`
+- Maintenance audit trail and download integrity: admin recovery/blob checks write audit records; attachment downloads reject SHA-256 tampering; full Docker API `530 passed, 1 skipped`, Ruff `All checks passed`
+- Chapter editor draft durability: IndexedDB now restores unsaved chapter text and clears it after a durable version save; Docker Web Vitest `4 passed`, Vite build passed, Chromium E2E `1 passed`
+- Final release gate: Legacy `408 passed`; contract `17 passed`; migration `22 passed`; recovery `5 passed`; production API/worker/scheduler/web images rebuilt; final Chromium E2E `1 passed`; auth role DetachedInstanceError found during gate and fixed before the passing rerun
+- Post-fix full API gate: `530 passed, 1 skipped`; auth, maintenance, Blob integrity, Celery reliability, and download checksum changes remain green together
+- Security gate: Docker `pip-audit` reports no known vulnerabilities after upgrading cryptography/pip/pytest; Docker `pnpm audit --audit-level high` clean; Trivy source scan reports 0 vulnerabilities and 0 secrets; Gitleaks source-directory scans clean (local pnpm cache false positives excluded)
+- Final dependency-image rebuild: production API/Worker/Scheduler rebuilt with upgraded security baselines; all Compose services healthy; Chromium E2E `1 passed`
+- User-facing API errors: Web client now maps common 401/403/404/409/429/5xx responses to actionable messages; Docker Web `5 passed`, Vite build passed, Chromium E2E `1 passed`
+- Provider error classification: timeout, connection, authentication, rate-limit, and upstream failures now have retry-aware domain codes while unknown exceptions preserve existing recovery behavior; full Docker API `531 passed, 1 skipped`, Ruff clean, rebuilt Worker/API E2E `1 passed`

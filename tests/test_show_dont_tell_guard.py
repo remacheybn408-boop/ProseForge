@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Test show_dont_tell_guard — AI总结句检测门禁测试"""
-import sys
-from pathlib import Path
 
 from src.guards.show_dont_tell_guard import run_show_dont_tell_check
 

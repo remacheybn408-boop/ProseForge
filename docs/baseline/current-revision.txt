@@ -1,0 +1,3 @@
+repository=remacheybn408-boop/ProseForge
+branch=master
+revision=d976bcb52ddcadfb3092e8702b4dea534fb73ca4

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Test editor_revision_guard — 拟人审稿痕迹门禁测试"""
-import sys, json
-from pathlib import Path
 
 from src.guards.editor_revision_guard import (
     detect_over_explained,
