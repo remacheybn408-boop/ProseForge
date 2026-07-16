@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
 test("ordinary user can use the Docker-backed writing workspace", async ({ page, request }) => {
@@ -62,6 +63,12 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByRole("textbox", { name: "" }).first().fill("A first draft written through the browser.");
   await page.getByRole("button", { name: "Save version" }).click();
   await expect(page.getByText(/Saved version \d+/)).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download Markdown" }).click();
+  const download = await downloadPromise;
+  const downloadedPath = await download.path();
+  expect(downloadedPath).toBeTruthy();
+  await expect(fs.readFile(downloadedPath!, "utf8")).resolves.toContain("A first draft written through the browser.");
 
   await page.getByRole("button", { name: "Story memory" }).click();
   await expect(page.getByLabel("Model profile")).toBeVisible();
