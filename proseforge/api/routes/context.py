@@ -30,6 +30,10 @@ class ContextUpdateRequest(BaseModel):
     excluded: bool | None = None
 
 
+class ContextRestoreRequest(BaseModel):
+    snapshot_id: str = Field(min_length=1, max_length=64)
+
+
 def context_item_response(item) -> dict[str, object]:
     return {
         "id": item.id, "project_id": item.project_id, "source_type": item.source_type,
@@ -144,6 +148,19 @@ async def compile_context(project_id: str, user: Annotated[AuthUser, Depends(cur
         snapshot = await uow.context.snapshot(project_id, items)
         await uow.commit()
         return {"id": snapshot.id, "snapshot_hash": snapshot.snapshot_hash, "item_count": len(items)}
+
+
+@router.post("/projects/{project_id}/context/restore")
+async def restore_context(project_id: str, payload: ContextRestoreRequest, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> dict[str, object]:
+    async with uow:
+        if await uow.projects.get_by_id(user.id, project_id) is None:
+            raise HTTPException(status_code=404, detail="project not found")
+        snapshot = await uow.context.get_snapshot_owned(payload.snapshot_id, user.id)
+        if snapshot is None or snapshot.project_id != project_id:
+            raise HTTPException(status_code=404, detail="context snapshot not found")
+        items = await uow.context.restore_snapshot(project_id, snapshot)
+        await uow.commit()
+        return {"snapshot_id": snapshot.id, "items": [_response(item) for item in items], "restored_count": len(items)}
 
 
 @router.get("/context/snapshots/{snapshot_id}")

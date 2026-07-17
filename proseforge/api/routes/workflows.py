@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -29,11 +30,35 @@ class NovelWorkflowRequest(BaseModel):
 
 def _response(run) -> dict[str, object]:
     checkpoint = decode_checkpoint(run.checkpoint)
+    command = checkpoint.get("command") if isinstance(checkpoint.get("command"), dict) else {}
+    phase = str(checkpoint.get("phase", run.checkpoint or run.status))
+    requested = [int(item) for item in command.get("chapter_numbers", []) if isinstance(item, int | str) and str(item).isdigit()]
+    completed = sorted({int(item) for item in checkpoint.get("completed_chapters", []) if isinstance(item, int | str) and str(item).isdigit()})
+    current_match = re.search(r"CHAPTER_(\d+)", phase)
+    current_chapter = int(current_match.group(1)) if current_match else None
+    completed_steps = checkpoint.get("completed_steps")
+    if not isinstance(completed_steps, list):
+        completed_steps = []
+    retry_count = checkpoint.get("retry_count", 0)
+    if not isinstance(retry_count, int):
+        retry_count = 0
     return {
         "id": run.id, "project_id": run.project_id, "workflow_type": run.workflow_type, "status": run.status,
         "estimated_cost": float(getattr(run, "estimated_cost", 0) or 0), "cost_limit": float(getattr(run, "cost_limit", 0) or 0),
         "used_tokens": int(getattr(run, "used_tokens", 0) or 0), "token_limit": int(getattr(run, "token_limit", 0) or 0),
-        "checkpoint": checkpoint.get("phase", run.checkpoint), "last_error": getattr(run, "last_error", None),
+        "checkpoint": phase, "last_error": getattr(run, "last_error", None),
+        "current_step": phase,
+        "completed_steps": [str(step) for step in completed_steps],
+        "chapter_progress": {"current": current_chapter, "completed": completed, "total": len(requested), "requested": requested},
+        "retry_count": retry_count,
+        "model": command.get("model"),
+        "editor_model": command.get("editor_model"),
+        "token_cost_estimate": {
+            "used_tokens": int(getattr(run, "used_tokens", 0) or 0),
+            "token_limit": int(getattr(run, "token_limit", 0) or 0),
+            "cost_usd": float(getattr(run, "estimated_cost", 0) or 0),
+            "cost_limit": float(getattr(run, "cost_limit", 0) or 0),
+        },
     }
 
 

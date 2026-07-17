@@ -2,14 +2,18 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LanguageProvider } from "../../lib/i18n";
 import { ContextView } from "./ContextView";
-import { deleteContext, listContext, listModelProfiles, updateContext } from "../../lib/api/client";
+import { compileContext, deleteContext, downloadContextSnapshot, listContext, listModelProfiles, restoreContext, updateContext, validateContextSnapshot } from "../../lib/api/client";
 
 vi.mock("../../lib/api/client", () => ({
   addContext: vi.fn(),
+  compileContext: vi.fn(),
   deleteContext: vi.fn(),
+  downloadContextSnapshot: vi.fn(),
   listContext: vi.fn(),
   listModelProfiles: vi.fn(),
+  restoreContext: vi.fn(),
   updateContext: vi.fn(),
+  validateContextSnapshot: vi.fn(),
 }));
 
 const project = { id: "project-1", slug: "project", title: "Project", genre: "", style: "", language: "en-US", status: "ACTIVE" };
@@ -73,5 +77,25 @@ describe("ContextView", () => {
     await waitFor(() => expect(updateContext).toHaveBeenCalledWith("item-1", { content: "Mira remembers the lighthouse" }));
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(deleteContext).toHaveBeenCalledWith("item-1"));
+  });
+
+  it("recompacts, validates, restores, and downloads a context snapshot", async () => {
+    vi.mocked(listContext).mockResolvedValue({ items: [], used_tokens: 0, context_window: 20000, available_tokens: 16000, system_reserved_tokens: 0, history_tokens: 0, output_reserve_tokens: 4000 });
+    vi.mocked(compileContext).mockResolvedValue({ id: "snapshot-1", snapshot_hash: "abc123", item_count: 0 });
+    vi.mocked(validateContextSnapshot).mockResolvedValue({ id: "snapshot-1", valid: true, snapshot_hash: "abc123", actual_hash: "abc123" });
+    vi.mocked(restoreContext).mockResolvedValue({ snapshot_id: "snapshot-1", items: [], restored_count: 0 });
+    vi.mocked(downloadContextSnapshot).mockResolvedValue(new Blob(["{}"], { type: "application/json" }));
+
+    render(<LanguageProvider><ContextView project={project} /></LanguageProvider>);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Recompact" })).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "Recompact" }));
+    await waitFor(() => expect(screen.getByText("0 · abc123")).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Validate snapshot" }));
+    await waitFor(() => expect(validateContextSnapshot).toHaveBeenCalledWith("snapshot-1"));
+    fireEvent.click(screen.getByRole("button", { name: "Restore source" }));
+    await waitFor(() => expect(restoreContext).toHaveBeenCalledWith("project-1", "snapshot-1"));
+    fireEvent.click(screen.getByRole("button", { name: "Download snapshot" }));
+    await waitFor(() => expect(downloadContextSnapshot).toHaveBeenCalledWith("snapshot-1"));
   });
 });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { addContext, deleteContext, listContext, listModelProfiles, updateContext, type ContextItem, type ModelProfile, type Project } from "../../lib/api/client";
+import { addContext, compileContext, deleteContext, downloadContextSnapshot, listContext, listModelProfiles, restoreContext, updateContext, validateContextSnapshot, type ContextItem, type ModelProfile, type Project } from "../../lib/api/client";
 import { useLanguage } from "../../lib/i18n";
 import { ContextBudgetBar } from "../usage/ContextBudgetBar";
 
@@ -17,6 +17,8 @@ export function ContextView({ project }: { project: Project }) {
   const [editingContent, setEditingContent] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [snapshot, setSnapshot] = useState<{ id: string; snapshot_hash: string; item_count: number; valid?: boolean } | null>(null);
+  const [snapshotBusy, setSnapshotBusy] = useState(false);
 
   useEffect(() => {
     listModelProfiles().then(result => {
@@ -80,6 +82,64 @@ export function ContextView({ project }: { project: Project }) {
     }
   };
 
+  const recompact = async () => {
+    setSnapshotBusy(true);
+    setMessage("");
+    try {
+      setSnapshot(await compileContext(project.id));
+    } catch {
+      setMessage(t("contextSnapshotFailed"));
+    } finally {
+      setSnapshotBusy(false);
+    }
+  };
+
+  const validateSnapshot = async () => {
+    if (!snapshot) return;
+    setSnapshotBusy(true);
+    try {
+      const result = await validateContextSnapshot(snapshot.id);
+      setSnapshot(current => current ? { ...current, valid: result.valid } : current);
+    } catch {
+      setMessage(t("contextSnapshotFailed"));
+    } finally {
+      setSnapshotBusy(false);
+    }
+  };
+
+  const restoreSource = async () => {
+    if (!snapshot) return;
+    setSnapshotBusy(true);
+    try {
+      const result = await restoreContext(project.id, snapshot.id);
+      setItems(result.items);
+      setMessage(t("contextRestored"));
+    } catch {
+      setMessage(t("contextSnapshotFailed"));
+    } finally {
+      setSnapshotBusy(false);
+    }
+  };
+
+  const downloadSnapshot = async () => {
+    if (!snapshot) return;
+    setSnapshotBusy(true);
+    try {
+      const blob = await downloadContextSnapshot(snapshot.id);
+      if (typeof URL.createObjectURL === "function") {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `context-${snapshot.id}.json`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+    } catch {
+      setMessage(t("contextSnapshotFailed"));
+    } finally {
+      setSnapshotBusy(false);
+    }
+  };
+
   return <section className="detail-view">
     <div className="detail-heading">
       <p className="eyebrow">{t("context")}</p>
@@ -90,6 +150,10 @@ export function ContextView({ project }: { project: Project }) {
     </div>
     {message && <p role="alert">{message}</p>}
     <div className="settings-form"><label>{t("addMemory")}<textarea value={content} onChange={event => setContent(event.target.value)} placeholder={t("addMemoryPlaceholder")} /></label><button className="primary" onClick={() => void add()}>{t("addContext")}</button></div>
+    <section className="context-snapshot-panel" aria-label={t("contextSnapshot")}>
+      <div className="context-snapshot-heading"><div><p className="eyebrow">{t("contextSnapshot")}</p><strong>{snapshot ? `${snapshot.item_count} · ${snapshot.snapshot_hash}` : t("noSnapshot")}</strong>{snapshot?.valid !== undefined && <span role="status">{snapshot.valid ? t("snapshotValid") : t("snapshotInvalid")}</span>}</div><button onClick={() => void recompact()} disabled={snapshotBusy}>{t("recompact")}</button></div>
+      {snapshot && <div className="context-snapshot-actions"><button onClick={() => void validateSnapshot()} disabled={snapshotBusy}>{t("validateSnapshot")}</button><button onClick={() => void restoreSource()} disabled={snapshotBusy}>{t("restoreSource")}</button><button onClick={() => void downloadSnapshot()} disabled={snapshotBusy}>{t("downloadSnapshot")}</button></div>}
+    </section>
     <div className="detail-list">{items.map(item => <div className={`detail-card context-item-card${item.excluded ? " is-excluded" : ""}`} key={item.id}>
       <div>
         <strong>{item.pinned ? `${t("pinned")} · ` : ""}{item.source_type}</strong>

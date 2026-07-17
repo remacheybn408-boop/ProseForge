@@ -22,3 +22,26 @@ async def test_context_snapshot_is_durable_and_owner_scoped(session_factory):
         found = await repository.get_snapshot_owned(snapshot.id, "snapshot-owner")
         assert found is not None
         assert await repository.get_snapshot_owned(snapshot.id, "other-owner") is None
+
+
+@pytest.mark.asyncio
+async def test_context_snapshot_restores_source_without_deleting_new_memories(session_factory):
+    async with session_factory() as session:
+        project = Project.create(owner_id="restore-owner", slug="restore-book", title="Restore book")
+        await SqlAlchemyProjectRepository(session).add(project)
+        repository = SqlAlchemyContextRepository(session)
+        original = await repository.add(project.id, "manual", "Original lighthouse fact")
+        original.pinned = True
+        original.priority = 80
+        original.excluded = True
+        snapshot = await repository.snapshot(project.id, [original])
+        original.content = "Changed after snapshot"
+        await repository.add(project.id, "manual", "New memory after snapshot")
+
+        restored = await repository.restore_snapshot(project.id, snapshot)
+        await session.commit()
+
+    assert [item.content for item in restored] == ["Original lighthouse fact", "New memory after snapshot"]
+    assert restored[0].pinned is True
+    assert restored[0].priority == 80
+    assert restored[0].excluded is True

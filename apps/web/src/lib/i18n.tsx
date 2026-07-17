@@ -40,7 +40,17 @@ const contextMessages = {
   "en-US": { tokens: "tokens", priority: "Priority", excluded: "Excluded", editMemory: "Edit", saveMemory: "Save memory", deleteMemory: "Delete", confirmDeleteMemory: "Delete this story memory?", contextActionFailed: "The story memory action failed. Try again.", collapseAssistant: "Collapse assistant", expandAssistant: "Expand assistant" },
 } as const;
 
-export type TranslationKey = keyof typeof messages["zh-CN"] | keyof typeof extraMessages["zh-CN"] | keyof typeof credentialMessages["zh-CN"] | keyof typeof contextMessages["zh-CN"];
+const snapshotMessages = {
+  "zh-CN": { contextSnapshot: "故事记忆快照", noSnapshot: "尚未生成快照", recompact: "重新压缩", validateSnapshot: "校验快照", restoreSource: "恢复来源", downloadSnapshot: "下载快照", snapshotValid: "快照有效", snapshotInvalid: "快照无效", contextRestored: "故事记忆已恢复。", contextSnapshotFailed: "快照操作失败，请重试。" },
+  "en-US": { contextSnapshot: "Memory snapshot", noSnapshot: "No snapshot yet", recompact: "Recompact", validateSnapshot: "Validate snapshot", restoreSource: "Restore source", downloadSnapshot: "Download snapshot", snapshotValid: "Snapshot valid", snapshotInvalid: "Snapshot invalid", contextRestored: "Story memory restored.", contextSnapshotFailed: "The snapshot action failed. Try again." },
+} as const;
+
+const workflowMessages = {
+  "zh-CN": { workflowDetails: "工作流详情", currentStep: "当前步骤", completedSteps: "已完成步骤", chapterProgress: "章节进度", retryCount: "重试次数", model: "模型", tokenEstimate: "Token 估算", costEstimate: "费用估算", currentChapter: "当前章节", chapters: "章", of: "/", noCurrentStep: "暂无当前步骤", noCompletedSteps: "尚无已完成步骤", unknown: "未知", completed: "已完成" },
+  "en-US": { workflowDetails: "Workflow details", currentStep: "Current step", completedSteps: "Completed steps", chapterProgress: "Chapter progress", retryCount: "Retry count", model: "Model", tokenEstimate: "Token estimate", costEstimate: "Cost estimate", currentChapter: "current", chapters: "chapters", of: "of", noCurrentStep: "No current step", noCompletedSteps: "None yet", unknown: "Unknown", completed: "Completed" },
+} as const;
+
+export type TranslationKey = keyof typeof messages["zh-CN"] | keyof typeof extraMessages["zh-CN"] | keyof typeof credentialMessages["zh-CN"] | keyof typeof contextMessages["zh-CN"] | keyof typeof snapshotMessages["zh-CN"] | keyof typeof workflowMessages["zh-CN"];
 export type Translator = (key: TranslationKey) => string;
 
 export function loadLanguage(): Language {
@@ -54,7 +64,7 @@ export function saveLanguage(language: Language): void {
 }
 
 export function createTranslator(language: Language): Translator {
-  return key => messages[language][key as keyof typeof messages["zh-CN"]] ?? extraMessages[language][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[language][key] ?? contextMessages[language][key as keyof typeof contextMessages["zh-CN"]] ?? messages[defaultLanguage][key as keyof typeof messages["zh-CN"]] ?? extraMessages[defaultLanguage][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[defaultLanguage][key] ?? contextMessages[defaultLanguage][key as keyof typeof contextMessages["zh-CN"]] ?? key;
+  return key => messages[language][key as keyof typeof messages["zh-CN"]] ?? extraMessages[language][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[language][key] ?? contextMessages[language][key as keyof typeof contextMessages["zh-CN"]] ?? snapshotMessages[language][key as keyof typeof snapshotMessages["zh-CN"]] ?? workflowMessages[language][key as keyof typeof workflowMessages["zh-CN"]] ?? messages[defaultLanguage][key as keyof typeof messages["zh-CN"]] ?? extraMessages[defaultLanguage][key as keyof typeof extraMessages["zh-CN"]] ?? credentialMessages[defaultLanguage][key] ?? contextMessages[defaultLanguage][key as keyof typeof contextMessages["zh-CN"]] ?? snapshotMessages[defaultLanguage][key as keyof typeof snapshotMessages["zh-CN"]] ?? workflowMessages[defaultLanguage][key as keyof typeof workflowMessages["zh-CN"]] ?? key;
 }
 
 type LanguageContextValue = { language: Language; setLanguage: (language: Language) => void; t: Translator };

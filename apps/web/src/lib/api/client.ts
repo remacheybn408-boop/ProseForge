@@ -2,9 +2,27 @@ export type Project = { id: string; slug: string; title: string; genre: string; 
 export type Credential = { id: string; provider: string; masked_key: string };
 export type Outline = { id: string; project_id: string; title: string; status: string; payload: Record<string, unknown>; missing_questions: string[]; missing_fields: string[]; confirmed: boolean };
 export type ContextItem = { id: string; project_id: string; source_type: string; content: string; pinned: boolean; priority: number; excluded: boolean; token_estimate: number; provenance: Record<string, unknown> };
+export type ContextSnapshot = { id: string; project_id: string; snapshot_hash: string; payload?: { items?: ContextItem[] } };
 export type Chapter = { id: string; project_id: string; chapter_no: number; title: string; status: string; active_version_id?: string | null };
 export type ChapterVersion = { id: string; chapter_id: string; version_no: number; content: string; word_count: number };
-export type Workflow = { id: string; project_id: string; workflow_type: string; status: string };
+export type Workflow = {
+  id: string;
+  project_id: string;
+  workflow_type: string;
+  status: string;
+  checkpoint?: string | null;
+  current_step?: string | null;
+  completed_steps?: string[];
+  chapter_progress?: { current: number | null; completed: number[]; total: number; requested: number[] };
+  retry_count?: number;
+  model?: string | null;
+  editor_model?: string | null;
+  used_tokens?: number;
+  token_limit?: number;
+  estimated_cost?: number;
+  cost_limit?: number;
+  token_cost_estimate?: { used_tokens: number; token_limit: number; cost_usd: number; cost_limit: number };
+};
 export type WorkflowEvent = { id: number; event: string; data: Record<string, unknown> };
 export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; status: string };
 export type ModelProfile = { id: string; name: string; config: Record<string, unknown> };
@@ -65,6 +83,15 @@ export function listContext(projectId: string, options: { profileId?: string; pr
 export function addContext(projectId: string, content: string, sourceType = "manual") { return request<ContextItem>(`/api/v1/projects/${projectId}/context/items`, { method: "POST", body: JSON.stringify({ content, source_type: sourceType }) }); }
 export function updateContext(itemId: string, payload: Partial<Pick<ContextItem, "content" | "pinned" | "priority" | "excluded">>) { return request<ContextItem>(`/api/v1/context/items/${itemId}`, { method: "PATCH", body: JSON.stringify(payload) }); }
 export function deleteContext(itemId: string) { return request<void>(`/api/v1/context/items/${itemId}`, { method: "DELETE" }); }
+export function compileContext(projectId: string) { return request<{ id: string; snapshot_hash: string; item_count: number }>(`/api/v1/projects/${projectId}/context/compile`, { method: "POST" }); }
+export function getContextSnapshot(snapshotId: string) { return request<ContextSnapshot>(`/api/v1/context/snapshots/${encodeURIComponent(snapshotId)}`); }
+export function validateContextSnapshot(snapshotId: string) { return request<{ id: string; valid: boolean; snapshot_hash: string; actual_hash: string }>(`/api/v1/context/snapshots/${encodeURIComponent(snapshotId)}/validate`, { method: "POST" }); }
+export function restoreContext(projectId: string, snapshotId: string) { return request<{ snapshot_id: string; items: ContextItem[]; restored_count: number }>(`/api/v1/projects/${projectId}/context/restore`, { method: "POST", body: JSON.stringify({ snapshot_id: snapshotId }) }); }
+export async function downloadContextSnapshot(snapshotId: string): Promise<Blob> {
+  const response = await fetch(`/api/v1/context/snapshots/${encodeURIComponent(snapshotId)}/download`, { credentials: "include" });
+  if (!response.ok) throw new ApiError(response.status, `Snapshot download failed (${response.status})`);
+  return response.blob();
+}
 export function createWorkflow(projectId: string, chapterNumbers: number[]) { return request<Workflow>(`/api/v1/projects/${projectId}/workflows/novel`, { method: "POST", body: JSON.stringify({ chapter_numbers: chapterNumbers }) }); }
 export function getWorkflow(workflowId: string) { return request<Workflow>(`/api/v1/workflows/${workflowId}`); }
 export function controlWorkflow(workflowId: string, action: "pause" | "resume" | "cancel" | "retry") { return request<Workflow>(`/api/v1/workflows/${workflowId}/${action}`, { method: "POST" }); }

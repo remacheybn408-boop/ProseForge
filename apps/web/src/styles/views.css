@@ -142,6 +142,13 @@
   .workflow-actions button { flex: 1 1 44%; }
 }
 .workflow-actions button:disabled, .workflow-status button:disabled { opacity: .45; cursor: not-allowed; }
+.workflow-details { margin-top: 26px; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.workflow-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; margin: 0; }
+.workflow-metrics div { display: grid; gap: 6px; min-width: 0; }
+.workflow-metrics dt { color: var(--faint); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.workflow-metrics dd { margin: 0; color: var(--text); font-size: 13px; overflow-wrap: anywhere; }
+.workflow-actions button { min-height: 44px; }
+@media(max-width:600px) { .workflow-metrics { grid-template-columns: 1fr; } }
 .context-item-card { grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 16px; }
 .context-item-card > div:first-child { display: grid; gap: 8px; min-width: 0; }
 .context-item-card small { color: var(--faint); font-size: 12px; }
@@ -152,3 +159,12 @@
 .context-item-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .context-item-actions button, .detail-card button { min-height: 44px; }
 @media(max-width:600px) { .context-item-actions { grid-column: 1 / -1; justify-content: flex-start; } }
+.context-snapshot-panel { display: grid; gap: 14px; margin: 26px 0 8px; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.context-snapshot-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.context-snapshot-heading > div { display: grid; gap: 6px; min-width: 0; }
+.context-snapshot-heading strong { overflow-wrap: anywhere; font-size: 13px; }
+.context-snapshot-heading span { color: var(--secondary); font-size: 12px; }
+.context-snapshot-panel button { min-height: 44px; border: 1px solid var(--line); border-radius: 7px; padding: 8px 14px; background: var(--surface); color: var(--secondary); cursor: pointer; }
+.context-snapshot-panel button:hover { border-color: var(--primary); color: var(--text); }
+.context-snapshot-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media(max-width:600px) { .context-snapshot-heading { align-items: stretch; flex-direction: column; } .context-snapshot-actions button { flex: 1 1 44%; } }
