@@ -79,7 +79,7 @@ def test_alembic_upgrade_head_builds_full_schema_on_fresh_file(tmp_path: Path):
     with sqlite3.connect(str(db_path)) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
     assert version is not None
-    assert version[0] == "0012_review_revision"
+    assert version[0] == "0021_agent_evaluations"
 
     # 0007 恢复的 status 列与 0003 的 messages.status 都必须落库。
     assert "status" in _column_names(db_path, "projects")

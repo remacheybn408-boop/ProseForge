@@ -1,0 +1,106 @@
+from __future__ import annotations
+
+from datetime import datetime
+
+from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
+
+from proseforge.infrastructure.database.base import Base
+
+
+class AgentRunModel(Base):
+    __tablename__ = "agent_runs"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    goal_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(200), nullable=True, index=True)
+    graph_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING")
+    checkpoint_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    budget_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    budget_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    event_cursor: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    terminal_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    policy_version: Mapped[str] = mapped_column(String(64), nullable=False, default="v3-policy-1")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AgentTaskModel(Base):
+    __tablename__ = "agent_tasks"
+    __table_args__ = (UniqueConstraint("run_id", "task_key", name="uq_agent_tasks_run_key"),)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    task_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    role: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    depends_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    checkpoint_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_owner: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class AgentEventModel(Base):
+    __tablename__ = "agent_events"
+    __table_args__ = (UniqueConstraint("run_id", "sequence", name="uq_agent_events_run_sequence"),)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    event_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+
+
+class AgentArtifactModel(Base):
+    __tablename__ = "agent_artifacts"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    task_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    artifact_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    sha256: Mapped[str] = mapped_column(String(128), nullable=False)
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False, default="v1")
+    provenance: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    preview: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+
+
+class AgentReviewModel(Base):
+    __tablename__ = "agent_reviews"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    artifact_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    reviewer_role: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    conflict_group: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+
+
+class AgentMemoryModel(Base):
+    __tablename__ = "agent_memories"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    run_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    memory_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    source_artifact_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING")
+
+
+class AgentPolicySnapshotModel(Base):
+    __tablename__ = "agent_policy_snapshots"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    policy_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+
+
+class AgentEvaluationModel(Base):
+    __tablename__ = "agent_evaluations"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    fixture_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")

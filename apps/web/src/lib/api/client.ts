@@ -11,6 +11,8 @@ export type UsageBucket = { input_tokens: number; output_tokens: number; cached_
 export type UsageSummary = { scope: string; project_id?: string | null; conversation_id?: string | null; workflow_id?: string | null; actual: UsageBucket; estimated: UsageBucket };
 export type ProviderOption = { id: string; status: string };
 export type CatalogModel = { provider: string; model_id: string; display_name: string; capabilities: Record<string, unknown>; context_window?: number | null; max_output_tokens?: number | null };
+export type AgentRun = { id: string; project_id: string; status: string; goal_hash: string; graph_revision: number; checkpoint_id?: string | null; budget_used: number; budget_limit: number; event_cursor: number; policy_version: string; terminal_reason?: string | null };
+export type AgentTask = { id: string; task_key: string; role: string; status: string; attempts: number; depends_on: string[] };
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string, public readonly detail = "") {
@@ -68,6 +70,10 @@ export function forkConversation(conversationId: string, messageId: string, name
 export function requestExport(projectId: string, format: "txt" | "md" | "json" | "docx" | "epub", versionIds: string[] = []) { return request<{ status: string; format: string; download_url: string; version_ids: string[] }>(`/api/v1/projects/${projectId}/exports`, { method: "POST", body: JSON.stringify({ format, version_ids: versionIds }) }); }
 export function getUsageSummary(filters: { project_id?: string; conversation_id?: string; workflow_id?: string } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value) as [string, string][]).toString(); return request<UsageSummary>(`/api/v1/usage/summary${query ? `?${query}` : ""}`); }
 export function listUsageRecords(filters: { project_id?: string; conversation_id?: string; workflow_id?: string; limit?: number } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined) as [string, string][]).toString(); return request<Record<string, unknown>[]>(`/api/v1/usage/records${query ? `?${query}` : ""}`); }
+export function createAgentRun(projectId: string, payload: { goal: string; graph_revision?: number; budget_limit?: number }, idempotencyKey?: string) { return request<AgentRun>("/api/v3/projects/" + projectId + "/agent-runs", { method: "POST", headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined, body: JSON.stringify(payload) }); }
+export function getAgentRun(runId: string) { return request<AgentRun>("/api/v3/agent-runs/" + runId); }
+export function listAgentTasks(runId: string) { return request<AgentTask[]>("/api/v3/agent-runs/" + runId + "/tasks"); }
+export function controlAgentRun(runId: string, action: "pause" | "resume" | "cancel" | "retry") { return request<AgentRun>("/api/v3/agent-runs/" + runId + "/" + action, { method: "POST" }); }
 
 export function subscribeConversationEvents(conversationId: string, onEvent: (event: { event?: string; message_id?: string; text?: string }) => void) {
   const source = new EventSource(`/api/v1/conversations/${conversationId}/events`);

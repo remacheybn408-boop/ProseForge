@@ -6,14 +6,15 @@ import {
   addContext, answerOutline, confirmOutline, controlWorkflow, createConversation, createProject, createWorkflow,
   getHealth, importOutline, listChapters, listChapterVersions, listContext, listCredentials,
   forkConversation, listMessages, listProjects, login, probeProvider, saveChapterVersion, saveCredential, sendMessage, setupAdmin, subscribeConversationEvents, updateContext,
-  listModelProfiles, requestExport, saveModelProfile, type Chapter, type ChapterVersion, type ContextItem, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
+  listModelProfiles, requestExport, saveModelProfile, createAgentRun, getAgentRun, listAgentTasks, controlAgentRun, type AgentRun, type AgentTask, type Chapter, type ChapterVersion, type ContextItem, type Credential, type ModelProfile, type Outline, type Project, type Workflow,
 } from "../lib/api/client";
 import { loadDraft, saveDraft } from "../lib/drafts";
 import { loadRuntimeConfig } from "./runtime";
 import { ProjectVersionHistory } from "../features/VersionHistory";
 import { ExportDialog } from "../features/export/ExportDialog";
+import { AgentRunPage } from "../features/agents/AgentRunPage";
 
-type View = "projects" | "studio" | "outline" | "context" | "workflow" | "settings";
+type View = "projects" | "studio" | "outline" | "context" | "workflow" | "agents" | "settings";
 
 function newClientId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -92,6 +93,34 @@ function WorkflowView({ project, workflow, onWorkflow }: { project: Project; wor
   return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">DURABLE WORKFLOW</p><h2>{current ? "Chapter workflow" : "No active workflow"}</h2><p>{current ? `Project: ${project.title} · ${current.status}` : message}</p></div>{current ? <><div className="timeline"><div className="timeline-item done"><b>1</b><div><strong>Outline confirmed</strong><span>Saved to PostgreSQL</span></div></div><div className="timeline-item current"><b>2</b><div><strong>Draft chapter</strong><span>{current.status}</span></div></div><div className="timeline-item"><b>3</b><div><strong>Review and commit</strong><span>Waiting</span></div></div></div><div className="workflow-actions"><button onClick={() => action("pause")}>Pause</button><button onClick={() => action("resume")}>Resume</button><button onClick={() => action("cancel")}>Cancel</button><button onClick={() => action("retry")}>Retry</button></div></> : <p className="form-message">Open Outline Intake to start a workflow.</p>}</section>;
 }
 
+function AgentView({ project }: { project: Project }) {
+  const [run, setRun] = useState<AgentRun | null>(null);
+  const [tasks, setTasks] = useState<AgentTask[]>([]);
+  const [message, setMessage] = useState("Start a durable agent run for this project.");
+  const refresh = async (runId: string) => {
+    const [next, nextTasks] = await Promise.all([getAgentRun(runId), listAgentTasks(runId)]);
+    setRun(next);
+    setTasks(nextTasks);
+  };
+  const start = async () => {
+    try {
+      const next = await createAgentRun(project.id, { goal: "Draft and review the next scene for " + project.title }, "ui-" + project.id);
+      await refresh(next.id);
+      setMessage("Run created; tasks are checkpointed in PostgreSQL.");
+    } catch { setMessage("Could not start the agent run."); }
+  };
+  const action = async (name: "pause" | "resume" | "cancel" | "retry") => {
+    if (!run) return;
+    try {
+      const next = await controlAgentRun(run.id, name);
+      await refresh(next.id);
+      setMessage("Run " + next.status.toLowerCase() + ".");
+    } catch { setMessage("That action is not available in the current state."); }
+  };
+  useEffect(() => { setRun(null); setTasks([]); }, [project.id]);
+  return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">V3 AGENT SWARM</p><h2>Agent orchestration</h2><p>{message}</p></div>{run ? <AgentRunPage status={run.status} tasks={tasks.map(task => ({ id: task.id, role: task.role, status: task.status, attempts: task.attempts }))} onAction={action} /> : <button className="primary" onClick={start}>Start agent run</button>}</section>;
+}
+
 function SettingsView() {
   const [provider, setProvider] = useState("openai"); const [apiKey, setApiKey] = useState(""); const [baseUrl, setBaseUrl] = useState(""); const [credentials, setCredentials] = useState<Credential[]>([]); const [profiles, setProfiles] = useState<ModelProfile[]>([]); const [profileName, setProfileName] = useState(""); const [modelId, setModelId] = useState(""); const [profileRole, setProfileRole] = useState<"writer" | "editor">("writer"); const [message, setMessage] = useState("Secrets are never prefilled.");
   useEffect(() => { listCredentials().then(setCredentials).catch(() => undefined); listModelProfiles().then(setProfiles).catch(() => undefined); }, []);
@@ -108,5 +137,5 @@ export default function App() {
   if (authenticated === false) return <main className="auth-shell"><Login onLoggedIn={load} /></main>;
   if (authenticated === null) return <main className="auth-shell"><p>Connecting to your Docker workspace…</p></main>;
   const nav = (next: View, label: string) => <button onClick={() => setView(next)} className={`nav ${view === next ? "active" : ""}`}>{label}</button>;
-  return <div className="shell"><aside className="rail"><div className="brand">P<span>F</span></div><nav>{nav("projects", "Projects")}{nav("studio", "Writing Studio")}{nav("outline", "Outline intake")}{nav("context", "Context")}{nav("workflow", "Workflow")}{nav("settings", "Settings")}</nav><div className="rail-bottom">API: {connection}</div></aside><main className="main"><header><div><p className="eyebrow">CURRENT PROJECT</p><h1>{project?.title ?? "Projects"}</h1></div>{project && <button className="ghost" onClick={() => setView("projects")}>All projects</button>}</header>{view === "projects" && <Projects projects={projects} onOpen={item => { setProject(item); window.localStorage.setItem("proseforge.current-project", item.id); setView("studio"); }} onCreated={item => { setProjects([...projects, item]); setProject(item); window.localStorage.setItem("proseforge.current-project", item.id); setView("outline"); }} />}{project && view === "studio" && <><Studio project={project} /><ProjectVersionHistory project={project} /></>}{project && view === "outline" && <OutlineView project={project} onWorkflow={item => { setWorkflow(item); setView("workflow"); }} />}{project && view === "context" && <ContextView project={project} />}{project && view === "workflow" && <WorkflowView project={project} workflow={workflow} onWorkflow={setWorkflow} />}{view === "settings" && <SettingsView />}</main><aside className="inspector"><section><h3>Project status</h3><p>{project ? "Ready to continue" : "Create a project first"}</p><small>Everything is saved in your Docker-backed workspace.</small></section><section><h3>Workflow</h3><p>{workflow ? workflow.status : "Not started"}</p><button className="link" onClick={() => setView("workflow")}>Open workflow</button></section></aside></div>;
+  return <div className="shell"><aside className="rail"><div className="brand">P<span>F</span></div><nav>{nav("projects", "Projects")}{nav("studio", "Writing Studio")}{nav("outline", "Outline intake")}{nav("context", "Context")}{nav("workflow", "Workflow")}{project && nav("agents", "Agent Swarm")}{nav("settings", "Settings")}</nav><div className="rail-bottom">API: {connection}</div></aside><main className="main"><header><div><p className="eyebrow">CURRENT PROJECT</p><h1>{project?.title ?? "Projects"}</h1></div>{project && <button className="ghost" onClick={() => setView("projects")}>All projects</button>}</header>{view === "projects" && <Projects projects={projects} onOpen={item => { setProject(item); window.localStorage.setItem("proseforge.current-project", item.id); setView("studio"); }} onCreated={item => { setProjects([...projects, item]); setProject(item); window.localStorage.setItem("proseforge.current-project", item.id); setView("outline"); }} />}{project && view === "studio" && <><Studio project={project} /><ProjectVersionHistory project={project} /></>}{project && view === "outline" && <OutlineView project={project} onWorkflow={item => { setWorkflow(item); setView("workflow"); }} />}{project && view === "context" && <ContextView project={project} />}{project && view === "workflow" && <WorkflowView project={project} workflow={workflow} onWorkflow={setWorkflow} />}{project && view === "agents" && <AgentView project={project} />}{view === "settings" && <SettingsView />}</main><aside className="inspector"><section><h3>Project status</h3><p>{project ? "Ready to continue" : "Create a project first"}</p><small>Everything is saved in your Docker-backed workspace.</small></section><section><h3>Workflow</h3><p>{workflow ? workflow.status : "Not started"}</p><button className="link" onClick={() => setView("workflow")}>Open workflow</button></section></aside></div>;
 }
