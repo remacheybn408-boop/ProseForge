@@ -8,7 +8,8 @@ Verified:
 
 - Current full Python gate after migration `0024`: **645 passed, 1 skipped, 3 warnings**.
 - Agent/architecture/security focused regression after the new executor: **15 passed**.
-- Full Playwright suite: **12 passed**; frontend Vitest was previously **18 files / 27 tests passed** and TypeScript passed.
+- Full Playwright suite: **13 passed**; frontend Vitest was previously **18 files / 27 tests passed** and TypeScript passed.
+- Worker-child crash-after-artifact replay: **2 passed**, with one artifact and one task attempt retained.
 - V3 API/UI smoke: **1 passed**.
 - V3 execution/proposal flow: **1 passed**; covers pause, reload, resume requeue, persisted task artifacts, Chief Editor to V2 RevisionProposal, reject, rerun, approve to exactly one new ChapterVersion, and cancel without another version.
 - Worker is registered with `proseforge.agents.execute_run`; migration head is now `0024_agent_fault_mode`.

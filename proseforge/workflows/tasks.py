@@ -315,7 +315,18 @@ async def execute_agent_run(payload: dict[str, object]) -> str:
                     )
                     run.proposal_id = proposal.id
                     await add_event(uow, run, "proposal.created", {"proposal_id": proposal.id})
+                crash_after_artifact_commit = run.fault_mode == "crash_after_artifact_commit"
+                if crash_after_artifact_commit:
+                    # Test-only crash point: clear the switch in the same
+                    # transaction as the artifact/checkpoint commit. Celery
+                    # must redeliver the unacked task after the child exits;
+                    # the replay then observes SUCCEEDED and only completes
+                    # the run without creating another artifact.
+                    run.fault_mode = None
                 await uow.commit()
+                if crash_after_artifact_commit:
+                    import os
+                    os._exit(137)
     except Exception as exc:
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             run = await uow.session.scalar(select(AgentRunModel).where(AgentRunModel.id == run_id, AgentRunModel.user_id == user_id))

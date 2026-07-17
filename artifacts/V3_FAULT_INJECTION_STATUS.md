@@ -11,6 +11,6 @@ Execution runtime: Podman CLI.
 | Provider timeout | Development-only persisted fault mode terminates the worker run as FAILED | PASS (injected boundary) |
 | Malformed model JSON | Development-only malformed JSON mode terminates the worker run as FAILED | PASS (injected boundary) |
 | Budget exhaustion terminal state | Development-only mode terminates as BUDGET_EXHAUSTED; per-task budgets are persisted | PASS (injected boundary) |
-| Worker crash after artifact commit | Restart smoke exists; exact after-commit kill/replay scenario remains | PARTIAL |
+| Worker crash after artifact commit | Playwright worker-child crash/requeue test passed; one artifact, one commit event, one task attempt, and final completion were verified | PASS |
 
-The V3 release gate remains open until the exact worker kill-after-artifact replay harness is complete and native platform limits are reconciled.
+The exact worker kill-after-artifact replay harness is now covered. Native platform limits remain open.

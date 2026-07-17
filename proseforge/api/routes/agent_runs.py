@@ -36,7 +36,7 @@ class AgentRunRequest(BaseModel):
     budget_limit: int = Field(default=12000, ge=1, le=100000)
     chapter_id: str | None = None
     base_version_id: str | None = None
-    fault_mode: Literal["provider_timeout", "malformed_json", "budget_exhaustion"] | None = None
+    fault_mode: Literal["provider_timeout", "malformed_json", "budget_exhaustion", "crash_after_artifact_commit"] | None = None
 
 
 class ArtifactRequest(BaseModel):
