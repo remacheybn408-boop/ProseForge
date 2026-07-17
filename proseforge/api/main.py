@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 from proseforge.api.middleware import CorrelationIdMiddleware
 from proseforge.api.routes.auth import router as auth_router
+from proseforge.api.routes.branches import router as branches_router
 from proseforge.api.routes.chapters import router as chapters_router
 from proseforge.api.routes.conversations import router as conversations_router
 from proseforge.api.routes.context import router as context_router
@@ -127,6 +128,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.model_catalog = {}
     application.include_router(health_router)
     application.include_router(auth_router)
+    application.include_router(branches_router)
     application.include_router(projects_router)
     application.include_router(conversations_router)
     application.include_router(providers_router)

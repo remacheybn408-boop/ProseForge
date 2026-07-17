@@ -23,13 +23,13 @@ class SqlAlchemyConversationRepository:
         await self.session.flush()
         return branch
 
-    async def append_message(self, branch_id: str, role: str, content: str, client_request_id: str | None = None, status: str = "COMPLETED") -> Message:
+    async def append_message(self, branch_id: str, role: str, content: str, client_request_id: str | None = None, status: str = "COMPLETED", *, parent_message_id: str | None = None) -> Message:
         if client_request_id:
             existing = await self.session.scalar(select(MessageModel).where(MessageModel.client_request_id == client_request_id))
             if existing:
                 return self._message(existing)
         next_sequence = (await self.session.scalar(select(func.coalesce(func.max(MessageModel.sequence_no), 0)).where(MessageModel.branch_id == branch_id))) + 1
-        message = Message(id=new_id(), branch_id=branch_id, role=role, content=content, client_request_id=client_request_id, status=status)
+        message = Message(id=new_id(), branch_id=branch_id, role=role, content=content, client_request_id=client_request_id, status=status, parent_message_id=parent_message_id)
         self.session.add(MessageModel(**message.__dict__, sequence_no=next_sequence))
         await self.session.flush()
         return message
@@ -78,6 +78,12 @@ class SqlAlchemyConversationRepository:
         self.session.add(ConversationBranchModel(**branch.__dict__))
         await self.session.flush()
         return branch
+
+    async def create_message_edit(self, message_id: str, original_content: str, edited_content: str, branch_id: str) -> None:
+        from datetime import UTC, datetime
+        from proseforge.infrastructure.database.models.conversation import MessageEditModel
+        self.session.add(MessageEditModel(id=new_id(), message_id=message_id, original_content=original_content, edited_content=edited_content, created_branch_id=branch_id, created_at=datetime.now(UTC)))
+        await self.session.flush()
 
     async def list_visible_messages(self, branch_id: str) -> list[Message]:
         branch = await self.session.get(ConversationBranchModel, branch_id)
@@ -146,6 +152,21 @@ class SqlAlchemyConversationRepository:
         )
         return row is not None
 
+    async def list_branches(self, conversation_id: str, owner_id: str) -> list[ConversationBranch]:
+        from proseforge.infrastructure.database.models.project import ProjectModel
+        rows = (await self.session.scalars(select(ConversationBranchModel).join(ConversationModel, ConversationModel.id == ConversationBranchModel.conversation_id).join(ProjectModel, ProjectModel.id == ConversationModel.project_id).where(ConversationBranchModel.conversation_id == conversation_id, ProjectModel.owner_id == owner_id).order_by(ConversationBranchModel.id))).all()
+        return [ConversationBranch(id=row.id, conversation_id=row.conversation_id, name=row.name, parent_branch_id=row.parent_branch_id, forked_from_message_id=row.forked_from_message_id, status=row.status or "ACTIVE", title=row.title) for row in rows]
+
+    async def archive_branch(self, branch_id: str, conversation_id: str, owner_id: str) -> bool:
+        from datetime import UTC, datetime
+        if not await self.branch_belongs_to_conversation(branch_id, conversation_id, owner_id):
+            return False
+        row = await self.session.get(ConversationBranchModel, branch_id)
+        row.status = "ARCHIVED"
+        row.archived_at = datetime.now(UTC)
+        await self.session.flush()
+        return True
+
     async def set_message_status(self, message_id: str, status: str) -> None:
         row = await self.session.get(MessageModel, message_id)
         if row is None:
@@ -161,7 +182,7 @@ class SqlAlchemyConversationRepository:
 
     @staticmethod
     def _message(item: MessageModel) -> Message:
-        return Message(id=item.id, branch_id=item.branch_id, role=item.role, content=item.content, client_request_id=item.client_request_id, status=item.status)
+        return Message(id=item.id, branch_id=item.branch_id, role=item.role, content=item.content, client_request_id=item.client_request_id, status=item.status, parent_message_id=item.parent_message_id, generation_attempt=item.generation_attempt or 1)
 
     @staticmethod
     def _chunk(item: MessageChunkModel) -> MessageChunk:

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import Integer, String, Text, UniqueConstraint
+from datetime import datetime
+
+from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from proseforge.infrastructure.database.base import Base
@@ -20,6 +22,12 @@ class ConversationBranchModel(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     parent_branch_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     forked_from_message_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    fork_message_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class MessageModel(Base):
@@ -32,6 +40,21 @@ class MessageModel(Base):
     client_request_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="COMPLETED")
+    parent_message_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    generation_attempt: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    model_snapshot_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reasoning_snapshot_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+
+class MessageEditModel(Base):
+    __tablename__ = "message_edits"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    message_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    original_content: Mapped[str] = mapped_column(Text, nullable=False)
+    edited_content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_branch_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class MessageChunkModel(Base):

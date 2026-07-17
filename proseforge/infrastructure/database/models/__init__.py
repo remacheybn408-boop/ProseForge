@@ -1,7 +1,7 @@
 """SQLAlchemy persistence models."""
 
 from .chapter import ChapterModel, ChapterVersionModel
-from .conversation import ConversationBranchModel, ConversationEventModel, ConversationModel, MessageChunkModel, MessageModel
+from .conversation import ConversationBranchModel, ConversationEventModel, ConversationModel, MessageChunkModel, MessageEditModel, MessageModel
 from .project import ProjectModel
 from .usage import ModelUsageRecordModel
 from .auth import UserModel
@@ -27,7 +27,7 @@ from .remaining import (
 
 __all__ = [
     "ChapterModel", "ChapterVersionModel", "ProjectModel", "UserModel",
-    "ConversationModel", "ConversationBranchModel", "MessageModel", "MessageChunkModel",
+    "ConversationModel", "ConversationBranchModel", "MessageModel", "MessageChunkModel", "MessageEditModel",
     "ConversationEventModel", "ArtifactModel", "AttachmentModel", "AuditLogModel",
     "ContextItemModel", "ContextSnapshotModel", "EmbeddingModel", "HealthCheckModel",
     "ModelCallModel", "ModelCatalogModel", "ModelProfileModel", "OutlineModel",

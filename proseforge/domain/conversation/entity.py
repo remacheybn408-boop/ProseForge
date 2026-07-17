@@ -23,6 +23,8 @@ class ConversationBranch:
     name: str
     parent_branch_id: str | None = None
     forked_from_message_id: str | None = None
+    status: str = "ACTIVE"
+    title: str | None = None
 
 
 @dataclass(frozen=True)
@@ -33,6 +35,8 @@ class Message:
     content: str
     client_request_id: str | None = None
     status: str = "COMPLETED"
+    parent_message_id: str | None = None
+    generation_attempt: int = 1
 
 
 @dataclass(frozen=True)
