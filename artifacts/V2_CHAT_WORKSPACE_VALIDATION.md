@@ -1,23 +1,28 @@
 # V2 Chat Workspace Validation
 
-Status: **BLOCKED — V2-010 release gate not green**  
+Status: **BLOCKED — V2-010 release gate is not fully green**  
 Local runtime: Podman  
-Current master SHA: `3010d9d`
+Execution date: 2026-07-18  
+Current master SHA: `5e88c32`
 
-Implemented in order: V2-001 shell, V2-002 immutable conversation metadata, V2-003 branch semantics, V2-004 reasoning capabilities, V2-005 story bible, V2-006 selection-aware editor fallback, V2-007 review/revision proposal primitives, V2-008 workflow studio primitives, V2-009 PWA/export/i18n surfaces.
+Implemented in order: V2-001 shell, V2-002 immutable conversation metadata, V2-003 branch semantics, V2-004 reasoning capabilities, V2-005 Story Bible, V2-006 selection-aware editor fallback, V2-007 review/revision proposal primitives, V2-008 workflow studio primitives, V2-009 PWA/export/i18n surfaces.
 
-Evidence:
+## Evidence
 
-- Podman backend unit/migration slice: 9 passed.
-- Podman frontend full Vitest suite: 17 files / 26 tests passed.
-- Podman Vite production builds for V2 shell/workflow slices passed.
-- Python imports and FastAPI route registration passed in Podman.
+- Podman backend API/integration/migration slice: **76 passed**.
+- Earlier full backend matrix with PostgreSQL/Redis on the Podman network: **645 passed, 1 optional RAG test skipped** (`chromadb` unavailable), 3 warnings.
+- Podman frontend Vitest: **18 files / 27 tests passed**.
+- Podman TypeScript `tsc --noEmit`: passed.
+- Podman Vite production build to the served `proseforge-web-dist` volume: passed.
+- Real Podman API flow: migrations to `0012_review_revision`, login, project, conversation, Story Bible, branch and ownership paths passed.
+- Real Playwright ordinary-user flow: **1 passed**; it covered login, project creation, provider credential masking/probe, outline intake, workflow generation, chapter version save, chat, fork and reload.
+- The five additional lightweight Playwright protection/shell tests passed when run with the same Podman stack.
 
-Blocking:
+## Remaining blockers
 
-- Required V2 API/integration/PostgreSQL tests are not green because no Podman compose provider or PostgreSQL service is available; `postgres:5432` cannot resolve.
-- Full Python matrix previously timed out at the 300-second gate and must be rerun with the server dependency service.
-- Playwright professional flow and axe accessibility scan were not executed; they are NOT TESTED.
-- `tsc --noEmit` remains uncertified because the mounted frontend node_modules lacks the declared `@types/react`, `@types/react-dom`, and `@types/node` packages.
+- The blueprint’s V2-010 ten-step professional flow is not implemented as a test in the current tree: message editing/regeneration, review/rewrite approval, workflow recovery controls, and Markdown/DOCX/EPUB hash verification remain unverified end to end.
+- The required axe-core visual accessibility suite is absent from `apps/web/e2e`; it is not tested.
+- The checked-in test image is stale and omits declared `aiosqlite`; rebuilding it was blocked by the container’s invalid inherited pip proxy. The repository was not changed to bypass this dependency.
+- Native macOS/Windows evidence remains unavailable on this Windows host.
 
-V2 is not marked complete, tagged, or pushed as a release.
+V2 is therefore not marked complete, not tagged, and not pushed as a release.
