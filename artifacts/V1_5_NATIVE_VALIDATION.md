@@ -2,7 +2,7 @@
 
 Status: **BLOCKED — release gate not green**
 
-Repository SHA: `pending-current-commit`
+Repository SHA: `a679a92`
 Execution date: 2026-07-18  
 Local container runtime: Podman
 
