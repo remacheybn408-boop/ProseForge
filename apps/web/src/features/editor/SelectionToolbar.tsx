@@ -1,0 +1,2 @@
+import type { SelectionRange } from "./editorState";
+export function SelectionToolbar({ range, onAction }: { range: SelectionRange; onAction: (action: string) => void }) { return <div className="selection-toolbar" aria-label="Manuscript actions"><span>{range.to - range.from} chars</span>{["continue", "expand", "shorten", "rewrite", "review"].map(action => <button key={action} type="button" onClick={() => onAction(action)}>{action}</button>)}</div>; }
