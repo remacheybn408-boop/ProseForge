@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "../styles/tokens.css";
 import "../styles/views.css";
+import "../styles/chat-shell.css";
 import {
   addContext, answerOutline, confirmOutline, controlWorkflow, createConversation, createProject, createWorkflow,
   getHealth, importOutline, listChapters, listChapterVersions, listContext, listCredentials,

@@ -1,0 +1,1 @@
+export function Sidebar({ items = ["Projects", "Writing Studio", "Story Bible", "Workflow"] }: { items?: string[] }) { return <aside className="workspace-sidebar" aria-label="Workspace navigation"><div className="brand">P<span>F</span></div><nav>{items.map(item => <button key={item} type="button">{item}</button>)}</nav></aside>; }
