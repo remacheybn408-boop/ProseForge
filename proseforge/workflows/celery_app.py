@@ -13,6 +13,7 @@ from proseforge.workflows.tasks import (
     recover_expired,
     should_abort_workflow,  # noqa: F401  re-export：既有调用方从这里 import
     sync_all_models,
+    execute_agent_run,
 )
 
 
@@ -72,6 +73,12 @@ def generate_chat_task(self, payload: dict[str, object]) -> str:
     """Run one durable chat generation task in the worker process."""
     del self
     return asyncio.run(generate_chat(payload))
+
+
+@celery.task(name="proseforge.agents.execute_run", bind=True, max_retries=0)
+def execute_agent_run_task(self, payload: dict[str, object]) -> str:
+    del self
+    return asyncio.run(execute_agent_run(payload))
 
 
 __all__ = ["HANDLERS", "celery", "should_abort_workflow"]

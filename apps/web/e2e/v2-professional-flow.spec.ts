@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 test("v2 professional flow persists proposals, assistant usage and export snapshots", async ({ page, request }) => {
-  const email = process.env.E2E_EMAIL ?? "v2-professional@example.local";
+  const email = process.env.E2E_EMAIL ?? "v2-e2e-b074fc29@example.local";
   const password = process.env.E2E_PASSWORD ?? "E2ePassw0rd!";
   const setup = await request.post("/api/v1/auth/setup", { data: { email, password } });
   expect([201, 409]).toContain(setup.status());

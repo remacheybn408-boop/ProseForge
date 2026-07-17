@@ -5,7 +5,7 @@ import json
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
@@ -13,8 +13,9 @@ from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.application.agents.validate_graph import validate_graph
 from proseforge.application.auth.service import AuthUser
 from proseforge.domain.agents.task_graph import AgentTaskSpec, TaskGraph
+from proseforge.domain.agents.roles import AgentRole
 from proseforge.domain.common.ids import new_id
-from proseforge.infrastructure.database.models.agents import AgentArtifactModel, AgentEventModel, AgentReviewModel, AgentRunModel, AgentTaskModel
+from proseforge.infrastructure.database.models.agents import AgentArtifactModel, AgentEventModel, AgentPolicySnapshotModel, AgentReviewModel, AgentRunModel, AgentTaskModel
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
 router = APIRouter(prefix="/api/v3", tags=["agent-runs"])
@@ -33,6 +34,8 @@ class AgentRunRequest(BaseModel):
     graph_revision: int = Field(default=1, ge=1)
     tasks: list[GraphTaskRequest] = Field(default_factory=list, max_length=64)
     budget_limit: int = Field(default=12000, ge=1, le=100000)
+    chapter_id: str | None = None
+    base_version_id: str | None = None
 
 
 class ArtifactRequest(BaseModel):
@@ -58,6 +61,7 @@ def _run_response(run: AgentRunModel) -> dict[str, object]:
         "checkpoint_id": run.checkpoint_id, "budget_used": run.budget_used,
         "budget_limit": run.budget_limit, "event_cursor": run.event_cursor,
         "policy_version": run.policy_version, "terminal_reason": run.terminal_reason,
+        "chapter_id": run.chapter_id, "base_version_id": run.base_version_id, "proposal_id": run.proposal_id,
     }
 
 
@@ -79,6 +83,7 @@ async def _event(uow: SqlAlchemyUnitOfWork, run: AgentRunModel, event_type: str,
 async def start_run(
     project_id: str,
     payload: AgentRunRequest,
+    request: Request,
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
@@ -100,12 +105,28 @@ async def start_run(
             if existing is not None:
                 return _run_response(existing)
         now = datetime.now(UTC)
-        run = AgentRunModel(id=new_id(), user_id=user.id, project_id=project_id, goal_hash=hashlib.sha256(payload.goal.encode()).hexdigest(), idempotency_key=idempotency_key, graph_revision=payload.graph_revision, status="PENDING", budget_limit=payload.budget_limit, created_at=now, updated_at=now)
+        if payload.chapter_id is not None:
+            chapter = await uow.chapters.get_owned(payload.chapter_id, user.id)
+            if chapter is None or chapter.project_id != project_id:
+                raise HTTPException(status_code=404, detail="chapter not found")
+        run = AgentRunModel(id=new_id(), user_id=user.id, project_id=project_id, chapter_id=payload.chapter_id, base_version_id=payload.base_version_id, goal_hash=hashlib.sha256(payload.goal.encode()).hexdigest(), idempotency_key=idempotency_key, graph_revision=payload.graph_revision, status="PENDING", budget_limit=payload.budget_limit, created_at=now, updated_at=now)
         uow.session.add(run)
+        policy_payload = {"roles": sorted(role.value for role in AgentRole), "version": "v3-policy-1"}
+        policy_json = json.dumps(policy_payload, sort_keys=True)
+        run.policy_version = policy_payload["version"]
+        uow.session.add(AgentPolicySnapshotModel(id=new_id(), run_id=run.id, policy_version=run.policy_version, policy_hash=hashlib.sha256(policy_json.encode()).hexdigest(), payload=policy_json))
         for item in tasks:
             uow.session.add(AgentTaskModel(id=new_id(), run_id=run.id, task_key=item.id, role=item.role, status="PENDING", depends_on=json.dumps(item.depends_on), checkpoint_id=None))
         await _event(uow, run, "run.created", {"graph_revision": payload.graph_revision, "task_count": len(tasks)})
         await uow.commit()
+        try:
+            await request.app.state.queue.enqueue("proseforge.agents.execute_run", {"run_id": run.id, "user_id": user.id})
+        except Exception as exc:
+            run.status = "FAILED"
+            run.terminal_reason = "queue unavailable"
+            await _event(uow, run, "run.queue_failed", {"error": type(exc).__name__})
+            await uow.commit()
+            raise HTTPException(status_code=503, detail="agent queue unavailable") from exc
         return _run_response(run)
 
 
@@ -115,7 +136,7 @@ async def get_run(run_id: str, user: Annotated[AuthUser, Depends(current_user)],
         return _run_response(await _owned_run(uow, run_id, user.id))
 
 
-async def _control(run_id: str, action: str, user: AuthUser, uow: SqlAlchemyUnitOfWork, task_id: str | None = None) -> dict[str, object]:
+async def _control(run_id: str, action: str, user: AuthUser, uow: SqlAlchemyUnitOfWork, task_id: str | None = None, queue=None) -> dict[str, object]:
     run = await _owned_run(uow, run_id, user.id)
     transitions = {"pause": ("PAUSED", {"PENDING", "RUNNING"}), "resume": ("RUNNING", {"PENDING", "PAUSED", "FAILED"}), "cancel": ("CANCELLED", {"PENDING", "RUNNING", "PAUSED", "FAILED"})}
     if action == "retry":
@@ -139,17 +160,20 @@ async def _control(run_id: str, action: str, user: AuthUser, uow: SqlAlchemyUnit
             run.terminal_reason = "cancelled by user"
         await _event(uow, run, f"run.{action}")
     await uow.commit()
+    if action in {"resume", "retry"} and queue is not None:
+        await queue.enqueue("proseforge.agents.execute_run", {"run_id": run.id, "user_id": user.id})
     return _run_response(run)
 
 
 def _make_control_handler(action: str):
     async def handler(
         run_id: str,
+        request: Request,
         user: Annotated[AuthUser, Depends(current_user)],
         uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
     ):
         async with uow:
-            return await _control(run_id, action, user, uow)
+            return await _control(run_id, action, user, uow, queue=request.app.state.queue)
 
     handler.__name__ = f"{action}_agent_run"
     return handler
@@ -160,9 +184,9 @@ for _action in ("pause", "resume", "cancel"):
 
 
 @router.post("/agent-runs/{run_id}/retry")
-async def retry_run(run_id: str, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)], task_id: str | None = None) -> dict[str, object]:
+async def retry_run(run_id: str, request: Request, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)], task_id: str | None = None) -> dict[str, object]:
     async with uow:
-        return await _control(run_id, "retry", user, uow, task_id)
+        return await _control(run_id, "retry", user, uow, task_id, request.app.state.queue)
 
 
 @router.get("/agent-runs/{run_id}/tasks")

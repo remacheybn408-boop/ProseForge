@@ -23,6 +23,7 @@ EXPECTED_TASK_NAMES = {
     "proseforge.providers.sync_all_models",
     "proseforge.workflows.recover_expired",
     "proseforge.healthcheck",
+    "proseforge.agents.execute_run",
 }
 
 

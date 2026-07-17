@@ -15,7 +15,7 @@ Repository SHA: `7e55abb`
 - Full Playwright suite: **8 passed** with one worker.
 - `v2-professional-flow.spec.ts`: passed; verified PostgreSQL-backed project/chapter/version, Celery/provider-backed assistant completion, proposal approval creating a new immutable version, export snapshot manifest and download SHA-256, and authenticated browser project view.
 - `visual-a11y.spec.ts`: passed; axe-core found **0 serious / 0 critical** violations across projects, editor, workflow and export dialog states.
-- Alembic database head: `0012_review_revision`.
+- Alembic database head at the V2 gate was `0012_review_revision`; later V3 migrations advance the current repository head to `0022_agent_proposals`.
 - Podman services: PostgreSQL, Redis, API, worker and provider mock.
 
 ## Notes

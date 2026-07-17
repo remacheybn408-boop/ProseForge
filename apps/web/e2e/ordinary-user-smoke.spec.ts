@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("ordinary user can use the Docker-backed writing workspace", async ({ page, request }) => {
-  const email = process.env.E2E_EMAIL ?? "e2e@example.local";
+  const email = process.env.E2E_EMAIL ?? "v2-e2e-b074fc29@example.local";
   const password = process.env.E2E_PASSWORD ?? "E2ePassw0rd!";
   await request.post("/api/v1/auth/setup", { data: { email, password } });
   const health = await request.get("/api/v1/health/live");

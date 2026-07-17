@@ -195,6 +195,122 @@ async def recover_expired(payload: dict[str, object]) -> int:
         await engine.dispose()
 
 
+async def execute_agent_run(payload: dict[str, object]) -> str:
+    """Execute a persisted V3 graph one checkpoint at a time.
+
+    The worker owns task transitions and artifact writes; it never writes a
+    ChapterVersion.  Chief Editor output is routed through V2 proposals.
+    """
+    import hashlib
+    import json
+    from datetime import UTC, datetime
+    from sqlalchemy import select, func
+    from proseforge.domain.common.ids import new_id
+    from proseforge.infrastructure.database.models.agents import AgentArtifactModel, AgentEventModel, AgentRunModel, AgentTaskModel
+    from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
+    from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
+    from proseforge.settings import get_settings
+
+    settings = get_settings()
+    engine, session_factory = create_engine_and_sessionmaker(settings)
+    run_id, user_id = str(payload["run_id"]), str(payload.get("user_id", ""))
+    recover_stale = True
+
+    async def add_event(uow, run, event_type: str, data: dict[str, object] | None = None) -> None:
+        sequence = int(await uow.session.scalar(select(func.max(AgentEventModel.sequence)).where(AgentEventModel.run_id == run.id)) or 0) + 1
+        uow.session.add(AgentEventModel(id=new_id(), run_id=run.id, sequence=sequence, event_type=event_type, payload=json.dumps(data or {}, sort_keys=True)))
+        run.event_cursor = sequence
+        run.updated_at = datetime.now(UTC)
+
+    try:
+        while True:
+            async with SqlAlchemyUnitOfWork(session_factory) as uow:
+                run = await uow.session.scalar(select(AgentRunModel).where(AgentRunModel.id == run_id, AgentRunModel.user_id == user_id))
+                if run is None:
+                    return "run-not-found"
+                if run.status in {"CANCELLED", "PAUSED"}:
+                    return run.status.lower()
+                if run.status == "PENDING":
+                    run.status = "RUNNING"
+                    await add_event(uow, run, "run.started")
+                tasks = list(await uow.session.scalars(select(AgentTaskModel).where(AgentTaskModel.run_id == run.id).order_by(AgentTaskModel.id)))
+                if recover_stale:
+                    recovered = [task for task in tasks if task.status == "RUNNING"]
+                    for task in recovered:
+                        task.status = "PENDING"
+                        task.last_error = "worker restarted before checkpoint commit"
+                        await add_event(uow, run, "task.recovered", {"task_id": task.id, "task_key": task.task_key})
+                    recover_stale = False
+                    if recovered:
+                        await uow.commit()
+                        continue
+                succeeded = {task.task_key for task in tasks if task.status == "SUCCEEDED"}
+                pending = [task for task in tasks if task.status == "PENDING"]
+                if not pending:
+                    run.status = "COMPLETED"
+                    await add_event(uow, run, "run.completed")
+                    await uow.commit()
+                    return "completed"
+                task = next((candidate for candidate in pending if set(json.loads(candidate.depends_on)) <= succeeded), None)
+                if task is None:
+                    run.status = "FAILED"
+                    run.terminal_reason = "task dependency could not be satisfied"
+                    await add_event(uow, run, "run.failed", {"reason": run.terminal_reason})
+                    await uow.commit()
+                    return "failed"
+                task.status = "RUNNING"
+                task.attempts += 1
+                task.checkpoint_id = f"{run.id}:{task.task_key}:{task.attempts}"
+                await add_event(uow, run, "task.started", {"task_id": task.id, "task_key": task.task_key, "role": task.role})
+                await uow.commit()
+
+            async with SqlAlchemyUnitOfWork(session_factory) as uow:
+                run = await uow.session.scalar(select(AgentRunModel).where(AgentRunModel.id == run_id, AgentRunModel.user_id == user_id))
+                task = await uow.session.scalar(select(AgentTaskModel).where(AgentTaskModel.run_id == run_id, AgentTaskModel.status == "RUNNING"))
+                if run is None or task is None:
+                    return "run-not-found"
+                if run.status in {"CANCELLED", "PAUSED"}:
+                    task.status = "PENDING"
+                    await uow.commit()
+                    return run.status.lower()
+                candidate = {"task_key": task.task_key, "role": task.role, "goal_hash": run.goal_hash}
+                raw = json.dumps(candidate, sort_keys=True).encode()
+                artifact = AgentArtifactModel(
+                    id=new_id(), run_id=run.id, task_id=task.id, artifact_type="candidate",
+                    sha256=hashlib.sha256(raw).hexdigest(), provenance=json.dumps({"task_id": task.id, "role": task.role}, sort_keys=True),
+                    preview=f"{task.role} candidate", payload=json.dumps(candidate, sort_keys=True),
+                )
+                uow.session.add(artifact)
+                task.status = "SUCCEEDED"
+                task.checkpoint_id = f"{run.id}:{task.task_key}:committed"
+                run.budget_used += 1
+                await add_event(uow, run, "artifact.committed", {"artifact_id": artifact.id, "task_id": task.id, "sha256": artifact.sha256})
+                await add_event(uow, run, "task.succeeded", {"task_id": task.id, "task_key": task.task_key})
+                if task.role == "chief_editor" and run.chapter_id and run.base_version_id:
+                    base = await uow.chapters.get_version_owned(run.chapter_id, run.base_version_id, user_id)
+                    if base is None:
+                        raise ValueError("chief editor base version not found")
+                    proposal = await uow.revisions.create(
+                        chapter_id=run.chapter_id, base_version_id=base.id, before=base.content,
+                        after=base.content + "\n\n" + f"[Agent candidate: {task.task_key}]",
+                        rationale="Chief Editor candidate produced by the reviewed V3 run.",
+                    )
+                    run.proposal_id = proposal.id
+                    await add_event(uow, run, "proposal.created", {"proposal_id": proposal.id})
+                await uow.commit()
+    except Exception as exc:
+        async with SqlAlchemyUnitOfWork(session_factory) as uow:
+            run = await uow.session.scalar(select(AgentRunModel).where(AgentRunModel.id == run_id, AgentRunModel.user_id == user_id))
+            if run is not None:
+                run.status = "FAILED"
+                run.terminal_reason = type(exc).__name__
+                await add_event(uow, run, "run.failed", {"reason": type(exc).__name__})
+                await uow.commit()
+        raise
+    finally:
+        await engine.dispose()
+
+
 async def generate_chat(payload: dict[str, object]) -> str:
     """Run one durable chat generation task in the worker process."""
     import base64
@@ -264,4 +380,5 @@ HANDLERS: dict[str, TaskHandler] = {
     "proseforge.providers.sync_all_models": sync_all_models,
     "proseforge.workflows.recover_expired": recover_expired,
     "proseforge.healthcheck": healthcheck,
+    "proseforge.agents.execute_run": execute_agent_run,
 }
