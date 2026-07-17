@@ -8,6 +8,8 @@ from pathlib import Path
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from proseforge.runtime.profile import RuntimeProfile, validate_profile_database
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -29,6 +31,20 @@ class Settings(BaseSettings):
     bootstrap_admin_password: SecretStr = SecretStr("change-me-now")
     max_upload_bytes: int = 50 * 1024 * 1024
     allowed_local_provider_hosts: tuple[str, ...] = Field(default_factory=tuple)
+
+    runtime_profile: RuntimeProfile = RuntimeProfile.SERVER
+    data_dir: str | None = None
+    frontend_dir: str | None = None
+    host: str = "127.0.0.1"
+    port: int = 8000
+    serve_web: bool = False
+    native_queue_poll_seconds: float = 1.0
+    native_worker_concurrency: int = 2
+
+    @model_validator(mode="after")
+    def validate_runtime(self) -> "Settings":
+        validate_profile_database(self.runtime_profile, self.database_url)
+        return self
 
     @model_validator(mode="after")
     def validate_security(self) -> "Settings":
