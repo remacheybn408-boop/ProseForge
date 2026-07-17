@@ -230,6 +230,16 @@ async def execute_agent_run(payload: dict[str, object]) -> str:
                     return "run-not-found"
                 if run.status in {"CANCELLED", "PAUSED"}:
                     return run.status.lower()
+                if run.fault_mode == "provider_timeout":
+                    raise TimeoutError("injected provider timeout")
+                if run.fault_mode == "malformed_json":
+                    json.loads("{malformed agent output")
+                if run.fault_mode == "budget_exhaustion":
+                    run.status = "BUDGET_EXHAUSTED"
+                    run.terminal_reason = "injected budget exhaustion"
+                    await add_event(uow, run, "run.budget_exhausted", {"injected": True})
+                    await uow.commit()
+                    return "budget-exhausted"
                 if run.status == "PENDING":
                     run.status = "RUNNING"
                     await add_event(uow, run, "run.started")

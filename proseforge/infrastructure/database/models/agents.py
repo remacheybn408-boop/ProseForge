@@ -16,6 +16,7 @@ class AgentRunModel(Base):
     chapter_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     base_version_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     proposal_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    fault_mode: Mapped[str | None] = mapped_column(String(64), nullable=True)
     goal_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     idempotency_key: Mapped[str | None] = mapped_column(String(200), nullable=True, index=True)
     graph_revision: Mapped[int] = mapped_column(Integer, nullable=False)

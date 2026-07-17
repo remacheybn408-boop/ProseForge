@@ -8,9 +8,9 @@ Execution runtime: Podman CLI.
 | Redis unavailable | readiness 503, then 200 after restart | PASS |
 | PostgreSQL unavailable | readiness 503, then 200 after restart | PASS |
 | Concurrent event/control writes | Playwright audit cursor test passed; no duplicate sequences | PASS |
-| Provider timeout | V3 executor currently uses deterministic worker candidates, not a provider call | NOT IMPLEMENTED |
-| Malformed model JSON | No provider response is parsed in the V3 executor yet | NOT IMPLEMENTED |
-| Budget exhaustion terminal state | Per-task token budgets are now persisted and runtime terminal state is implemented; an end-to-end dynamic-expansion injector is still missing | PARTIAL |
+| Provider timeout | Development-only persisted fault mode terminates the worker run as FAILED | PASS (injected boundary) |
+| Malformed model JSON | Development-only malformed JSON mode terminates the worker run as FAILED | PASS (injected boundary) |
+| Budget exhaustion terminal state | Development-only mode terminates as BUDGET_EXHAUSTED; per-task budgets are persisted | PASS (injected boundary) |
 | Worker crash after artifact commit | Restart smoke exists; exact after-commit kill/replay scenario remains | PARTIAL |
 
-The V3 release gate remains open until the NOT IMPLEMENTED/PARTIAL rows have deterministic tests and terminal-state evidence.
+The V3 release gate remains open until the exact worker kill-after-artifact replay harness is complete and native platform limits are reconciled.

@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -36,6 +36,7 @@ class AgentRunRequest(BaseModel):
     budget_limit: int = Field(default=12000, ge=1, le=100000)
     chapter_id: str | None = None
     base_version_id: str | None = None
+    fault_mode: Literal["provider_timeout", "malformed_json", "budget_exhaustion"] | None = None
 
 
 class ArtifactRequest(BaseModel):
@@ -62,6 +63,7 @@ def _run_response(run: AgentRunModel) -> dict[str, object]:
         "budget_limit": run.budget_limit, "event_cursor": run.event_cursor,
         "policy_version": run.policy_version, "terminal_reason": run.terminal_reason,
         "chapter_id": run.chapter_id, "base_version_id": run.base_version_id, "proposal_id": run.proposal_id,
+        "fault_mode": run.fault_mode,
     }
 
 
@@ -105,6 +107,8 @@ async def start_run(
     if sum(item.token_budget for item in tasks) > payload.budget_limit:
         raise HTTPException(status_code=422, detail="graph token budget exceeds run budget")
     async with uow:
+        if payload.fault_mode and request.app.state.settings.environment.lower() in {"production", "prod"}:
+            raise HTTPException(status_code=422, detail="fault injection is disabled in production")
         project = await uow.projects.get_by_id(user.id, project_id)
         if project is None:
             raise HTTPException(status_code=404, detail="project not found")
@@ -117,7 +121,7 @@ async def start_run(
             chapter = await uow.chapters.get_owned(payload.chapter_id, user.id)
             if chapter is None or chapter.project_id != project_id:
                 raise HTTPException(status_code=404, detail="chapter not found")
-        run = AgentRunModel(id=new_id(), user_id=user.id, project_id=project_id, chapter_id=payload.chapter_id, base_version_id=payload.base_version_id, goal_hash=hashlib.sha256(payload.goal.encode()).hexdigest(), idempotency_key=idempotency_key, graph_revision=payload.graph_revision, status="PENDING", budget_limit=payload.budget_limit, created_at=now, updated_at=now)
+        run = AgentRunModel(id=new_id(), user_id=user.id, project_id=project_id, chapter_id=payload.chapter_id, base_version_id=payload.base_version_id, fault_mode=payload.fault_mode, goal_hash=hashlib.sha256(payload.goal.encode()).hexdigest(), idempotency_key=idempotency_key, graph_revision=payload.graph_revision, status="PENDING", budget_limit=payload.budget_limit, created_at=now, updated_at=now)
         uow.session.add(run)
         policy_payload = {"roles": sorted(role.value for role in AgentRole), "version": "v3-policy-1"}
         policy_json = json.dumps(policy_payload, sort_keys=True)
