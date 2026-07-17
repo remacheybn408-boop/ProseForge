@@ -4,6 +4,7 @@ from .chapter import ChapterModel, ChapterVersionModel
 from .conversation import ConversationBranchModel, ConversationEventModel, ConversationModel, MessageChunkModel, MessageEditModel, MessageModel
 from .project import ProjectModel
 from .story_bible import StoryBibleEntryModel
+from .revision import RevisionProposalModel
 from .usage import ModelUsageRecordModel
 from .auth import UserModel
 from .remaining import (
@@ -28,7 +29,7 @@ from .remaining import (
 
 __all__ = [
     "ChapterModel", "ChapterVersionModel", "ProjectModel", "UserModel",
-    "ConversationModel", "ConversationBranchModel", "MessageModel", "MessageChunkModel", "MessageEditModel", "StoryBibleEntryModel",
+    "ConversationModel", "ConversationBranchModel", "MessageModel", "MessageChunkModel", "MessageEditModel", "StoryBibleEntryModel", "RevisionProposalModel",
     "ConversationEventModel", "ArtifactModel", "AttachmentModel", "AuditLogModel",
     "ContextItemModel", "ContextSnapshotModel", "EmbeddingModel", "HealthCheckModel",
     "ModelCallModel", "ModelCatalogModel", "ModelProfileModel", "OutlineModel",
