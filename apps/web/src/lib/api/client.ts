@@ -1,29 +1,10 @@
 export type Project = { id: string; slug: string; title: string; genre: string; style: string; language: string; status: string };
 export type Credential = { id: string; provider: string; masked_key: string };
 export type Outline = { id: string; project_id: string; title: string; status: string; payload: Record<string, unknown>; missing_questions: string[]; missing_fields: string[]; confirmed: boolean };
-export type ContextItem = { id: string; project_id: string; source_type: string; content: string; pinned: boolean; priority: number; excluded: boolean; token_estimate: number; provenance: Record<string, unknown> };
-export type ContextSnapshot = { id: string; project_id: string; snapshot_hash: string; payload?: { items?: ContextItem[] } };
+export type ContextItem = { id: string; project_id: string; source_type: string; content: string; pinned: boolean; priority: number; excluded: boolean; provenance: Record<string, unknown> };
 export type Chapter = { id: string; project_id: string; chapter_no: number; title: string; status: string; active_version_id?: string | null };
 export type ChapterVersion = { id: string; chapter_id: string; version_no: number; content: string; word_count: number };
-export type Workflow = {
-  id: string;
-  project_id: string;
-  workflow_type: string;
-  status: string;
-  checkpoint?: string | null;
-  current_step?: string | null;
-  completed_steps?: string[];
-  chapter_progress?: { current: number | null; completed: number[]; total: number; requested: number[] };
-  retry_count?: number;
-  model?: string | null;
-  editor_model?: string | null;
-  used_tokens?: number;
-  token_limit?: number;
-  estimated_cost?: number;
-  cost_limit?: number;
-  token_cost_estimate?: { used_tokens: number; token_limit: number; cost_usd: number; cost_limit: number };
-};
-export type WorkflowEvent = { id: number; event: string; data: Record<string, unknown> };
+export type Workflow = { id: string; project_id: string; workflow_type: string; status: string };
 export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; status: string };
 export type ModelProfile = { id: string; name: string; config: Record<string, unknown> };
 export type UsageBucket = { input_tokens: number; output_tokens: number; cached_input_tokens: number; reasoning_tokens: number; total_tokens: number; cost_usd: number | null };
@@ -59,12 +40,10 @@ export function listModels(filters: { provider?: string; q?: string; available_o
 export function listProjects() { return request<Project[]>("/api/v1/projects"); }
 export function listCredentials() { return request<Credential[]>("/api/v1/credentials"); }
 export function saveCredential(payload: { provider: string; api_key: string; base_url?: string }) { return request<Credential>("/api/v1/credentials", { method: "POST", body: JSON.stringify(payload) }); }
-export function deleteCredential(credentialId: string) { return request<void>(`/api/v1/credentials/${encodeURIComponent(credentialId)}`, { method: "DELETE" }); }
 export function probeProvider(provider: string) { return request<{ provider: string; valid: boolean }>(`/api/v1/providers/${provider}/probe`, { method: "POST" }); }
 export function listModelProfiles() { return request<ModelProfile[]>("/api/v1/model-profiles"); }
 export function saveModelProfile(payload: { name: string; role: "writer" | "editor"; config: Record<string, unknown> }) { return request<ModelProfile>("/api/v1/model-profiles", { method: "POST", body: JSON.stringify(payload) }); }
 export function login(payload: { email: string; password: string }) { return request<{ access_token: string; token_type: string }>("/api/v1/auth/login", { method: "POST", body: JSON.stringify(payload) }); }
-export function logout() { return request<void>("/api/v1/auth/logout", { method: "POST" }); }
 export function setupAdmin(payload: { email: string; password: string }) { return request<{ id: string; email: string }>("/api/v1/auth/setup", { method: "POST", body: JSON.stringify(payload) }); }
 export function createProject(payload: { slug: string; title: string; genre?: string; style?: string }) { return request<Project>("/api/v1/projects", { method: "POST", body: JSON.stringify(payload) }); }
 export function listChapters(projectId: string) { return request<Chapter[]>(`/api/v1/projects/${projectId}/chapters`); }
@@ -76,91 +55,12 @@ export function listOutlines(projectId: string) { return request<Outline[]>(`/ap
 export function importOutline(projectId: string, payload: { title: string; content?: string; data?: Record<string, unknown> }) { return request<Outline>(`/api/v1/projects/${projectId}/outlines/import`, { method: "POST", body: JSON.stringify(payload) }); }
 export function answerOutline(outlineId: string, answers: Record<string, unknown>) { return request<Outline>(`/api/v1/outlines/${outlineId}/parse`, { method: "POST", body: JSON.stringify({ answers }) }); }
 export function confirmOutline(outlineId: string) { return request<Outline>(`/api/v1/outlines/${outlineId}/confirm`, { method: "POST" }); }
-export function listContext(projectId: string, options: { profileId?: string; provider?: string; model?: string } = {}) {
-  const query = new URLSearchParams(Object.entries({ profile_id: options.profileId, provider: options.provider, model: options.model }).filter(([, value]) => value !== undefined) as [string, string][]).toString();
-  return request<{ items: ContextItem[]; used_tokens: number; context_window: number; available_tokens: number; system_reserved_tokens: number; history_tokens: number; output_reserve_tokens: number; provider?: string; model?: string }>(`/api/v1/projects/${projectId}/context${query ? `?${query}` : ""}`);
-}
+export function listContext(projectId: string) { return request<{ items: ContextItem[]; used_tokens: number; context_window: number; available_tokens: number }>(`/api/v1/projects/${projectId}/context`); }
 export function addContext(projectId: string, content: string, sourceType = "manual") { return request<ContextItem>(`/api/v1/projects/${projectId}/context/items`, { method: "POST", body: JSON.stringify({ content, source_type: sourceType }) }); }
 export function updateContext(itemId: string, payload: Partial<Pick<ContextItem, "content" | "pinned" | "priority" | "excluded">>) { return request<ContextItem>(`/api/v1/context/items/${itemId}`, { method: "PATCH", body: JSON.stringify(payload) }); }
-export function deleteContext(itemId: string) { return request<void>(`/api/v1/context/items/${itemId}`, { method: "DELETE" }); }
-export function compileContext(projectId: string) { return request<{ id: string; snapshot_hash: string; item_count: number }>(`/api/v1/projects/${projectId}/context/compile`, { method: "POST" }); }
-export function getContextSnapshot(snapshotId: string) { return request<ContextSnapshot>(`/api/v1/context/snapshots/${encodeURIComponent(snapshotId)}`); }
-export function validateContextSnapshot(snapshotId: string) { return request<{ id: string; valid: boolean; snapshot_hash: string; actual_hash: string }>(`/api/v1/context/snapshots/${encodeURIComponent(snapshotId)}/validate`, { method: "POST" }); }
-export function restoreContext(projectId: string, snapshotId: string) { return request<{ snapshot_id: string; items: ContextItem[]; restored_count: number }>(`/api/v1/projects/${projectId}/context/restore`, { method: "POST", body: JSON.stringify({ snapshot_id: snapshotId }) }); }
-export async function downloadContextSnapshot(snapshotId: string): Promise<Blob> {
-  const response = await fetch(`/api/v1/context/snapshots/${encodeURIComponent(snapshotId)}/download`, { credentials: "include" });
-  if (!response.ok) throw new ApiError(response.status, `Snapshot download failed (${response.status})`);
-  return response.blob();
-}
 export function createWorkflow(projectId: string, chapterNumbers: number[]) { return request<Workflow>(`/api/v1/projects/${projectId}/workflows/novel`, { method: "POST", body: JSON.stringify({ chapter_numbers: chapterNumbers }) }); }
 export function getWorkflow(workflowId: string) { return request<Workflow>(`/api/v1/workflows/${workflowId}`); }
 export function controlWorkflow(workflowId: string, action: "pause" | "resume" | "cancel" | "retry") { return request<Workflow>(`/api/v1/workflows/${workflowId}/${action}`, { method: "POST" }); }
-export async function subscribeWorkflowEvents(workflowId: string, onEvent: (event: WorkflowEvent) => void, options: { lastEventId?: number; signal?: AbortSignal; reconnectDelayMs?: number } = {}): Promise<void> {
-  let lastEventId = options.lastEventId ?? 0;
-  const terminalStatuses = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
-  while (!options.signal?.aborted) {
-  const headers: Record<string, string> = {};
-  if (lastEventId > 0) headers["Last-Event-ID"] = String(lastEventId);
-  let response: Response | undefined;
-  try {
-    response = await fetch(`/api/v1/workflows/${encodeURIComponent(workflowId)}/events`, { credentials: "include", headers, signal: options.signal });
-  } catch {
-    if (options.signal?.aborted) return;
-    await new Promise(resolve => setTimeout(resolve, options.reconnectDelayMs ?? 1000));
-    continue;
-  }
-  if (!response) continue;
-  if (!response.ok) throw new ApiError(response.status, `Workflow event stream failed (${response.status})`);
-  if (!response.body) {
-    await new Promise(resolve => setTimeout(resolve, options.reconnectDelayMs ?? 1000));
-    continue;
-  }
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let id = 0;
-  let event = "message";
-  let dataLines: string[] = [];
-  let terminal = false;
-  const dispatch = () => {
-    if (dataLines.length === 0) return;
-    const raw = dataLines.join("\n");
-    let data: Record<string, unknown>;
-    try { data = JSON.parse(raw) as Record<string, unknown>; } catch { data = { raw }; }
-    if (id > 0) lastEventId = Math.max(lastEventId, id);
-    onEvent({ id, event, data });
-    terminal = terminalStatuses.has(typeof data.status === "string" ? data.status : event);
-    id = 0;
-    event = "message";
-    dataLines = [];
-  };
-  const consumeLine = (line: string) => {
-    if (!line) return dispatch();
-    const separator = line.indexOf(":");
-    const field = separator < 0 ? line : line.slice(0, separator);
-    const value = separator < 0 ? "" : line.slice(separator + 1).replace(/^ /, "");
-    if (field === "id") id = Number(value) || 0;
-    if (field === "event") event = value || "message";
-    if (field === "data") dataLines.push(value);
-  };
-  try {
-    while (true) {
-      const result = await reader.read();
-      buffer += decoder.decode(result.value ?? new Uint8Array(), { stream: !result.done });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) consumeLine(line.endsWith("\r") ? line.slice(0, -1) : line);
-      if (result.done) break;
-    }
-    if (buffer) consumeLine(buffer.endsWith("\r") ? buffer.slice(0, -1) : buffer);
-    dispatch();
-  } catch {
-    if (options.signal?.aborted) return;
-  }
-  if (terminal || options.signal?.aborted) return;
-  await new Promise(resolve => setTimeout(resolve, options.reconnectDelayMs ?? 1000));
-  }
-}
 export function createConversation(projectId: string) { return request<{ id: string; branch_id: string; title: string }>("/api/v1/conversations", { method: "POST", body: JSON.stringify({ project_id: projectId, title: "Writing companion" }) }); }
 export function sendMessage(conversationId: string, payload: { branch_id: string; content: string; client_request_id: string; provider?: string; model?: string }) { return request<{ user_message_id: string; assistant_message_id: string; task_id: string }>(`/api/v1/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(payload) }); }
 export function listMessages(conversationId: string, branchId: string) { return request<ChatMessage[]>(`/api/v1/conversations/${conversationId}/branches/${branchId}/messages`); }

@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
 test("ordinary user can use the Docker-backed writing workspace", async ({ page, request }) => {
@@ -10,15 +9,13 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await expect(health.json()).resolves.toEqual({ status: "ok" });
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /登录你的写作空间/i })).toBeVisible();
-  await expect(page.getByLabel("邮箱")).toHaveAttribute("type", "email");
-  await expect(page.getByLabel("密码")).toHaveAttribute("type", "password");
+  await expect(page.getByRole("heading", { name: /sign in to your writing space/i })).toBeVisible();
+  await expect(page.getByLabel("Email")).toHaveAttribute("type", "email");
+  await expect(page.getByLabel("Password")).toHaveAttribute("type", "password");
 
-  await page.getByLabel("邮箱").fill(email);
-  await page.getByLabel("密码").fill(password);
-  await page.getByRole("button", { name: "登录" }).click();
-  await expect(page.getByRole("button", { name: "项目", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "English", exact: true }).click();
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByRole("button", { name: "Projects", exact: true }).click();
   await expect(page.locator("h2", { hasText: "Projects" })).toBeVisible();
 
@@ -28,34 +25,19 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await expect(page.getByRole("heading", { name: /start from your story idea/i })).toBeVisible();
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByLabel("API key").fill("mock-api-key");
-  await page.getByLabel("Endpoint URL (optional)").fill("http://provider-mock:8080/v1");
-  await page.getByRole("button", { name: "Save model service" }).click();
-  await expect(page.getByRole("heading", { name: "Configured" })).toBeVisible();
-  await page.getByLabel("API key").fill("mock-api-key-replaced");
-  await page.getByRole("button", { name: "Save model service" }).click();
-  await expect(page.getByRole("button", { name: "Remove credential openai" })).toHaveCount(1);
-  await page.getByLabel("Profile name").fill("E2E Writer");
-  await page.getByLabel("Model name / Model ID").fill("gpt-4.1-mini");
-  await page.getByRole("button", { name: "Save model profile" }).click();
+  await page.getByLabel("Base URL (optional)").fill("http://provider-mock:8080/v1");
+  await page.getByRole("button", { name: "Save provider" }).click();
+  await expect(page.getByText("Saved securely. The key is now masked.")).toBeVisible();
   await page.getByRole("button", { name: "Test connection" }).last().click();
-  await expect(page.getByText("openai · Connected")).toBeVisible();
+  await expect(page.getByText("openai connection is healthy.")).toBeVisible();
   await page.getByRole("button", { name: "Outline intake" }).click();
   await page.getByLabel("Outline title").fill("E2E Outline");
   await page.getByLabel("Outline or story notes").fill("A complete story about a cartographer who returns home and chooses hope.");
   await page.getByRole("button", { name: "Import and analyze" }).click();
-  const missingAnswers = page.getByPlaceholder("Answer the missing requirement");
-  await expect(missingAnswers).toHaveCount(5);
-  await missingAnswers.nth(0).fill("Adventure");
-  await missingAnswers.nth(1).fill("Mira, a determined cartographer");
-  await missingAnswers.nth(2).fill("Third person limited");
-  await missingAnswers.nth(3).fill("3");
-  await missingAnswers.nth(4).fill("1200");
+  await expect(page.getByPlaceholder("Answer the missing requirement")).toBeVisible();
+  await page.getByPlaceholder("Answer the missing requirement").fill("Mira, a determined cartographer");
   await page.getByRole("button", { name: "Save answer" }).click();
-  const workflowEventsRequest = page.waitForRequest(request => request.method() === "GET" && request.url().includes("/api/v1/workflows/") && request.url().endsWith("/events"));
   await page.getByRole("button", { name: /confirm and create workflow/i }).click();
-  await expect(page.getByRole("heading", { name: "Chapter workflow" })).toBeVisible();
-  await workflowEventsRequest;
-  await page.reload();
   await expect(page.getByRole("heading", { name: "Chapter workflow" })).toBeVisible();
   await page.getByRole("button", { name: "Writing Studio" }).click();
   await expect(page.getByRole("button", { name: /Chapter 1/i })).toBeVisible();
@@ -63,34 +45,12 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByRole("textbox", { name: "" }).first().fill("A first draft written through the browser.");
   await page.getByRole("button", { name: "Save version" }).click();
   await expect(page.getByText(/Saved version \d+/)).toBeVisible();
-  await page.getByPlaceholder(/Ask your companion/i).fill("What does the saved chapter say?");
-  await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByText("Context received: A first draft written through the browser.")).toBeVisible({ timeout: 15_000 });
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download Markdown" }).click();
-  const download = await downloadPromise;
-  const downloadedPath = await download.path();
-  expect(downloadedPath).toBeTruthy();
-  await expect(fs.readFile(downloadedPath!, "utf8")).resolves.toContain("A first draft written through the browser.");
 
-  await page.getByRole("button", { name: "Story memory" }).click();
-  await expect(page.getByLabel("Model profile")).toBeVisible();
-  await page.getByLabel("Add a story memory").fill("Mira fears deep water.");
-  await page.getByRole("button", { name: "Add memory" }).click();
-  await expect(page.getByText("Mira fears deep water.")).toBeVisible();
-  await page.getByRole("button", { name: "Writing Studio" }).click();
   await page.getByPlaceholder(/Ask your companion/i).fill("Give me one continuity check.");
   await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByText("Context received: Mira fears deep water.")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Mock provider response")).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "Fork branch" }).click();
   await expect(page.getByText("Alternative branch created.")).toBeVisible();
-  await page.getByRole("button", { name: "Settings" }).click();
-  page.once("dialog", dialog => dialog.accept());
-  await page.getByRole("button", { name: "Remove credential openai" }).click();
-  await expect(page.getByText("Credential removed.")).toBeVisible();
-  await page.getByRole("button", { name: "Writing Studio" }).click();
   await page.reload();
   await expect(page.getByRole("button", { name: /Chapter 1/i })).toBeVisible();
-  await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page.getByRole("heading", { name: /sign in to your writing space/i })).toBeVisible();
 });

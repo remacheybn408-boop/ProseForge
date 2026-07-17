@@ -35,14 +35,13 @@ class BackupService:
         if not source.is_dir():
             raise ValueError("backup source does not exist")
         self.backup_root.mkdir(parents=True, exist_ok=True)
-        backup_root = self.backup_root.resolve()
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         archive = self.backup_root / f"proseforge-{stamp}.tar.gz"
         files = 0
         manifest_entries: list[dict[str, object]] = []
         with tarfile.open(archive, "w:gz") as tar:
             for path in sorted(source.rglob("*")):
-                if path.is_file() and not path.is_symlink() and backup_root not in path.resolve().parents:
+                if path.is_file() and not path.is_symlink():
                     tar.add(path, arcname=path.relative_to(source))
                     files += 1
                     manifest_entries.append({"path": str(path.relative_to(source)), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "bytes": path.stat().st_size})

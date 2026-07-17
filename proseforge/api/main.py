@@ -18,7 +18,6 @@ from proseforge.api.routes.usage import router as usage_router
 from proseforge.application.auth.service import AuthService
 from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
 from proseforge.infrastructure.events.database import DatabaseEventStream
-from proseforge.infrastructure.security.login_rate_limiter import LoginRateLimiter
 from proseforge.infrastructure.tasks.celery import CeleryTaskQueue
 from proseforge.providers.registry import ProviderRegistry
 from proseforge.providers.anthropic import AnthropicProvider
@@ -40,19 +39,17 @@ from proseforge.providers.zhipu import ZhipuProvider
 
 from proseforge.settings import Settings, get_settings
 from proseforge.api.middleware import CorrelationIdMiddleware
-from proseforge.version import __version__
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved = settings or get_settings()
-    application = FastAPI(title="ProseForge API", version=__version__)
+    application = FastAPI(title="ProseForge API", version="1.0.0")
     application.add_middleware(CorrelationIdMiddleware)
     application.state.settings = resolved
     application.state.auth = AuthService(resolved.jwt_secret.get_secret_value())
     application.state.engine, application.state.session_factory = create_engine_and_sessionmaker(resolved)
     application.state.event_stream = DatabaseEventStream(application.state.session_factory)
     application.state.queue = CeleryTaskQueue()
-    application.state.login_rate_limiter = LoginRateLimiter.from_url(resolved.redis_url, max_attempts=resolved.login_rate_limit_attempts)
     registry = ProviderRegistry()
     for provider in (
         OpenAIProvider(""), AnthropicProvider(""), GoogleProvider(""), DeepSeekProvider(), KimiProvider(),

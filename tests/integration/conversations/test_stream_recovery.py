@@ -37,24 +37,6 @@ class UsageProvider:
         yield GenerationEvent("response.completed", data={"usage": {"input_tokens": 4, "output_tokens": 3, "total_tokens": 7}})
 
 
-class UsageRepo:
-    def __init__(self): self.records = []
-
-    async def record(self, **kwargs): self.records.append(kwargs)
-
-
-class ProjectConversationRepo(Repo):
-    async def conversation_id_for_message(self, message_id): return "conversation-1"
-    async def project_id_for_message(self, message_id): return "project-1"
-
-
-class UsageUow:
-    def __init__(self, repo, usage): self.conversations, self.usage = repo, usage
-    async def __aenter__(self): return self
-    async def __aexit__(self, *args): pass
-    async def commit(self): pass
-
-
 class EventStream:
     def __init__(self): self.events = []
     async def publish(self, topic, payload): self.events.append((topic, payload))
@@ -120,14 +102,6 @@ async def test_usage_events_are_forwarded_without_being_dropped():
         "final": False,
     }
     assert usage[-1]["final"] is True
-
-
-@pytest.mark.asyncio
-async def test_chat_usage_is_attributed_to_the_project():
-    repo, usage = ProjectConversationRepo(), UsageRepo()
-    await GenerateReply(lambda: UsageUow(repo, usage), UsageProvider()).execute(message_id="m", request=object(), user_id="user-1", provider="openai", model="model-1")
-    assert usage.records[0]["project_id"] == "project-1"
-    assert usage.records[0]["conversation_id"] == "conversation-1"
 
 
 @pytest.mark.asyncio

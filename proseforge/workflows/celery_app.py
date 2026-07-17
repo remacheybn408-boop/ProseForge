@@ -54,13 +54,9 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
     from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
     from proseforge.infrastructure.security.credential_cipher import CredentialCipher
     from proseforge.providers.factory import build_provider
-    from proseforge.providers.usage import normalize_provider_usage
     from proseforge.settings import get_settings
     from proseforge.domain.workflow.budget import budget_blocked
-    from proseforge.application.workflows.budget import budget_exceeded_after_usage
-    from proseforge.application.usage.call_tracker import UsageCallTracker
     from proseforge.context_engine.compiler import compile_context
-    from proseforge.context_engine.budgeting import input_budget_for_model
     from proseforge.workflows.novel_generation import run_writer_editor_loop
 
     settings = get_settings()
@@ -86,7 +82,6 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
             chapters = await uow.chapters.list_owned(run.project_id, owner_id)
             if credential is None or project is None:
                 await uow.workflows.transition(run, "FAILED")
-                await uow.workflows.release_lease(run, lease_owner)
                 await uow.commit()
                 return "provider-or-project-not-configured"
             associated = f"{owner_id}:{provider_id}:{credential.id}".encode()
@@ -102,14 +97,12 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
             targets = [chapter for chapter in chapters if not requested or chapter.chapter_no in requested]
             if not targets:
                 await uow.workflows.transition(run, "FAILED")
-                await uow.workflows.release_lease(run, lease_owner)
                 await uow.commit()
                 return "no-chapters"
             context_items = [item for item in await uow.context.list_owned(run.project_id, owner_id) if not item.excluded]
             context_blocks = [{"id": item.id, "source_type": item.source_type, "content": item.content, "pinned": item.pinned, "priority": item.priority} for item in context_items]
             snapshot = await uow.context.snapshot(run.project_id, context_items)
-            catalog_model = next((item for item in await uow.model_catalog.list(provider_id, model_id, available_only=False) if item.model_id == model_id), None)
-            compiled_context = compile_context(snapshot.id, context_blocks, input_budget=input_budget_for_model(catalog_model, requested_output=4096))
+            compiled_context = compile_context(snapshot.id, context_blocks, input_budget=8000)
             context_text = "\n".join(str(block.get("content", "")) for block in compiled_context.blocks)
             await uow.workflows.checkpoint(run, lease_owner, f"PREPARING_CONTEXT_{snapshot.snapshot_hash}")
             await uow.commit()
@@ -120,57 +113,25 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
                 if run is None:
                     return "workflow-not-found"
                 if should_abort_workflow(run.status):
-                    await uow.workflows.release_lease(run, lease_owner)
-                    await uow.commit()
                     return "cancelled"
                 if run.status == "PAUSED":
-                    await uow.workflows.release_lease(run, lease_owner)
-                    await uow.commit()
                     return "paused"
                 if budget_blocked(used_tokens=int(getattr(run, "used_tokens", 0) or 0), token_limit=int(getattr(run, "token_limit", 0) or 0), estimated_next_tokens=1, estimated_cost=float(run.estimated_cost or 0), cost_limit=float(run.cost_limit or 0), estimated_next_cost=None):
                     await uow.workflows.transition(run, "BUDGET_BLOCKED")
-                    await uow.workflows.release_lease(run, lease_owner)
                     await uow.commit()
                     return "budget-blocked"
                 await uow.workflows.heartbeat(run, lease_owner)
                 await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_DRAFTING")
                 await uow.commit()
-            usage_calls = UsageCallTracker(workflow_id, chapter.id)
-            async def record_usage(role: str, model: str, data: dict[str, object], final: bool) -> None:
-                call_id = usage_calls.call_id(role, final=final)
-                async with SqlAlchemyUnitOfWork(session_factory) as usage_uow:
-                    delta = normalize_provider_usage(provider_id, data, final=final)
-                    await usage_uow.usage.record(
-                        user_id=owner_id,
-                        provider=provider_id,
-                        model_id=model,
-                        call_id=call_id,
-                        delta=delta,
-                        project_id=project.id,
-                        workflow_run_id=workflow_id,
-                        workflow_step=role,
-                        metadata={"role": role},
-                    )
-                    await usage_uow.commit()
-
-            content, rewrite_rounds, _review = await run_writer_editor_loop(provider, writer_model=model_id, editor_model=str(payload.get("editor_model", model_id)), project_title=project.title, chapter_title=chapter.title, context_text=context_text, usage_handler=record_usage)
+            content, rewrite_rounds, _review = await run_writer_editor_loop(provider, writer_model=model_id, editor_model=str(payload.get("editor_model", model_id)), project_title=project.title, chapter_title=chapter.title, context_text=context_text)
             async with SqlAlchemyUnitOfWork(session_factory) as uow:
                 run = await uow.workflows.get_owned(workflow_id, owner_id)
                 if run is None:
                     return "workflow-not-found"
                 if should_abort_workflow(run.status):
-                    await uow.workflows.release_lease(run, lease_owner)
-                    await uow.commit()
                     return "cancelled"
                 if run.status == "PAUSED":
-                    await uow.workflows.release_lease(run, lease_owner)
-                    await uow.commit()
                     return "paused"
-                if budget_exceeded_after_usage(run):
-                    await uow.workflows.transition(run, "BUDGET_BLOCKED")
-                    await uow.workflows.release_lease(run, lease_owner)
-                    await uow.commit()
-                    return "budget-blocked"
                 version = await uow.chapters.append_version(chapter_id=chapter.id, content=content)
                 await uow.chapters.set_active_version(chapter.id, version.id)
                 await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_COMMITTED_REWRITES_{rewrite_rounds}")
@@ -178,12 +139,9 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             run = await uow.workflows.get_owned(workflow_id, owner_id)
             if run is not None and should_abort_workflow(run.status):
-                await uow.workflows.release_lease(run, lease_owner)
-                await uow.commit()
                 return "cancelled"
             if run is not None and run.status == "RUNNING":
                 await uow.workflows.transition(run, "COMPLETED")
-                await uow.workflows.release_lease(run, lease_owner)
                 await uow.commit()
         return "completed"
     except Exception as error:
@@ -192,7 +150,6 @@ async def _generate_novel_workflow(payload: dict[str, object]) -> str:
             if run is not None and run.status in {"RUNNING", "RETRYING", "RECOVERING"}:
                 run.last_error = type(error).__name__
                 await uow.workflows.transition(run, "FAILED")
-                await uow.workflows.release_lease(run, lease_owner)
                 await uow.commit()
         raise
     finally:
@@ -288,15 +245,12 @@ async def _generate_chat(payload: dict[str, object]) -> str:
     import json
 
     from proseforge.application.conversations.generate_reply import GenerateReply
-    from proseforge.application.conversations.project_context import build_project_context
-    from proseforge.application.conversations.request import build_chat_request
     from proseforge.application.conversations.terminal_state import terminal_message_status
     from proseforge.domain.ports.model_provider import GenerationRequest
     from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
     from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
     from proseforge.infrastructure.events.database import DatabaseEventStream
     from proseforge.infrastructure.security.credential_cipher import CredentialCipher
-    from proseforge.context_engine.budgeting import input_budget_for_model
     from proseforge.providers.factory import build_provider
     from proseforge.settings import get_settings
 
@@ -312,24 +266,11 @@ async def _generate_chat(payload: dict[str, object]) -> str:
             message = await uow.conversations.get_message(message_id)
             visible = await uow.conversations.list_visible_messages(message.branch_id) if message else []
             user_message = next((item for item in reversed(visible) if item.role == "user"), None)
-            project_id = await uow.conversations.project_id_for_message(message_id) if message else None
-            project = await uow.projects.get_by_id(user_id, project_id) if project_id else None
-            if message is None or user_message is None or project is None:
+            if credential is None or user_message is None:
                 if message:
                     await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
                     await uow.commit()
-                return "conversation-not-found"
-            if credential is None:
-                await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
-                await uow.commit()
                 return "provider-not-configured"
-            context_items = [item for item in await uow.context.list_owned(project.id, user_id) if not item.excluded]
-            catalog_model = next((item for item in await uow.model_catalog.list(provider_id, model, available_only=False) if item.model_id == model), None)
-            context_text = build_project_context(
-                context_items=context_items,
-                active_chapters=await uow.chapters.active_contents(project.id, user_id),
-                input_budget=input_budget_for_model(catalog_model, requested_output=4096),
-            )
             try:
                 raw = base64.b64decode(settings.master_key.get_secret_value(), validate=True)
             except (ValueError, binascii.Error):
@@ -348,14 +289,11 @@ async def _generate_chat(payload: dict[str, object]) -> str:
                     await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
                     await uow.commit()
             return "provider-not-supported"
-        request = build_chat_request(model=model, messages=visible, excluded_message_id=message_id, context_text=context_text)
+        input_blocks = [{"role": "user", "text": user_message.content}]
         if message is not None and message.status == "PARTIAL" and message.content:
-            request = GenerationRequest(
-                model=request.model,
-                system_blocks=request.system_blocks,
-                input_blocks=(*request.input_blocks, {"role": "assistant", "text": message.content}, {"role": "user", "text": "Continue from the saved partial response without repeating existing text."}),
-                metadata=request.metadata,
-            )
+            input_blocks.append({"role": "assistant", "text": message.content})
+            input_blocks.append({"role": "user", "text": "Continue from the saved partial response without repeating existing text."})
+        request = GenerationRequest(model=model, system_blocks=(), input_blocks=tuple(input_blocks))
         await GenerateReply(lambda: SqlAlchemyUnitOfWork(session_factory), provider, DatabaseEventStream(session_factory)).execute(message_id=message_id, request=request, user_id=user_id, provider=provider_id, model=model)
         return "completed"
     finally:

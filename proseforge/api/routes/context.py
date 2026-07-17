@@ -4,7 +4,7 @@ import hashlib
 import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -12,7 +12,6 @@ from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.application.auth.service import AuthUser
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 from proseforge.context_engine.tokenizer import ConservativeTokenizer
-from proseforge.context_engine.budgeting import resolve_context_window
 
 router = APIRouter(prefix="/api/v1", tags=["context"])
 
@@ -30,22 +29,12 @@ class ContextUpdateRequest(BaseModel):
     excluded: bool | None = None
 
 
-class ContextRestoreRequest(BaseModel):
-    snapshot_id: str = Field(min_length=1, max_length=64)
-
-
-def context_item_response(item) -> dict[str, object]:
+def _response(item) -> dict[str, object]:
     return {
         "id": item.id, "project_id": item.project_id, "source_type": item.source_type,
         "source_id": item.source_id, "content": item.content, "pinned": item.pinned,
-        "priority": item.priority, "excluded": item.excluded,
-        "token_estimate": ConservativeTokenizer().count(item.content),
-        "provenance": json.loads(item.provenance or "{}"),
+        "priority": item.priority, "excluded": item.excluded, "provenance": json.loads(item.provenance or "{}"),
     }
-
-
-def _response(item) -> dict[str, object]:
-    return context_item_response(item)
 
 
 def _snapshot_response(snapshot) -> dict[str, object]:
@@ -57,54 +46,16 @@ def _snapshot_response(snapshot) -> dict[str, object]:
     }
 
 
-def context_budget(model: object | None, used_tokens: int) -> dict[str, int]:
-    context_window = resolve_context_window(model)
-    output_reserve = getattr(model, "max_output_tokens", None) if model is not None else None
-    if not isinstance(output_reserve, int) or output_reserve < 0:
-        capabilities = getattr(model, "capabilities", {}) if model is not None else {}
-        output_reserve = capabilities.get("max_output_tokens", 0) if isinstance(capabilities, dict) else 0
-    if not isinstance(output_reserve, int) or output_reserve < 0:
-        output_reserve = 0
-    return {
-        "context_window": context_window,
-        "used_tokens": used_tokens,
-        "system_reserved_tokens": 0,
-        "history_tokens": 0,
-        "output_reserve_tokens": output_reserve,
-        "available_tokens": max(0, context_window - used_tokens - output_reserve),
-    }
-
-
 @router.get("/projects/{project_id}/context")
-async def list_context(
-    project_id: str,
-    user: Annotated[AuthUser, Depends(current_user)],
-    uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
-    profile_id: str | None = Query(default=None),
-    provider: str | None = Query(default=None),
-    model: str | None = Query(default=None),
-) -> dict[str, object]:
+async def list_context(project_id: str, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> dict[str, object]:
     async with uow:
         if await uow.projects.get_by_id(user.id, project_id) is None:
             raise HTTPException(status_code=404, detail="project not found")
-        if profile_id:
-            profile = await uow.model_profiles.get_owned(user.id, profile_id)
-            if profile is None:
-                raise HTTPException(status_code=404, detail="model profile not found")
-            profile_config = json.loads(profile.config or "{}")
-            provider = provider or profile_config.get("provider")
-            model = model or profile_config.get("model")
-        catalog_model = None
-        if provider and model:
-            catalog_model = next(
-                (item for item in await uow.model_catalog.list(provider, model, available_only=False) if item.model_id == model),
-                None,
-            )
         items = await uow.context.list_owned(project_id, user.id)
         tokenizer = ConservativeTokenizer()
         used_tokens = sum(tokenizer.count(item.content) for item in items if not item.excluded)
-        budget = context_budget(catalog_model, used_tokens)
-        return {"items": [_response(item) for item in items], **budget, "provider": provider, "model": model}
+        context_window = 128000
+        return {"items": [_response(item) for item in items], "used_tokens": used_tokens, "context_window": context_window, "available_tokens": max(0, context_window - used_tokens)}
 
 
 @router.post("/projects/{project_id}/context/items", status_code=status.HTTP_201_CREATED)
@@ -148,19 +99,6 @@ async def compile_context(project_id: str, user: Annotated[AuthUser, Depends(cur
         snapshot = await uow.context.snapshot(project_id, items)
         await uow.commit()
         return {"id": snapshot.id, "snapshot_hash": snapshot.snapshot_hash, "item_count": len(items)}
-
-
-@router.post("/projects/{project_id}/context/restore")
-async def restore_context(project_id: str, payload: ContextRestoreRequest, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> dict[str, object]:
-    async with uow:
-        if await uow.projects.get_by_id(user.id, project_id) is None:
-            raise HTTPException(status_code=404, detail="project not found")
-        snapshot = await uow.context.get_snapshot_owned(payload.snapshot_id, user.id)
-        if snapshot is None or snapshot.project_id != project_id:
-            raise HTTPException(status_code=404, detail="context snapshot not found")
-        items = await uow.context.restore_snapshot(project_id, snapshot)
-        await uow.commit()
-        return {"snapshot_id": snapshot.id, "items": [_response(item) for item in items], "restored_count": len(items)}
 
 
 @router.get("/context/snapshots/{snapshot_id}")

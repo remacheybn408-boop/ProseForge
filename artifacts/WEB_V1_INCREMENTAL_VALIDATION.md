@@ -73,4 +73,3 @@ All commands below were executed in Docker containers.
 - Final dependency-image rebuild: production API/Worker/Scheduler rebuilt with upgraded security baselines; all Compose services healthy; Chromium E2E `1 passed`
 - User-facing API errors: Web client now maps common 401/403/404/409/429/5xx responses to actionable messages; Docker Web `5 passed`, Vite build passed, Chromium E2E `1 passed`
 - Provider error classification: timeout, connection, authentication, rate-limit, and upstream failures now have retry-aware domain codes while unknown exceptions preserve existing recovery behavior; full Docker API `531 passed, 1 skipped`, Ruff clean, rebuilt Worker/API E2E `1 passed`
-- Chinese-first ink interface: Docker Web Vitest `8 passed`, Vite build passed, and Chromium E2E verified Chinese default, English switch persistence path, redesigned model settings, and ordinary-user writing workflow; all Compose runtime services healthy

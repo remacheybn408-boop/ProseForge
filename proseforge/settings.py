@@ -28,7 +28,6 @@ class Settings(BaseSettings):
     bootstrap_admin_email: str = "admin@example.local"
     bootstrap_admin_password: SecretStr = SecretStr("change-me-now")
     max_upload_bytes: int = 50 * 1024 * 1024
-    login_rate_limit_attempts: int = 5
     allowed_local_provider_hosts: tuple[str, ...] = Field(default_factory=tuple)
 
     @model_validator(mode="after")

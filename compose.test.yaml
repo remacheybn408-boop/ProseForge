@@ -2,7 +2,6 @@ services:
   api:
     environment:
       PROSEFORGE_PUBLIC_URL: http://web
-      PROSEFORGE_LOGIN_RATE_LIMIT_ATTEMPTS: "20"
 
   postgres:
     volumes:

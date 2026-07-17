@@ -42,16 +42,3 @@ class SqlAlchemyCredentialRepository:
                 ProviderCredentialModel.provider == provider,
             ).order_by(ProviderCredentialModel.id.desc())
         )
-
-    async def delete_for_user(self, user_id: str, credential_id: str) -> bool:
-        record = await self.session.scalar(
-            select(ProviderCredentialModel).where(
-                ProviderCredentialModel.user_id == user_id,
-                ProviderCredentialModel.id == credential_id,
-            )
-        )
-        if record is None:
-            return False
-        await self.session.delete(record)
-        await self.session.flush()
-        return True

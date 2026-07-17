@@ -53,10 +53,6 @@ async def login(
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
     _csrf: Annotated[None, Depends(require_same_origin)],
 ) -> dict[str, str]:
-    client_host = http_request.client.host if http_request.client else "unknown"
-    identity = f"{client_host}:{payload.email.strip().casefold()}"
-    if not await http_request.app.state.login_rate_limiter.allow(identity):
-        raise HTTPException(status_code=429, detail="too many login attempts", headers={"Retry-After": "60"})
     async with uow:
         user = await uow.users.get_by_email(payload.email)
         if user is None:

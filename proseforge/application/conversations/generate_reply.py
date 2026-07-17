@@ -28,12 +28,10 @@ class GenerateReply:
                     async with self.uow_factory() as uow:
                         lookup = getattr(uow.conversations, "conversation_id_for_message", None)
                         conversation_id = await lookup(message_id) if lookup else None
-                        project_lookup = getattr(uow.conversations, "project_id_for_message", None)
-                        project_id = await project_lookup(message_id) if project_lookup else None
                         delta = normalize_provider_usage(provider, event.data)
                         usage_repo = getattr(uow, "usage", None)
                         if usage_repo:
-                            await usage_repo.record(user_id=user_id, provider=provider, model_id=model, call_id=call_id, delta=delta, project_id=project_id, message_id=message_id, conversation_id=conversation_id)
+                            await usage_repo.record(user_id=user_id, provider=provider, model_id=model, call_id=call_id, delta=delta, message_id=message_id, conversation_id=conversation_id)
                             await uow.commit()
                     if self.event_stream:
                         usage_payload = {"event": "usage.updated", "message_id": message_id, **delta.as_event_payload()}
@@ -45,12 +43,10 @@ class GenerateReply:
                     async with self.uow_factory() as uow:
                         lookup = getattr(uow.conversations, "conversation_id_for_message", None)
                         conversation_id = await lookup(message_id) if lookup else None
-                        project_lookup = getattr(uow.conversations, "project_id_for_message", None)
-                        project_id = await project_lookup(message_id) if project_lookup else None
                         delta = normalize_provider_usage(provider, event.data, final=True)
                         usage_repo = getattr(uow, "usage", None)
                         if usage_repo:
-                            await usage_repo.record(user_id=user_id, provider=provider, model_id=model, call_id=call_id, delta=delta, project_id=project_id, message_id=message_id, conversation_id=conversation_id)
+                            await usage_repo.record(user_id=user_id, provider=provider, model_id=model, call_id=call_id, delta=delta, message_id=message_id, conversation_id=conversation_id)
                             await uow.commit()
                     if self.event_stream:
                         usage_payload = {"event": "usage.updated", "message_id": message_id, **delta.as_event_payload()}

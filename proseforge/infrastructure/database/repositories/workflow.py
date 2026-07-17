@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
@@ -66,14 +65,6 @@ class SqlAlchemyWorkflowRepository:
         await self.session.flush()
         return True
 
-    async def release_lease(self, run: WorkflowRunModel, owner: str) -> None:
-        if run.lease_owner not in {None, owner}:
-            raise PermissionError("workflow lease is not owned by caller")
-        run.lease_owner = None
-        run.lease_expires_at = None
-        run.heartbeat_at = None
-        await self.session.flush()
-
     async def heartbeat(self, run: WorkflowRunModel, owner: str, ttl_seconds: int = 60) -> None:
         if run.lease_owner != owner:
             raise PermissionError("workflow lease is not owned by caller")
@@ -91,24 +82,6 @@ class SqlAlchemyWorkflowRepository:
         document = decode_checkpoint(run.checkpoint)
         if "command" in document:
             document["phase"] = checkpoint
-            completed_steps = document.setdefault("completed_steps", [])
-            if not isinstance(completed_steps, list):
-                completed_steps = []
-                document["completed_steps"] = completed_steps
-            if checkpoint.startswith("PREPARING_CONTEXT") and "context" not in completed_steps:
-                completed_steps.append("context")
-            match = re.match(r"CHAPTER_(\d+)_COMMITTED", checkpoint)
-            if match:
-                chapter_no = int(match.group(1))
-                chapter_step = f"chapter_{chapter_no}"
-                if chapter_step not in completed_steps:
-                    completed_steps.append(chapter_step)
-                completed_chapters = document.setdefault("completed_chapters", [])
-                if not isinstance(completed_chapters, list):
-                    completed_chapters = []
-                    document["completed_chapters"] = completed_chapters
-                if chapter_no not in completed_chapters:
-                    completed_chapters.append(chapter_no)
             run.checkpoint = json.dumps(document, ensure_ascii=False)
         else:
             run.checkpoint = checkpoint
