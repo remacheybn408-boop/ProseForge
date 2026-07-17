@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from proseforge.api.routes.health import router as health_router
@@ -19,7 +21,7 @@ from proseforge.api.routes.runtime import router as runtime_router
 from proseforge.application.auth.service import AuthService
 from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
 from proseforge.infrastructure.events.database import DatabaseEventStream
-from proseforge.infrastructure.tasks.celery import CeleryTaskQueue
+from proseforge.infrastructure.tasks.factory import create_task_queue
 from proseforge.providers.registry import ProviderRegistry
 from proseforge.providers.anthropic import AnthropicProvider
 from proseforge.providers.baidu import BaiduProvider
@@ -45,14 +47,25 @@ from proseforge.api.middleware import CorrelationIdMiddleware
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     resolved = settings or get_settings()
-    application = FastAPI(title="ProseForge API", version="1.0.0")
+
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        # native profile 的 LocalTaskQueue 在 API 进程内跑 worker 池；
+        # celery/memory 队列的 start/stop 为 no-op。
+        await application.state.queue.start()
+        try:
+            yield
+        finally:
+            await application.state.queue.stop()
+
+    application = FastAPI(title="ProseForge API", version="1.0.0", lifespan=lifespan)
     application.add_middleware(CorrelationIdMiddleware)
     application.state.settings = resolved
     application.state.runtime = create_runtime(resolved)
     application.state.auth = AuthService(resolved.jwt_secret.get_secret_value())
     application.state.engine, application.state.session_factory = create_engine_and_sessionmaker(resolved)
     application.state.event_stream = DatabaseEventStream(application.state.session_factory)
-    application.state.queue = CeleryTaskQueue()
+    application.state.queue = create_task_queue(resolved, application.state.session_factory)
     registry = ProviderRegistry()
     for provider in (
         OpenAIProvider(""), AnthropicProvider(""), GoogleProvider(""), DeepSeekProvider(), KimiProvider(),
