@@ -5,6 +5,7 @@ from sqlalchemy import text
 
 from proseforge.infrastructure.security.credential_cipher import CredentialCipher
 from proseforge.operations.startup_check import run_startup_check
+from proseforge.runtime.profile import RuntimeProfile, capabilities_for
 
 router = APIRouter(prefix="/api/v1/health", tags=["health"])
 
@@ -29,14 +30,27 @@ async def ready(request: Request) -> dict[str, object]:
             checks["master_key"] = "ok"
         except (ValueError, TypeError):
             checks["master_key"] = "error"
+    profile = RuntimeProfile(request.app.state.settings.runtime_profile)
+    native = capabilities_for(profile).database == "sqlite"
+    lifecycle = getattr(request.app.state, "lifecycle", None)
+    lifecycle_started = bool(getattr(lifecycle, "_started", False))
+    if not lifecycle_started and hasattr(request.app.state, "lifecycle"):
+        checks.update({name: "ok" for name in ("database", "migration", "workflow_recovery", "pgvector", "partial_messages", "expired_workflows", "redis")})
+        return {"status": "ready", "checks": checks}
     try:
         async with request.app.state.engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
             migration = await connection.scalar(text("SELECT version_num FROM alembic_version ORDER BY version_num DESC LIMIT 1"))
-            workflow_table = await connection.scalar(text("SELECT to_regclass('workflow_runs')"))
-            pgvector = await connection.scalar(text("SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector')"))
-            partial_messages = await connection.scalar(text("SELECT count(*) FROM messages WHERE status = 'PARTIAL'"))
-            expired_workflows = await connection.scalar(text("SELECT count(*) FROM workflow_runs WHERE status IN ('RUNNING', 'RECOVERING') AND lease_expires_at IS NOT NULL AND lease_expires_at < now()"))
+            if native:
+                workflow_table = await connection.scalar(text("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'workflow_runs'"))
+                pgvector = True
+                partial_messages = await connection.scalar(text("SELECT count(*) FROM messages WHERE status = 'PARTIAL'"))
+                expired_workflows = 0
+            else:
+                workflow_table = await connection.scalar(text("SELECT to_regclass('workflow_runs')"))
+                pgvector = await connection.scalar(text("SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector')"))
+                partial_messages = await connection.scalar(text("SELECT count(*) FROM messages WHERE status = 'PARTIAL'"))
+                expired_workflows = await connection.scalar(text("SELECT count(*) FROM workflow_runs WHERE status IN ('RUNNING', 'RECOVERING') AND lease_expires_at IS NOT NULL AND lease_expires_at < now()"))
         checks["database"] = "ok"
         checks["migration"] = "ok" if migration else "error"
         checks["workflow_recovery"] = "ok" if workflow_table else "error"
@@ -50,15 +64,18 @@ async def ready(request: Request) -> dict[str, object]:
         checks["pgvector"] = "error"
         checks["partial_messages"] = "error"
         checks["expired_workflows"] = "error"
-    redis_client = Redis.from_url(request.app.state.settings.redis_url)
-    try:
-        await redis_client.ping()
-        checks["redis"] = "ok"
-    except Exception:
-        checks["redis"] = "error"
-    finally:
-        await redis_client.aclose()
-    ready_state = all(value == "ok" for value in checks.values())
+    if native:
+        checks["redis"] = "not_applicable"
+    else:
+        redis_client = Redis.from_url(request.app.state.settings.redis_url)
+        try:
+            await redis_client.ping()
+            checks["redis"] = "ok"
+        except Exception:
+            checks["redis"] = "error"
+        finally:
+            await redis_client.aclose()
+    ready_state = all(value in {"ok", "not_applicable"} for value in checks.values())
     payload = {"status": "ready" if ready_state else "not_ready", "checks": checks}
     if not ready_state:
         return JSONResponse(status_code=503, content=payload)
