@@ -9,6 +9,7 @@ from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.application.auth.service import AuthUser
 from proseforge.application.conversations.edit_message import EditMessage
 from proseforge.application.conversations.regenerate_reply import RegenerateReply
+from proseforge.application.conversations.compare_branches import compare_messages
 
 router = APIRouter(prefix="/api/v2", tags=["conversation-branches"])
 
@@ -81,3 +82,11 @@ async def archive_branch(conversation_id: str, branch_id: str, user: Annotated[A
             raise HTTPException(status_code=404, detail="branch not found")
         await uow.commit()
     return {"id": branch_id, "status": "ARCHIVED"}
+
+
+@router.get("/conversations/{conversation_id}/branches/compare")
+async def compare_branches(conversation_id: str, left: str, right: str, user: Annotated[AuthUser, Depends(current_user)], uow=Depends(unit_of_work)) -> dict[str, object]:
+    async with uow:
+        if not await uow.conversations.branch_belongs_to_conversation(left, conversation_id, user.id) or not await uow.conversations.branch_belongs_to_conversation(right, conversation_id, user.id):
+            raise HTTPException(status_code=404, detail="branch not found")
+        return compare_messages(await uow.conversations.list_visible_messages(left), await uow.conversations.list_visible_messages(right))
