@@ -24,6 +24,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="proseforge")
     parser.add_argument("--version", action="store_true")
     subparsers = parser.add_subparsers(dest="command")
+    doctor = subparsers.add_parser("doctor")
+    doctor.add_argument("--json", action="store_true")
+    doctor.add_argument("--data-dir")
     migrate = subparsers.add_parser("migrate")
     migrate_subparsers = migrate.add_subparsers(dest="migration")
     legacy = migrate_subparsers.add_parser("legacy")
@@ -40,9 +43,20 @@ def main(argv: list[str] | None = None) -> int:
     backup.add_argument("--include-database", action="store_true")
     backup.add_argument("--database-url")
     backup.add_argument("--restore-database-url")
+    backup.add_argument("--output")
+    backup.add_argument("--staging")
     args = parser.parse_args(argv)
     if args.version:
         print(get_version())
+    elif args.command == "doctor":
+        from proseforge.cli.commands.doctor import doctor_report
+        report = doctor_report(data_dir=args.data_dir)
+        if args.json:
+            import json
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True))
+        else:
+            print(f"{report['status']}: {report['profile']} runtime; data={report['checks']['data_dir']}")
+        return 0 if report["status"] == "ok" else 1
     elif args.command == "migrate" and args.migration == "legacy":
         session_factory = None
         if args.owner_id:
@@ -62,7 +76,11 @@ def main(argv: list[str] | None = None) -> int:
                 dump = _database_dump(args.database_url)
             else:
                 dump = None
-            print(service.create(args.source, database_dump=dump))
+            if args.output:
+                from proseforge.cli.commands.backup import create_backup, json_result
+                print(json_result(create_backup(source=args.source, output=args.output, database_dump=dump)))
+            else:
+                print(service.create(args.source, database_dump=dump))
         elif args.action == "list":
             for archive in service.list():
                 print(archive)
@@ -71,9 +89,10 @@ def main(argv: list[str] | None = None) -> int:
         elif args.action == "verify":
             print(service.verify(args.archive))
         elif args.action == "restore":
-            if not args.destination:
+            destination = args.destination or args.staging
+            if not destination:
                 parser.error("backup restore requires --destination staging path")
-            print(service.restore(args.archive, args.destination))
+            print(service.restore(args.archive, destination))
             if args.restore_database_url:
                 print(service.restore_database(args.archive, args.restore_database_url))
         return 0
