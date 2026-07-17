@@ -52,3 +52,6 @@
 .answer-row input { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 9px; }
 @media(max-width: 900px) { .studio-layout { grid-template-columns: 150px 1fr; } .review-pane { display: none; } }
 @media(max-width: 600px) { .studio-layout { grid-template-columns: 1fr; } .chapter-tree { border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 12px; } .auth-card { padding: 26px; } }
+.detail-card span, .timeline-item span { color: var(--secondary); }
+.chapter-tree small, .chat-messages > p, .chat-message small, .version-row small, .version-active { color: var(--secondary); }
+.form-message { color: var(--secondary); }

@@ -26,6 +26,7 @@ from proseforge.api.routes.static_web import router as static_web_router
 from proseforge.api.routes.story_bible import router as story_bible_router
 from proseforge.api.routes.usage import router as usage_router
 from proseforge.api.routes.workflows import router as workflows_router
+from proseforge.api.routes.revisions import router as revisions_router
 from proseforge.application.auth.service import AuthService
 from proseforge.infrastructure.database.bootstrap import ensure_schema
 from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
@@ -148,6 +149,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(runtime_router)
     application.include_router(static_web_router)
     application.include_router(story_bible_router)
+    application.include_router(revisions_router)
     return application
 
 

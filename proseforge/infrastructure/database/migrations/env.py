@@ -34,11 +34,19 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     section = config.get_section(config.config_ini_section, {})
-    url = (
-        os.environ.get("PROSEFORGE_SYNC_DATABASE_URL")
-        or os.environ.get("PROSEFORGE_DATABASE_URL")
-        or section.get("sqlalchemy.url")
-    )
+    configured_url = section.get("sqlalchemy.url")
+    # Native bootstrap passes a per-file SQLite URL and must not be redirected
+    # to the server URL merely because the Podman test process exports one.
+    # Server containers use the configured PostgreSQL placeholder and may
+    # receive their real URL from the environment.
+    if configured_url and configured_url.startswith("sqlite"):
+        url = configured_url
+    else:
+        url = (
+            os.environ.get("PROSEFORGE_SYNC_DATABASE_URL")
+            or os.environ.get("PROSEFORGE_DATABASE_URL")
+            or configured_url
+        )
     section["sqlalchemy.url"] = url
     if url:
         section["sqlalchemy.url"] = _sync_driver_url(url)

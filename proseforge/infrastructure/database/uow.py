@@ -14,6 +14,7 @@ from proseforge.infrastructure.database.repositories.outline import SqlAlchemyOu
 from proseforge.infrastructure.database.repositories.context import SqlAlchemyContextRepository
 from proseforge.infrastructure.database.repositories.model_profile import SqlAlchemyModelProfileRepository
 from proseforge.infrastructure.database.repositories.usage import SqlAlchemyUsageRepository
+from proseforge.infrastructure.database.repositories.revision import SqlAlchemyRevisionRepository
 
 
 class SqlAlchemyUnitOfWork:
@@ -34,6 +35,7 @@ class SqlAlchemyUnitOfWork:
         self.context = None
         self.model_profiles = None
         self.usage = None
+        self.revisions = None
 
     async def __aenter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self.session_factory()
@@ -50,6 +52,7 @@ class SqlAlchemyUnitOfWork:
         self.context = SqlAlchemyContextRepository(self.session)
         self.model_profiles = SqlAlchemyModelProfileRepository(self.session)
         self.usage = SqlAlchemyUsageRepository(self.session)
+        self.revisions = SqlAlchemyRevisionRepository(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
