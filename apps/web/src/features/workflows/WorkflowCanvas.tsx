@@ -1,0 +1,2 @@
+export type CanvasNode = { id: string; kind: string; title: string; status: "pending" | "running" | "done" | "failed" | "blocked" };
+export function WorkflowCanvas({ nodes, onSelect }: { nodes: CanvasNode[]; onSelect?: (node: CanvasNode) => void }) { return <div className="workflow-canvas" role="img" aria-label="Workflow canvas">{nodes.map(node => <button type="button" className={`workflow-node workflow-node-${node.status}`} key={node.id} onClick={() => onSelect?.(node)}><strong>{node.title}</strong><small>{node.kind} · {node.status}</small></button>)}</div>; }

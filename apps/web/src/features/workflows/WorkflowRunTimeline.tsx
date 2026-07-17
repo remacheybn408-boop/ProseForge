@@ -1,0 +1,1 @@
+export function WorkflowRunTimeline({ events }: { events: { id: string; label: string; status: string }[] }) { return <ol className="workflow-run-timeline">{events.map(event => <li key={event.id}><strong>{event.label}</strong><span>{event.status}</span></li>)}</ol>; }
