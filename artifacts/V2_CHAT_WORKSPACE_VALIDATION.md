@@ -1,8 +1,8 @@
 # V2 Chat Workspace Validation
 
-Status: **PASS — V2-010 Podman release gate green**  
+Status: **PASS — V2-010 Podman release gate green**
 Execution date: 2026-07-18  
-Local runtime: Podman  
+Local runtime: Podman
 Repository SHA: `7e55abb`
 
 ## Verified evidence
