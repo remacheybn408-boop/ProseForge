@@ -1,0 +1,1 @@
+export function AgentGraphView({ tasks }: { tasks: { id: string; role: string; status: string }[] }) { return <div className="agent-graph-view" aria-label="Agent graph">{tasks.map(task => <div className="workflow-node" key={task.id}><strong>{task.role}</strong><span>{task.id} · {task.status}</span></div>)}</div>; }

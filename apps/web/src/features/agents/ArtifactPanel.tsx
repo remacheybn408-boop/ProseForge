@@ -1,0 +1,1 @@
+export function ArtifactPanel({ artifacts }: { artifacts: { id: string; type: string; hash: string; preview: string }[] }) { return <section aria-label="Artifacts">{artifacts.map(artifact => <article key={artifact.id}><strong>{artifact.type}</strong><code>{artifact.hash.slice(0, 12)}</code><p>{artifact.preview}</p></article>)}</section>; }

@@ -1,0 +1,1 @@
+export function AgentRunControls({ onAction }: { onAction: (action: "pause" | "resume" | "cancel" | "retry") => void }) { return <div aria-label="Agent run controls">{(["pause", "resume", "cancel", "retry"] as const).map(action => <button key={action} type="button" onClick={() => onAction(action)}>{action}</button>)}</div>; }
