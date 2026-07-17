@@ -28,6 +28,12 @@ def volume_post(
     context=None,
 ):
     """卷级后处理：统计 + 状态 + 下一卷承接点"""
+    if project_root is None and config_path is None:
+        # A standalone workspace may provide config.json in the current
+        # directory instead of living under the source checkout.
+        cwd = Path.cwd()
+        if (cwd / "config.json").is_file():
+            project_root = cwd
     if context is None:
         cfg = load_config(config_path, project_root=project_root)
         if db_path:

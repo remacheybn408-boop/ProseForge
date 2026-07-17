@@ -11,7 +11,7 @@ from pathlib import Path
 from version import get_version
 
 from src.runtime import PipelineContext, build_pipeline_context, resolve_slot_db_path
-from src.utils.config_utils import find_project_root, load_default_config, load_json_config
+from src.utils.config_utils import find_project_root, load_default_config, load_json_config, resolve_path
 from src.db._conn import connect_sqlite
 
 try:
@@ -65,7 +65,29 @@ class App(PipelineContext):
         )
         for key, value in ctx.__dict__.items():
             setattr(self, key, value)
-        self.cfg = self.cfg if hasattr(self, "cfg") else cfg
+        # App historically accepted an already-loaded config object.  The
+        # unified context loader must not silently discard its path overrides
+        # and fall back to the repository's config.example.json; doing so
+        # sends temporary/native pipeline artifacts to the process cwd.  Keep
+        # the context defaults, then apply explicit values supplied by the
+        # caller (absolute paths remain absolute).
+        self.cfg = {**self.cfg, **cfg}
+        for config_key, attr in (
+            ("db_path", "db_path"),
+            ("novels_root", "novels_root"),
+            ("exports_root", "exports_root"),
+            ("reports_root", "reports_root"),
+            ("outputs_root", "outputs_root"),
+            ("tmp_root", "tmp_root"),
+        ):
+            if config_key in cfg:
+                setattr(self, attr, resolve_path(self.project_root, cfg[config_key]))
+        if "tmp_root" not in cfg and "exports_root" in cfg:
+            # Custom pipeline configs commonly override the export root only.
+            # Keep transactional ingest snapshots beside that workspace,
+            # rather than writing into the repository's default tmp directory.
+            self.tmp_root = Path(self.exports_root).parent / "tmp"
+        self.state_dir = self.exports_root / "pipeline_state"
 
 
 def _require_context(app_inst: App | PipelineContext | None = None) -> App | PipelineContext:

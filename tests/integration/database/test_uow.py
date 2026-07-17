@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from uuid import uuid4
 
 import pytest
@@ -13,8 +14,11 @@ from proseforge.settings import Settings
 @pytest.mark.asyncio
 async def test_uow_rolls_back_uncommitted_project():
     settings = Settings(
-        database_url="postgresql+asyncpg://proseforge:proseforge@postgres:5432/proseforge",
-        redis_url="redis://redis:6379/0",
+        database_url=os.environ.get(
+            "PROSEFORGE_TEST_DATABASE_URL",
+            "postgresql+asyncpg://proseforge:proseforge@postgres:5432/proseforge",
+        ),
+        redis_url=os.environ.get("PROSEFORGE_TEST_REDIS_URL", "redis://redis:6379/0"),
     )
     engine, session_factory = create_engine_and_sessionmaker(settings)
     table = f"uow_probe_{uuid4().hex[:12]}"

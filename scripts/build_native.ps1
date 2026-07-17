@@ -11,6 +11,5 @@ $env:PYTHONPATH = $root
 $env:PROSEFORGE_NATIVE_OUT = $out
 $env:PROSEFORGE_NATIVE_SHA = $sha
 $env:PROSEFORGE_NATIVE_TARGET = $Target
-python -c "from packaging.manifest import build_manifest,write_manifest; import os; write_manifest(os.path.join(os.environ['PROSEFORGE_NATIVE_OUT'],'manifest.json'), build_manifest(git_sha=os.environ['PROSEFORGE_NATIVE_SHA'], target_os=os.environ['PROSEFORGE_NATIVE_TARGET']))"
-"native bundle placeholder: $Target`nsigning skipped=$SkipSign" | Set-Content (Join-Path $out 'BUILD.txt')
+python -m packaging.native_bundle --root $root --output $out --target $Target --format zip
 Write-Output $out

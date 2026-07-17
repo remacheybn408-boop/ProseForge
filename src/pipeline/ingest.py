@@ -137,7 +137,12 @@ def ingest(chapter_no, chapter_type="normal", app_inst=None, content_override=No
         # Keep the database and generated brief atomic with enrichment.  The
         # chapter rows are committed before the generators run so they can use
         # a fresh connection; restore that snapshot if either generator fails.
-        backup_dir = getattr(app, "tmp_root", app.project_root / ".proseforge-tmp") / "ingest_backups"
+        # Keep the transactional snapshot in the same workspace as the
+        # configured exports. Callers can replace exports_root on a live App;
+        # using a stale repository tmp_root can otherwise point at an
+        # unwritable mount and fail before ingest begins.
+        backup_root = Path(app.exports_root).parent / "tmp"
+        backup_dir = backup_root / "ingest_backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
         backup_path = backup_dir / f"chapter_{chapter_no:03d}_{uuid4().hex}.db"
         brief_path = app.exports_root / "chapter_briefs" / f"chapter_{chapter_no:03d}_brief.json"
