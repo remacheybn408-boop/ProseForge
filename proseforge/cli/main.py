@@ -27,6 +27,10 @@ def main(argv: list[str] | None = None) -> int:
     doctor = subparsers.add_parser("doctor")
     doctor.add_argument("--json", action="store_true")
     doctor.add_argument("--data-dir")
+    upgrade = subparsers.add_parser("upgrade")
+    upgrade.add_argument("--check", action="store_true")
+    upgrade.add_argument("--data-dir", default="/data")
+    upgrade.add_argument("--backup-dir", default="/data/backups")
     migrate = subparsers.add_parser("migrate")
     migrate_subparsers = migrate.add_subparsers(dest="migration")
     legacy = migrate_subparsers.add_parser("legacy")
@@ -57,6 +61,13 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(f"{report['status']}: {report['profile']} runtime; data={report['checks']['data_dir']}")
         return 0 if report["status"] == "ok" else 1
+    elif args.command == "upgrade":
+        if not args.check:
+            parser.error("only upgrade --check is available without an application service adapter")
+        from proseforge.operations.upgrade import check_upgrade
+        import json
+        print(json.dumps(check_upgrade(data_dir=args.data_dir, backup_dir=args.backup_dir), sort_keys=True))
+        return 0
     elif args.command == "migrate" and args.migration == "legacy":
         session_factory = None
         if args.owner_id:
