@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from proseforge.domain.chapter.entity import Chapter, ChapterVersion
 from proseforge.domain.common.ids import new_id
+from proseforge.infrastructure.database.dialect import capabilities_for_engine
 from proseforge.infrastructure.database.models.chapter import ChapterModel, ChapterVersionModel
 from proseforge.infrastructure.database.models.project import ProjectModel
 
@@ -37,10 +38,13 @@ class SqlAlchemyChapterRepository:
         return None if row is None else self._chapter(row)
 
     async def append_version(self, *, chapter_id: str, content: str) -> ChapterVersion:
-        await self.session.execute(
-            text("SELECT pg_advisory_xact_lock(hashtext(:chapter_id))"),
-            {"chapter_id": chapter_id},
-        )
+        # PG 用事务级 advisory lock 串行化并发追加；SQLite 由数据库级写锁
+        # 串行化写入者（WAL + busy_timeout），无需等价语句。
+        if capabilities_for_engine(self.session.bind).supports_advisory_locks:
+            await self.session.execute(
+                text("SELECT pg_advisory_xact_lock(hashtext(:chapter_id))"),
+                {"chapter_id": chapter_id},
+            )
         content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         existing = await self.session.execute(
             select(ChapterVersionModel).where(

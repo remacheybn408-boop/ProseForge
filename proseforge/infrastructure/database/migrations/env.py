@@ -15,9 +15,14 @@ config = context.config
 target_metadata = Base.metadata
 
 
+def _sync_driver_url(url: str) -> str:
+    """Alembic 用同步驱动执行迁移；aiosqlite 异步 URL 降级为 pysqlite。"""
+    return url.replace("+aiosqlite", "")
+
+
 def run_migrations_offline() -> None:
     context.configure(
-        url=config.get_main_option("sqlalchemy.url"),
+        url=_sync_driver_url(config.get_main_option("sqlalchemy.url")),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -27,8 +32,12 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    section = config.get_section(config.config_ini_section, {})
+    url = section.get("sqlalchemy.url")
+    if url:
+        section["sqlalchemy.url"] = _sync_driver_url(url)
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

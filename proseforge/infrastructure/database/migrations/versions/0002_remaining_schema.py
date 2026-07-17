@@ -16,9 +16,12 @@ _TABLES = (
 
 
 def upgrade() -> None:
-    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
     bind = op.get_bind()
+    # PostgreSQL-only extensions (pgvector / pg_trgm); SQLite has no
+    # extension mechanism and stores embeddings as JSON text instead.
+    if bind.dialect.name == "postgresql":
+        op.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
     for name in _TABLES:
         Base.metadata.tables[name].create(bind=bind, checkfirst=False)
 
