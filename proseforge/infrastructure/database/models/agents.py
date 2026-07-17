@@ -39,6 +39,7 @@ class AgentTaskModel(Base):
     role: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING")
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    token_budget: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     depends_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     checkpoint_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     lease_owner: Mapped[str | None] = mapped_column(String(200), nullable=True)

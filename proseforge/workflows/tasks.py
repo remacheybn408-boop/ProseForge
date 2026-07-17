@@ -258,6 +258,14 @@ async def execute_agent_run(payload: dict[str, object]) -> str:
                     await add_event(uow, run, "run.failed", {"reason": run.terminal_reason})
                     await uow.commit()
                     return "failed"
+                if run.budget_used + task.token_budget > run.budget_limit:
+                    task.status = "FAILED"
+                    task.last_error = "budget exhausted"
+                    run.status = "BUDGET_EXHAUSTED"
+                    run.terminal_reason = "task token budget exceeds remaining run budget"
+                    await add_event(uow, run, "run.budget_exhausted", {"task_id": task.id, "required": task.token_budget, "remaining": run.budget_limit - run.budget_used})
+                    await uow.commit()
+                    return "budget-exhausted"
                 task.status = "RUNNING"
                 task.attempts += 1
                 task.checkpoint_id = f"{run.id}:{task.task_key}:{task.attempts}"
@@ -283,7 +291,7 @@ async def execute_agent_run(payload: dict[str, object]) -> str:
                 uow.session.add(artifact)
                 task.status = "SUCCEEDED"
                 task.checkpoint_id = f"{run.id}:{task.task_key}:committed"
-                run.budget_used += 1
+                run.budget_used += task.token_budget
                 await add_event(uow, run, "artifact.committed", {"artifact_id": artifact.id, "task_id": task.id, "sha256": artifact.sha256})
                 await add_event(uow, run, "task.succeeded", {"task_id": task.id, "task_key": task.task_key})
                 if task.role == "chief_editor" and run.chapter_id and run.base_version_id:

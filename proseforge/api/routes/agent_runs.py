@@ -7,7 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.application.agents.validate_graph import validate_graph
@@ -73,10 +73,18 @@ async def _owned_run(uow: SqlAlchemyUnitOfWork, run_id: str, user_id: str) -> Ag
 
 
 async def _event(uow: SqlAlchemyUnitOfWork, run: AgentRunModel, event_type: str, payload: dict[str, object] | None = None) -> None:
-    sequence = int(await uow.session.scalar(select(func.max(AgentEventModel.sequence)).where(AgentEventModel.run_id == run.id)) or 0) + 1
-    uow.session.add(AgentEventModel(id=new_id(), run_id=run.id, sequence=sequence, event_type=event_type, payload=json.dumps(payload or {}, ensure_ascii=False, sort_keys=True)))
-    run.event_cursor = sequence
-    run.updated_at = datetime.now(UTC)
+    locked = await uow.session.scalar(
+        select(AgentRunModel)
+        .where(AgentRunModel.id == run.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if locked is None:
+        raise HTTPException(status_code=404, detail="agent run not found")
+    sequence = locked.event_cursor + 1
+    uow.session.add(AgentEventModel(id=new_id(), run_id=locked.id, sequence=sequence, event_type=event_type, payload=json.dumps(payload or {}, ensure_ascii=False, sort_keys=True)))
+    locked.event_cursor = sequence
+    locked.updated_at = datetime.now(UTC)
 
 
 @router.post("/projects/{project_id}/agent-runs", status_code=status.HTTP_201_CREATED)
@@ -116,7 +124,7 @@ async def start_run(
         run.policy_version = policy_payload["version"]
         uow.session.add(AgentPolicySnapshotModel(id=new_id(), run_id=run.id, policy_version=run.policy_version, policy_hash=hashlib.sha256(policy_json.encode()).hexdigest(), payload=policy_json))
         for item in tasks:
-            uow.session.add(AgentTaskModel(id=new_id(), run_id=run.id, task_key=item.id, role=item.role, status="PENDING", depends_on=json.dumps(item.depends_on), checkpoint_id=None))
+            uow.session.add(AgentTaskModel(id=new_id(), run_id=run.id, task_key=item.id, role=item.role, status="PENDING", token_budget=item.token_budget, depends_on=json.dumps(item.depends_on), checkpoint_id=None))
         await _event(uow, run, "run.created", {"graph_revision": payload.graph_revision, "task_count": len(tasks)})
         await uow.commit()
         try:
@@ -194,7 +202,7 @@ async def list_tasks(run_id: str, user: Annotated[AuthUser, Depends(current_user
     async with uow:
         await _owned_run(uow, run_id, user.id)
         rows = await uow.session.scalars(select(AgentTaskModel).where(AgentTaskModel.run_id == run_id).order_by(AgentTaskModel.id))
-        return [{"id": row.id, "task_key": row.task_key, "role": row.role, "status": row.status, "attempts": row.attempts, "depends_on": json.loads(row.depends_on)} for row in rows]
+        return [{"id": row.id, "task_key": row.task_key, "role": row.role, "status": row.status, "attempts": row.attempts, "token_budget": row.token_budget, "depends_on": json.loads(row.depends_on)} for row in rows]
 
 
 @router.get("/agent-runs/{run_id}/events")
