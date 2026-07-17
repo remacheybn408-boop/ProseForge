@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import os
 from pathlib import Path
 
 from alembic import context
@@ -33,7 +34,12 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     section = config.get_section(config.config_ini_section, {})
-    url = section.get("sqlalchemy.url")
+    url = (
+        os.environ.get("PROSEFORGE_SYNC_DATABASE_URL")
+        or os.environ.get("PROSEFORGE_DATABASE_URL")
+        or section.get("sqlalchemy.url")
+    )
+    section["sqlalchemy.url"] = url
     if url:
         section["sqlalchemy.url"] = _sync_driver_url(url)
     connectable = engine_from_config(

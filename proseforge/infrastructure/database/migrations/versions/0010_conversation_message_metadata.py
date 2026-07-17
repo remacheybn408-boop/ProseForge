@@ -16,6 +16,12 @@ def _add(table: str, column: Column) -> None:
 
 
 def upgrade() -> None:
+    # The initial Alembic table was created with VARCHAR(32), but revision
+    # identifiers now exceed that limit (0010_conversation_message_metadata).
+    # PostgreSQL enforces the length; widen it before Alembic records this
+    # revision. SQLite treats VARCHAR length as advisory and needs no DDL.
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
     _add("conversation_branches", Column("status", String(32), nullable=True))
     _add("conversation_branches", Column("title", String(200), nullable=True))
     _add("conversation_branches", Column("created_by", String(64), nullable=True))
