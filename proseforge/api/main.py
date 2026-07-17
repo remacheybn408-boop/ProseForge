@@ -15,6 +15,7 @@ from proseforge.api.routes.credentials import router as credentials_router
 from proseforge.api.routes.exports import router as exports_router
 from proseforge.api.routes.files import router as files_router
 from proseforge.api.routes.health import router as health_router
+from proseforge.api.routes.model_capabilities import router as model_capabilities_router
 from proseforge.api.routes.maintenance import router as maintenance_router
 from proseforge.api.routes.model_profiles import router as model_profiles_router
 from proseforge.api.routes.outlines import router as outlines_router
@@ -127,6 +128,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.state.provider_registry = registry
     application.state.model_catalog = {}
     application.include_router(health_router)
+    application.include_router(model_capabilities_router)
     application.include_router(auth_router)
     application.include_router(branches_router)
     application.include_router(projects_router)
