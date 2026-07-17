@@ -1,0 +1,44 @@
+{
+  "repository_sha": "e1262f4b5fbce5bff0639526f73f737d202fda7f",
+  "baseline_note": "plan baseline b9b681fdcf63207698628bbd6981e13651b951ab plus one snapshot commit e1262f4 (v1.1 remediation intermediate state, 100 files)",
+  "commands": [
+    {
+      "command": "git rev-parse HEAD",
+      "exit_code": 0,
+      "stdout_sha256": "36a5862f5fabc33c770c70734a7cd536ce4e47be16b87fe8986683874405c11f"
+    },
+    {
+      "command": "git status --short",
+      "exit_code": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "rg --files proseforge apps/web docker tests | sort",
+      "exit_code": 0,
+      "stdout_sha256": "9336b31c6eb2c2e0c5901a35d1c45e067a1055d0caa51d34a2279e2be21dfced"
+    },
+    {
+      "command": "gh run view 29583602101 (CI test.yml on e1262f4)",
+      "exit_code": 1,
+      "stdout_sha256": "",
+      "note": "all 4 jobs failed; see artifacts/v1.5-baseline.txt CI section"
+    },
+    {
+      "command": "podman run --rm --entrypoint python proseforge-v15-test:latest -m pytest tests/architecture tests/api/test_health.py -q",
+      "exit_code": 1,
+      "stdout_sha256": "",
+      "note": "6 passed, 1 failed (readiness 503, environment-caused)"
+    }
+  ],
+  "known_failures": [
+    "CI lint/test/dependency-audit: KeyError '0007_project_status' — v1.1 snapshot deleted migration 0007 while 0008 down_revision still references it; alembic graph broken",
+    "CI security-scan: aquasecurity/trivy-action@0.33.1 does not exist (.github/workflows/test.yml:73)",
+    "local container pytest: tests/api/test_health.py::test_readiness_reports_storage_checks 503 without compose postgres/blob dirs (environment-caused)",
+    "frontend pnpm test/build baseline not captured (CI aborted before web-test step)"
+  ],
+  "dependency_assumptions": [
+    "all test evidence runs on GitHub Actions CI per user decision 2026-07-17 (replaces local Podman L1 batches)",
+    "podman 6.0.1 + podman-compose available locally for container spot checks"
+  ],
+  "unmodified_files": ["compose.yaml", "docker/"]
+}
