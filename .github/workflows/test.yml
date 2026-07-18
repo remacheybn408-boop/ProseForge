@@ -98,7 +98,7 @@ jobs:
       # ---- 报告 ----
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports-${{ runner.os }}
           path: junit-*.xml
@@ -173,7 +173,7 @@ jobs:
 
       - name: Upload PG test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports-pg
           path: junit-pg.xml
@@ -214,7 +214,7 @@ jobs:
 
       - name: Upload Docker test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: proseforge-docker-reports
           path: artifacts/
@@ -272,7 +272,7 @@ jobs:
 
       - name: Upload security artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: proseforge-security-reports
           path: artifacts/
