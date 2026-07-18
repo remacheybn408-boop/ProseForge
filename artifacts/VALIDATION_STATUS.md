@@ -6,10 +6,10 @@
 
 | 版本 | 真实状态 | 说明 |
 |---|---|---|
-| V1.5 Native Runtime | **未完成（V15-008 基本未实现）** | runtime profile/路径/SQLite/本地队列有较多实现；原生可执行文件、安装器、服务、真实升级入口不可用。发布门禁未过 |
+| V1.5 Native Runtime | **Windows/Linux 达成；macOS BLOCKED**（2026-07-18） | V15-008/009/010 已按蓝图实现并实测：PyInstaller onedir（钉版 3.12）、Inno 安装器（安装/卸载留数据实测）、deb/rpm/pkg 脚本、CLI `web`/真实 `upgrade`、L2 全矩阵绿。macOS 安装验证待 macOS runner |
 | V2 Chat Workspace | **未完成（此前 PASS 已撤销）** | 分支 API/基础 proposal/export 有部分实现；聊天无上下文注入、编辑器是 textarea、Workflow Studio 是按钮列表、E2E 证据不合格 |
 | V3 Agent Swarm | **实现未完成** | 有表、基础路由和 UI 壳；执行器是占位（串行、不调模型、固定 JSON）、权限 fail-open、无评审集群/记忆/扩图/评测/安全边界 |
-| 主分支 | **不可发布** | 已推送 origin/master（4de1b0f），但 GitHub Actions 整体失败（ruff 92 错、trivy-action 版本不存在且遭供应链攻击、pnpm audit 无法执行、E2E 未接入） |
+| 主分支 | **CI 已修复，待推送验证** | ruff 0 错；trivy 弃用遭攻陷 action 改钉 digest 容器扫描；pnpm audit corepack 修复；Playwright e2e 已接入 workflow |
 
 ## 已撤销/降级的历史文档
 
@@ -54,10 +54,10 @@
 ## 修复路线（用户确认次序）
 
 1. ✅ 状态纠正（本文档）+ 环境清理（`down -v` + 删 `.pnpm-web-*`）
-2. ⏳ CI 修复（ruff / trivy 弃用遭攻陷 action 改直跑镜像 / pnpm audit corepack / 接入 e2e）
-3. ⏳ V15-008 / V15-009 / V15-010（蓝图 V1.5_NATIVE_RUNTIME）
-4. ⬜ V2-001～010 补齐（另立计划）
-5. ⬜ V3-001～010 重实现（另立计划）
+2. ✅ CI 修复（ruff / trivy 弃用遭攻陷 action 改直跑镜像 / pnpm audit corepack / 接入 e2e；另修复 nginx resolver Podman 不兼容、pnpm store 卷、exports tmpfs）
+3. ✅ V15-008 / V15-009 / V15-010（蓝图 V1.5_NATIVE_RUNTIME）——Windows/Linux 绿，macOS BLOCKED 待 runner；证据见 `V1_5_NATIVE_VALIDATION.md` 与 `BATCH_VALIDATION_V1.5_B4.md`
+4. ⬜ V2-001～010 补齐（另立计划）——注意恢复 e2e skip：`ordinary-user-smoke.spec.ts`
+5. ⬜ V3-001～010 重实现（另立计划）——注意恢复 e2e skip：`v3-agent-swarm.spec.ts`、`v3-execution-proposal.spec.ts`；修共享账号 fixture 隔离
 
 ## 证据标准（蓝图 `TEST_EXECUTION_POLICY.md` §五）
 

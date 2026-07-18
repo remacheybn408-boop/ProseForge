@@ -24,6 +24,24 @@ GET http://localhost:8000/api/v1/health/ready
 
 首次部署请修改 `.env` 中的 JWT secret、master key 和管理员密码。生产环境会拒绝默认占位值。
 
+## 原生安装（无 Python/Node/Docker 依赖）
+
+V1.5 起提供原生安装包：PyInstaller onedir 捆绑 Python 3.12 运行时、API、前端与迁移，目标机器无需安装任何运行时。
+
+```bash
+# Windows（宿主机需要 py -3.12）：产出 artifacts/native/windows/ProseForge-*.zip
+powershell -File scripts/build_native.ps1 -Target windows
+# Linux（通过 Podman 容器构建）：产出 artifacts/native/linux/ProseForge-*.tar.gz
+bash scripts/build_native.sh --target linux --format tar.gz --skip-sign
+```
+
+- 直接运行：解包后执行 `proseforge web`（默认 <http://127.0.0.1:8000>），首跑自动建库、迁移并生成数据目录（Windows `%LOCALAPPDATA%\ProseForge`，Linux `~/.local/share/ProseForge`，macOS `~/Library/Application Support/ProseForge`）。
+- Windows 安装器：`packaging/windows/ProseForge.iss`（Inno Setup 6）安装到 Program Files、可选开机自启（HKCU Run 键）、卸载保留数据、升级自动备份后迁移。
+- Linux：`packaging/linux/build-deb.sh` / `build-rpm.sh`（容器内构建）+ `systemctl --user` 服务；tarball 免 root。
+- macOS：`packaging/macos/build-pkg.sh`（须在 macOS 上执行，签名身份走 CI secrets）+ LaunchAgent。
+- 运维命令：`proseforge doctor`（诊断）、`proseforge backup create|verify|restore`、`proseforge upgrade --check|upgrade`（锁→备份→迁移→健康检查→失败回滚）。
+- Docker 仍作为 server 部署模式保留（PostgreSQL + Redis + Celery）。
+
 ## Docker 测试
 
 运行完整 legacy regression：
