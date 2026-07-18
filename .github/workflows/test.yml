@@ -52,6 +52,23 @@ jobs:
           path: artifacts/
           if-no-files-found: ignore
 
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API and web images for E2E
+        run: docker compose -f compose.yaml -f compose.test.yaml build api web
+
+      - name: Run Playwright E2E in Docker
+        run: |
+          docker compose -f compose.yaml -f compose.test.yaml up -d --wait postgres redis api web
+          docker compose -f compose.yaml -f compose.test.yaml run --rm e2e
+
+      - name: Tear down E2E stack
+        if: always()
+        run: docker compose -f compose.yaml -f compose.test.yaml down -v
+
   dependency-audit:
     runs-on: ubuntu-latest
     steps:
@@ -59,7 +76,7 @@ jobs:
       - name: Audit Python dependencies in Docker
         run: docker compose -f compose.yaml -f compose.test.yaml run --rm api-test sh -lc "python -m pip install --no-cache-dir pip-audit && pip-audit"
       - name: Audit frontend dependencies in Docker
-        run: docker compose -f compose.yaml -f compose.test.yaml run --rm web-test pnpm audit --audit-level high
+        run: docker compose -f compose.yaml -f compose.test.yaml run --rm web-test sh -lc "corepack enable && pnpm audit --audit-level high"
 
   security-scan:
     runs-on: ubuntu-latest
@@ -70,14 +87,13 @@ jobs:
         with:
           fetch-depth: 0
       - name: Scan source filesystem with Trivy
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: sarif
-          output: artifacts/trivy-fs.sarif
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
+        # trivy-action / setup-trivy 于 2026-03 遭供应链攻击（CVE-2026-33634，76/77 个 tag 被强推为窃密代码），
+        # 且原固定的 0.33.1 版本不存在。弃用 GitHub Action，改为直跑官方容器镜像，
+        # 钉攻击窗口前的 0.69.3 并锁定 digest；上游信任恢复前不得改回 trivy-action/setup-trivy。
+        run: |
+          mkdir -p artifacts
+          docker run --rm -v "$PWD:/src" aquasec/trivy:0.69.3@sha256:7228e304ae0f610a1fad937baa463598cadac0c2ac4027cc68f3a8b997115689 \
+            fs --format sarif -o /src/artifacts/trivy-fs.sarif --severity HIGH,CRITICAL --ignore-unfixed /src
       - name: Scan repository history with Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:

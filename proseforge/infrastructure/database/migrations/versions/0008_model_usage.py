@@ -1,7 +1,7 @@
 """Add durable model usage records and workflow token budget fields."""
 
 from alembic import op
-from sqlalchemy import Boolean, Column, DateTime, Float, Index, Integer, String, Text, inspect
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, inspect
 
 
 revision = "0008_model_usage"

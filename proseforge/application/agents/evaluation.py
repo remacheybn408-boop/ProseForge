@@ -1,5 +1,6 @@
 from __future__ import annotations
-import hashlib, json
+import hashlib
+import json
 
 def fixture_hash(fixture: dict[str, object]) -> str: return hashlib.sha256(json.dumps(fixture, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 

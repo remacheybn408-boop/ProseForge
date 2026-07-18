@@ -1,7 +1,7 @@
 """Add durable local task queue tables (task_jobs / task_events)."""
 
 from alembic import op
-from sqlalchemy import Column, DateTime, Index, Integer, String, Text, inspect
+from sqlalchemy import Column, DateTime, Integer, String, Text, inspect
 
 
 revision = "0009_task_jobs"

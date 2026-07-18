@@ -11,7 +11,7 @@ import os
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from proseforge.infrastructure.database.dialect import (
     capabilities_for_dialect,

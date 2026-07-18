@@ -1,5 +1,6 @@
 from __future__ import annotations
-import hashlib, json
+import hashlib
+import json
 from dataclasses import dataclass
 
 @dataclass(frozen=True)

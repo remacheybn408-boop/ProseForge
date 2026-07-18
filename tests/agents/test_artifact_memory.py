@@ -1,4 +1,3 @@
-import pytest
 from proseforge.application.agents.artifact_store import create_artifact, verify_artifact
 from proseforge.application.agents.scoped_memory import Memory, ScopedMemory
 

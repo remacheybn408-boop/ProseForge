@@ -61,6 +61,11 @@ proseforge-legacy = "src.interfaces.cli:main"
 [project.urls]
 Repository = "https://github.com/remacheybn408-boop/ProseForge"
 
+[tool.ruff.lint]
+# 项目代码风格允许紧凑单行写法（if x: raise ... / class X: pass），
+# E701/E702 仅为风格规则，无正确性信号；其余规则保持默认严格。
+extend-ignore = ["E701", "E702"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

@@ -1,7 +1,7 @@
 """Add immutable conversation metadata and message edit records."""
 
 from alembic import op
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, inspect
+from sqlalchemy import Column, DateTime, Integer, String, Text, inspect
 
 revision = "0010_conversation_message_metadata"
 down_revision = "0009_task_jobs"

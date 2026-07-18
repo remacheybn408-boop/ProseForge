@@ -1,6 +1,5 @@
 import pytest
 
-from proseforge.infrastructure.database.models.project import ProjectModel
 from proseforge.infrastructure.database.repositories.credential import SqlAlchemyCredentialRepository
 
 

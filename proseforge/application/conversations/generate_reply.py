@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from proseforge.providers.errors import classify_provider_error
-from proseforge.domain.usage import normalize_usage
 from proseforge.application.conversations.terminal_state import terminal_message_status
 from proseforge.providers.usage import normalize_provider_usage
 
