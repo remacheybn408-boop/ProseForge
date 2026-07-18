@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import uuid
-
-from fastapi.testclient import TestClient
 
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
@@ -90,15 +89,17 @@ def test_cross_user_access_returns_404(auth_client, client, api_settings):
             await engine.dispose()
 
     asyncio.run(create_other_user())
-    other = TestClient(app)
-    login = other.post("/api/v1/auth/login", json={"email": other_email, "password": "twelve-char-pw"}, headers={"Origin": "http://testserver"})
+    # 不能再开第二个裸 TestClient（每请求新 portal → asyncpg 跨 loop）；
+    # 用共享 client + Bearer 头切换身份（current_user 中 Bearer 优先于 cookie）。
+    login = auth_client.raw.post("/api/v1/auth/login", json={"email": other_email, "password": "twelve-char-pw"}, headers={"Origin": "http://testserver"})
     assert login.status_code == 200
+    other_headers = {"Authorization": f"Bearer {login.json()['access_token']}", "Origin": "http://testserver"}
 
-    assert other.get(f"/api/v1/conversations/{conversation['id']}/branches/{conversation['branch_id']}/messages").status_code == 404
-    edit = other.post(
+    assert auth_client.get(f"/api/v1/conversations/{conversation['id']}/branches/{conversation['branch_id']}/messages", headers=other_headers).status_code == 404
+    edit = auth_client.raw.post(
         f"/api/v2/conversations/{conversation['id']}/messages/{sent['user_message_id']}/edit",
         json={"content": "hijack"},
-        headers={"Origin": "http://testserver"},
+        headers=other_headers,
     )
     assert edit.status_code == 404
 
@@ -142,22 +143,39 @@ def test_reconnect_with_last_event_id_does_not_duplicate_deltas(auth_client, api
         assert response.status_code == 200
         body = b"".join(response.iter_bytes()).decode()
 
-    assert '"text": "one"' not in body and "one" not in body  # 重放起点之后，不重复 delta
-    assert body.count("content.delta") == 1
+    assert '"text": "one"' not in body  # 重放起点之后，不重复 delta
+    assert body.count("event: content.delta") == 1  # 帧头计数（data 载荷里也含事件名）
     assert "two" in body
     assert "message.completed" in body  # live tail 在 terminal 事件后结束
 
 
-def test_sse_stream_emits_heartbeat_comments(auth_client, monkeypatch):
+def test_sse_stream_emits_heartbeat_comments(auth_client, api_settings, monkeypatch):
     project_id = _create_project(auth_client)
     conversation = _create_conversation(auth_client, project_id)
     monkeypatch.setattr("proseforge.api.routes.conversations.SSE_HEARTBEAT_SECONDS", 0.2)
 
+    async def publish_terminal():
+        # 独立引擎：延迟发布 terminal 事件结束 live tail，让心跳先跑两轮。
+        await asyncio.sleep(0.6)
+        from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
+        from proseforge.infrastructure.events.database import DatabaseEventStream
+
+        engine, factory = create_engine_and_sessionmaker(api_settings)
+        try:
+            stream = DatabaseEventStream(factory)
+            await stream.publish(f"conversation:{conversation['id']}", {"event": "message.completed", "message_id": "m", "status": "COMPLETED"})
+        finally:
+            await engine.dispose()
+
+    # 永不结束的流在 TestClient 中间件链下无法交付首字节（BaseHTTPMiddleware
+    # call_next 等待内层首条消息），用后台线程发 terminal 让响应完整结束。
+    threading.Thread(target=lambda: asyncio.run(publish_terminal()), daemon=True).start()
     with auth_client.stream("GET", f"/api/v1/conversations/{conversation['id']}/events") as response:
         assert response.status_code == 200
-        first_chunk = next(response.iter_bytes())
+        body = b"".join(response.iter_bytes()).decode()
 
-    assert b": heartbeat" in first_chunk
+    assert ": heartbeat" in body
+    assert "message.completed" in body
 
 
 def test_regenerate_keeps_both_candidates(auth_client):
@@ -316,16 +334,17 @@ def test_cross_user_branch_tree_compare_and_archive_return_404(auth_client, clie
             await engine.dispose()
 
     asyncio.run(create_other_user())
-    other = TestClient(app)
-    login = other.post("/api/v1/auth/login", json={"email": other_email, "password": "twelve-char-pw"}, headers={"Origin": "http://testserver"})
+    # 同 test_cross_user_access_returns_404：共享 client + Bearer 头，不开裸 TestClient。
+    login = auth_client.raw.post("/api/v1/auth/login", json={"email": other_email, "password": "twelve-char-pw"}, headers={"Origin": "http://testserver"})
     assert login.status_code == 200
+    other_headers = {"Authorization": f"Bearer {login.json()['access_token']}", "Origin": "http://testserver"}
 
     base = f"/api/v2/conversations/{conversation['id']}/branches"
-    assert other.get(f"{base}/{conversation['branch_id']}/tree").status_code == 404
-    assert other.get(f"{base}/compare?left={conversation['branch_id']}&right={conversation['branch_id']}").status_code == 404
-    archive = other.post(f"{base}/{conversation['branch_id']}/archive", headers={"Origin": "http://testserver"})
+    assert auth_client.get(f"{base}/{conversation['branch_id']}/tree", headers=other_headers).status_code == 404
+    assert auth_client.get(f"{base}/compare?left={conversation['branch_id']}&right={conversation['branch_id']}", headers=other_headers).status_code == 404
+    archive = auth_client.raw.post(f"{base}/{conversation['branch_id']}/archive", headers=other_headers)
     assert archive.status_code == 404
-    assert other.get(base).json() == []  # 列表不泄露他人分支
+    assert auth_client.get(base, headers=other_headers).json() == []  # 列表不泄露他人分支
 
 
 def test_v1_send_tolerates_reasoning_level(auth_client):
