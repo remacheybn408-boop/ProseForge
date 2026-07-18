@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import os
+import uuid
 
 import pytest
 
@@ -50,8 +51,8 @@ async def _seed(settings: Settings):
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
     async with SqlAlchemyUnitOfWork(factory) as uow:
-        user = await uow.users.create("writer@example.local", "hash-not-used", "ADMIN")
-        project = Project.create(owner_id=user.id, slug="novel", title="Novel")
+        user = await uow.users.create(f"writer-{uuid.uuid4().hex[:8]}@example.local", "hash-not-used", "ADMIN")
+        project = Project.create(owner_id=user.id, slug=f"novel-{uuid.uuid4().hex[:8]}", title="Novel")
         await uow.projects.add(project)
         conversation = Conversation.create(project.id, "Chat")
         main = await uow.conversations.create(conversation)
@@ -66,7 +67,7 @@ async def test_send_links_assistant_to_user_message_and_regenerate_increments_at
     try:
         queue = FakeQueue()
         user_message, assistant, _ = await SendMessage(lambda: SqlAlchemyUnitOfWork(factory), queue).execute(
-            branch_id=ids["branch_id"], content="two takes", client_request_id="crid-1", user_id=ids["user_id"],
+            branch_id=ids["branch_id"], content="two takes", client_request_id=f"crid-{uuid.uuid4().hex[:12]}", user_id=ids["user_id"],
         )
         assert assistant.parent_message_id == user_message.id  # 候选分组的父边
         assert assistant.generation_attempt == 1

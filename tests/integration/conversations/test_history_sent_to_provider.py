@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import os
+import uuid
 from datetime import UTC, datetime
 
 import pytest
@@ -64,11 +65,11 @@ async def _seed(settings: Settings, *, with_catalog: bool = True, with_credentia
         async with engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)
         async with SqlAlchemyUnitOfWork(factory) as uow:
-            user = await uow.users.create("writer@example.local", "hash-not-used", "ADMIN")
-            project = Project.create(owner_id=user.id, slug="novel", title="Novel")
+            user = await uow.users.create(f"writer-{uuid.uuid4().hex[:8]}@example.local", "hash-not-used", "ADMIN")
+            project = Project.create(owner_id=user.id, slug=f"novel-{uuid.uuid4().hex[:8]}", title="Novel")
             await uow.projects.add(project)
             if with_credential:
-                credential_id = "cred-test"
+                credential_id = f"cred-{uuid.uuid4().hex[:8]}"
                 associated = f"{user.id}:openai:{credential_id}".encode()
                 encrypted = CredentialCipher(base64.b64decode(MASTER_KEY)).encrypt(
                     json.dumps({"api_key": "sk-test"}).encode(), associated_data=associated
@@ -128,7 +129,10 @@ async def test_full_branch_history_is_sent_to_provider(chat_settings, monkeypatc
     engine, factory = create_engine_and_sessionmaker(chat_settings)
     try:
         async with factory() as session:
-            snapshots = list((await session.scalars(select(ContextSnapshotModel))).all())
+            # 共享 PG 上数据跨用例共存，快照与事件都必须按本用例范围过滤
+            snapshots = list((await session.scalars(
+                select(ContextSnapshotModel).where(ContextSnapshotModel.project_id == seeded["project_id"])
+            )).all())
             assert len(snapshots) == 1
             snapshot_payload = json.loads(snapshots[0].payload)
             assert seeded["fact_id"] in snapshot_payload["injected_fact_ids"]
@@ -144,7 +148,11 @@ async def test_full_branch_history_is_sent_to_provider(chat_settings, monkeypatc
             assert reasoning_snapshot["level"] == "deep"
             assert row.content_hash == hashlib.sha256("暗涌".encode()).hexdigest()
 
-            events = list((await session.scalars(select(ConversationEventModel).order_by(ConversationEventModel.event_sequence))).all())
+            events = list((await session.scalars(
+                select(ConversationEventModel)
+                .where(ConversationEventModel.conversation_id == seeded["conversation_id"])
+                .order_by(ConversationEventModel.event_sequence)
+            )).all())
             event_types = [event.event_type for event in events]
             assert "message.started" in event_types
             assert "message.completed" in event_types
@@ -236,7 +244,10 @@ async def test_partial_resume_sends_partial_content_exactly_once(chat_settings, 
     engine, factory = create_engine_and_sessionmaker(chat_settings)
     try:
         async with factory() as session:
-            snapshots = list((await session.scalars(select(ContextSnapshotModel))).all())
+            # 共享 PG 上快照跨用例共存，必须按本用例项目过滤（sqlite 单文件天然隔离）
+            snapshots = list((await session.scalars(
+                select(ContextSnapshotModel).where(ContextSnapshotModel.project_id == seeded["project_id"])
+            )).all())
             assert len(snapshots) == 1
             snapshot_payload = json.loads(snapshots[0].payload)
             assert seeded["message_id"] not in snapshot_payload["message_ids"]  # 目标 partial 不进编译历史
