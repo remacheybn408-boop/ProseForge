@@ -4,6 +4,7 @@ import hashlib
 
 from proseforge.providers.errors import classify_provider_error
 from proseforge.application.conversations.terminal_state import terminal_message_status
+from proseforge.domain.usage import UsageDelta
 from proseforge.providers.usage import normalize_provider_usage
 
 
@@ -22,6 +23,7 @@ class GenerateReply:
 
     async def execute(self, *, message_id: str, request, user_id: str = "", provider: str = "unknown", model: str = "unknown"):
         chunks = 0
+        saw_usage = False
         call_id = f"message:{message_id}"
         async with self.uow_factory() as uow:
             count = getattr(uow.conversations, "chunk_count", None)
@@ -37,6 +39,7 @@ class GenerateReply:
             await self._publish(conversation_id, message_id, {"event": "message.started", "message_id": message_id})
             async for event in self.provider.stream(request):
                 if event.event == "usage.updated":
+                    saw_usage = True
                     async with self.uow_factory() as uow:
                         delta = normalize_provider_usage(provider, event.data)
                         usage_repo = getattr(uow, "usage", None)
@@ -48,6 +51,7 @@ class GenerateReply:
                         await self._publish(conversation_id, message_id, usage_payload)
                     continue
                 if event.event == "response.completed" and event.data.get("usage"):
+                    saw_usage = True
                     async with self.uow_factory() as uow:
                         delta = normalize_provider_usage(provider, event.data, final=True)
                         usage_repo = getattr(uow, "usage", None)
@@ -71,6 +75,7 @@ class GenerateReply:
                     await self._publish(conversation_id, message_id, payload)
                 chunks += 1
             content_hash = None
+            missing_usage = None
             async with self.uow_factory() as uow:
                 status_reader = getattr(uow.conversations, "message_status", None)
                 if status_reader and await status_reader(message_id) == "CANCELLED":
@@ -83,7 +88,14 @@ class GenerateReply:
                 hash_writer = getattr(uow.conversations, "set_content_hash", None)
                 if hash_writer:
                     await hash_writer(message_id, content_hash)
+                usage_repo = getattr(uow, "usage", None)
+                if usage_repo and not saw_usage:
+                    # provider 全程未回 usage → 显式记 source="missing"，不假装是 provider 值。
+                    missing_usage = UsageDelta(source="missing", final=True)
+                    await usage_repo.record(user_id=user_id, provider=provider, model_id=model, call_id=call_id, delta=missing_usage, message_id=message_id, conversation_id=conversation_id)
                 await uow.commit()
+            if missing_usage is not None:
+                await self._publish(conversation_id, message_id, {"event": "usage.updated", "message_id": message_id, **missing_usage.as_event_payload()})
             await self._publish(conversation_id, message_id, {"event": "message.completed", "message_id": message_id, "status": "COMPLETED", "content_hash": content_hash})
         except Exception as error:
             terminal_status = None

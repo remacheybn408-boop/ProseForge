@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { compareBranches, editMessageV2, forkConversation, getBranchTree, listBranchesV2, listMessages, listV2Models, regenerateReply, retryMessage, sendMessage, stopMessage, subscribeConversationEvents, type ChatMessage as ApiChatMessage } from "../../lib/api/client";
+import { compareBranches, editMessageV2, forkConversation, getBranchTree, listBranchesV2, listMessages, regenerateReply, retryMessage, sendMessage, stopMessage, subscribeConversationEvents, type ChatMessage as ApiChatMessage } from "../../lib/api/client";
 import { useChatStore } from "./chatStore";
 import type { SendOptions } from "./chatTypes";
 
@@ -19,7 +19,7 @@ export function useMessages(conversationId: string, branchId: string) {
 export function useSendMessage() {
   return useMutation({
     mutationFn: ({ conversationId, branchId, content, options }: { conversationId: string; branchId: string; content: string; options?: SendOptions }) =>
-      sendMessage(conversationId, { branch_id: branchId, content, client_request_id: newClientId(), provider: options?.provider, model: options?.model }),
+      sendMessage(conversationId, { branch_id: branchId, content, client_request_id: newClientId(), provider: options?.provider, model: options?.model, reasoning_level: options?.reasoning }),
   });
 }
 
@@ -31,10 +31,6 @@ export function useRetryMessage() {
   return useMutation({
     mutationFn: ({ messageId, options }: { messageId: string; options?: SendOptions }) => retryMessage(messageId, { provider: options?.provider, model: options?.model }),
   });
-}
-
-export function useModelCatalog() {
-  return useQuery({ queryKey: ["v2", "models"], queryFn: () => listV2Models(), staleTime: 300_000, retry: false });
 }
 
 export function branchKeys(conversationId: string) {

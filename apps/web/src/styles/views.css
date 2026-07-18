@@ -55,3 +55,7 @@
 .detail-card span, .timeline-item span { color: var(--secondary); }
 .chapter-tree small, .chat-messages > p, .chat-message small, .version-row small, .version-active { color: var(--secondary); }
 .form-message { color: var(--secondary); }
+.model-provider-group h3 { margin: 28px 0 4px; font-size: 13px; color: var(--text-primary); }
+.settings-models .detail-card { grid-template-columns: 1fr 1fr 1fr; }
+.resolution-result { margin-top: 8px; }
+.resolution-result code { white-space: pre-wrap; word-break: break-all; font-size: 11px; }

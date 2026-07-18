@@ -11,7 +11,7 @@ class UsageDelta:
     cached_input_tokens: int = 0
     reasoning_tokens: int = 0
     total_tokens: int = 0
-    source: Literal["provider", "estimated"] = "provider"
+    source: Literal["provider", "estimated", "missing"] = "provider"
     final: bool = False
     provider_request_id: str | None = None
     raw_metadata: dict[str, object] = field(default_factory=dict)
@@ -38,7 +38,7 @@ def _integer(value: object) -> int:
         return 0
 
 
-def normalize_usage(data: dict[str, object], *, source: Literal["provider", "estimated"] = "provider", final: bool = False) -> UsageDelta:
+def normalize_usage(data: dict[str, object], *, source: Literal["provider", "estimated", "missing"] = "provider", final: bool = False) -> UsageDelta:
     raw = data.get("usage") if isinstance(data.get("usage"), dict) else data
     values = raw if isinstance(raw, dict) else {}
     input_tokens = _integer(values.get("input_tokens", values.get("prompt_tokens", values.get("inputTokens", 0))))

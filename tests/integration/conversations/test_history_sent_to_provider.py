@@ -305,3 +305,61 @@ async def test_provider_not_supported_publishes_terminal_failed_event(chat_setti
         assert failed[0]["message_id"] == seeded["message_id"]
         assert failed[0]["status"] == "FAILED"
         assert failed[0]["reason"] == "provider-not-supported"
+
+
+@pytest.mark.asyncio
+async def test_per_message_model_switch_records_distinct_snapshots(chat_settings, monkeypatch):
+    seeded = await _seed(chat_settings)
+    spy = SpyProvider()
+    monkeypatch.setattr("proseforge.providers.factory.build_provider", lambda *args, **kwargs: spy)
+
+    # 同一分支追加第二个 catalog 模型与第二条 assistant 目标消息
+    engine, factory = create_engine_and_sessionmaker(chat_settings)
+    try:
+        async with SqlAlchemyUnitOfWork(factory) as uow:
+            await uow.model_catalog.upsert([
+                ProviderModel("openai", "gpt-alt", "GPT Alt", {"reasoning": False}, context_window=4096, max_output_tokens=777)
+            ])
+            first = await uow.conversations.get_message(seeded["message_id"])
+            second = await uow.conversations.append_message(first.branch_id, "assistant", "", None, "PENDING")
+            await uow.commit()
+            second_id = second.id
+    finally:
+        await engine.dispose()
+
+    first_result = await generate_chat({
+        "message_id": seeded["message_id"],
+        "user_id": seeded["user_id"],
+        "provider": "openai",
+        "model": "gpt-test",
+        "reasoning_level": "auto",
+    })
+    second_result = await generate_chat({
+        "message_id": second_id,
+        "user_id": seeded["user_id"],
+        "provider": "openai",
+        "model": "gpt-alt",
+        "reasoning_level": "auto",
+    })
+
+    assert first_result == "completed" and second_result == "completed"
+    assert spy.requests[-1].max_output_tokens == 777  # 第二次生成走 gpt-alt 的 catalog 上限
+
+    engine, factory = create_engine_and_sessionmaker(chat_settings)
+    try:
+        async with factory() as session:
+            first_row = await session.get(MessageModel, seeded["message_id"])
+            second_row = await session.get(MessageModel, second_id)
+            first_snapshot = json.loads(first_row.model_snapshot_json)
+            second_snapshot = json.loads(second_row.model_snapshot_json)
+            # 逐消息切模型：同分支两条消息各自记录自己的 model_snapshot
+            assert first_snapshot["model"] == "gpt-test"
+            assert first_snapshot["context_window"] == 2048
+            assert first_snapshot["max_output_tokens"] == 333
+            assert first_snapshot["source"] == "catalog"
+            assert second_snapshot["model"] == "gpt-alt"
+            assert second_snapshot["context_window"] == 4096
+            assert second_snapshot["max_output_tokens"] == 777
+            assert second_snapshot["source"] == "catalog"
+    finally:
+        await engine.dispose()

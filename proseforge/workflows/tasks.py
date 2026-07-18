@@ -29,6 +29,8 @@ async def generate_novel(payload: dict[str, object]) -> str:
     from proseforge.infrastructure.security.credential_cipher import CredentialCipher
     from proseforge.providers.factory import build_provider
     from proseforge.settings import get_settings
+    from proseforge.application.models.context_window import catalog_model_snapshot, resolve_context_window
+    from proseforge.context_engine.budgeting import calculate_budget
     from proseforge.domain.workflow.budget import budget_blocked
     from proseforge.context_engine.compiler import compile_context
     from proseforge.workflows.novel_generation import run_writer_editor_loop
@@ -76,8 +78,17 @@ async def generate_novel(payload: dict[str, object]) -> str:
             context_items = [item for item in await uow.context.list_owned(run.project_id, owner_id) if not item.excluded]
             context_blocks = [{"id": item.id, "source_type": item.source_type, "content": item.content, "pinned": item.pinned, "priority": item.priority} for item in context_items]
             snapshot = await uow.context.snapshot(run.project_id, context_items)
-            compiled_context = compile_context(snapshot.id, context_blocks, input_budget=8000)
+            model_snapshot = await catalog_model_snapshot(uow, provider_id, model_id)  # catalog 为事实
+            window = resolve_context_window(model_snapshot)
+            budget = calculate_budget(int(window["context_window"]), int(model_snapshot["max_output_tokens"]))
+            compiled_context = compile_context(snapshot.id, context_blocks, input_budget=budget.input_tokens)
             context_text = "\n".join(str(block.get("content", "")) for block in compiled_context.blocks)
+            await uow.workflows.append_event(workflow_id, "context.budget", {
+                "context_window": window["context_window"],
+                "context_window_source": window["source"],
+                "input_budget": budget.input_tokens,
+                "output_reserve": budget.output_reserve,
+            })  # 窗口解析落痕：fallback 显式记录，绝不静默
             await uow.workflows.checkpoint(run, lease_owner, f"PREPARING_CONTEXT_{snapshot.snapshot_hash}")
             await uow.commit()
 
@@ -351,7 +362,7 @@ async def generate_chat(payload: dict[str, object]) -> str:
     from proseforge.application.conversations.generate_reply import GenerateReply
     from proseforge.application.conversations.terminal_state import terminal_message_status
     from proseforge.application.models.reasoning_policy import resolve_reasoning
-    from proseforge.domain.model.capabilities import ModelCapabilities, capabilities_from_model
+    from proseforge.application.models.resolve_model import resolve_capabilities
     from proseforge.domain.ports.model_provider import GenerationRequest
     from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
     from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
@@ -390,11 +401,8 @@ async def generate_chat(payload: dict[str, object]) -> str:
                     await fail_message(uow, terminal_message_status(len(message.content)), "provider-not-configured")
                 return "provider-not-configured"
             catalog = await uow.model_catalog.get(provider_id, model)  # catalog 为事实
-            if catalog is not None:
-                capabilities = capabilities_from_model(catalog)
-            else:
-                # 未知模型 → 保守 fallback，绝不让生成崩溃。
-                capabilities = ModelCapabilities(8192, 1024, False, None, False, False, "fallback")
+            # 未知模型 → 保守 fallback（source 记录在 message snapshot），绝不让生成崩溃。
+            capabilities = resolve_capabilities(catalog)
             try:
                 resolution = resolve_reasoning(reasoning_level, capabilities)  # 不支持已在路由层 422
             except ValueError as exc:
@@ -437,7 +445,7 @@ async def generate_chat(payload: dict[str, object]) -> str:
             system_blocks=context.system_blocks,
             input_blocks=tuple(input_blocks),
             max_output_tokens=capabilities.max_output_tokens,
-            reasoning=resolution.get("parameter"),
+            reasoning=resolution.get("provider_parameter"),
         )
         await GenerateReply(lambda: SqlAlchemyUnitOfWork(session_factory), provider, event_stream).execute(message_id=message_id, request=request, user_id=user_id, provider=provider_id, model=model)
         return "completed"

@@ -10,12 +10,10 @@ from proseforge.application.auth.service import AuthUser
 from proseforge.application.conversations.edit_message import EditMessage
 from proseforge.application.conversations.regenerate_reply import RegenerateReply
 from proseforge.application.conversations.compare_branches import compare_messages
+from proseforge.application.models.resolve_model import FALLBACK_CAPABILITIES
 from proseforge.domain.model.capabilities import ModelCapabilities, ReasoningLevel, capabilities_from_model
 
 router = APIRouter(prefix="/api/v2", tags=["conversation-branches"])
-
-# 未知模型 → 保守 fallback（与 generate_chat 一致；catalog 为事实来源）。
-FALLBACK_CAPABILITIES = ModelCapabilities(8192, 1024, False, None, False, False, "fallback")
 
 
 class V2MessageRequest(BaseModel):

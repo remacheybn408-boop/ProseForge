@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.application.auth.service import AuthUser
+from proseforge.application.models.context_window import catalog_model_snapshot, default_catalog_snapshot, resolve_context_window
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 from proseforge.context_engine.tokenizer import ConservativeTokenizer
 
@@ -47,15 +48,21 @@ def _snapshot_response(snapshot) -> dict[str, object]:
 
 
 @router.get("/projects/{project_id}/context")
-async def list_context(project_id: str, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> dict[str, object]:
+async def list_context(project_id: str, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)], provider: str | None = None, model: str | None = None) -> dict[str, object]:
+    if (provider is None) != (model is None):
+        raise HTTPException(status_code=422, detail="provider and model must be provided together")
     async with uow:
         if await uow.projects.get_by_id(user.id, project_id) is None:
             raise HTTPException(status_code=404, detail="project not found")
         items = await uow.context.list_owned(project_id, user.id)
         tokenizer = ConservativeTokenizer()
         used_tokens = sum(tokenizer.count(item.content) for item in items if not item.excluded)
-        context_window = 128000
-        return {"items": [_response(item) for item in items], "used_tokens": used_tokens, "context_window": context_window, "available_tokens": max(0, context_window - used_tokens)}
+        # context window 来自 catalog：请求指定模型 → 该模型的窗口；未指定 →
+        # catalog 默认（可用条目最小窗口）；都没有 → 保守 floor，source 显式记录。
+        snapshot = await catalog_model_snapshot(uow, provider, model) if provider and model else await default_catalog_snapshot(uow)
+        window = resolve_context_window(snapshot)
+        context_window = int(window["context_window"])
+        return {"items": [_response(item) for item in items], "used_tokens": used_tokens, "context_window": context_window, "context_window_source": window["source"], "available_tokens": max(0, context_window - used_tokens)}
 
 
 @router.post("/projects/{project_id}/context/items", status_code=status.HTTP_201_CREATED)

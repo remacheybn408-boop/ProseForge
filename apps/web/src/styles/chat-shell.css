@@ -169,3 +169,13 @@
   .workspace-inspector.drawer{transition:none}
   .ink-button{transition:none}
 }
+
+/* reasoning strength picker: five-level ink dots, unsupported greyed with tooltip */
+.reasoning-picker{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.reasoning-picker-label{font-size:11px;color:var(--ink-mid)}
+.reasoning-level{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--ink-faint);background:transparent;color:var(--ink-mid);padding:4px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px}
+.reasoning-level .reasoning-dots{font-size:9px;letter-spacing:1px}
+.reasoning-level:hover:not(:disabled){background:var(--wash)}
+.reasoning-level.selected{border-color:var(--ink);color:var(--ink);background:var(--wash)}
+.reasoning-level:disabled{opacity:.45;cursor:not-allowed}
+.reasoning-warning{flex-basis:100%;font-size:11px;color:var(--ink-strong)}

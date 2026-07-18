@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { loadDraft, saveDraft } from "../../lib/drafts";
 import { ModelPicker } from "../models/ModelPicker";
 import { ReasoningPicker } from "../models/ReasoningPicker";
-import { supportedReasoning, type ReasoningLevel } from "../models/modelCapabilities";
-import { useModelCatalog } from "./chatQueries";
+import { modelKey, supportedReasoning, useModelCatalog, type ReasoningLevel } from "../models/modelCapabilities";
 import { useChatStore } from "./chatStore";
 import type { SendOptions } from "./chatTypes";
 
@@ -20,12 +19,12 @@ export function ChatComposer({ conversationId, branchId, generating = false, onS
   const [restored, setRestored] = useState(false);
   const [attachments, setAttachments] = useState<{ name: string; size: number }[]>([]);
   const [notice, setNotice] = useState("");
-  const [modelKey, setModelKey] = useState("");
+  const [selectedKey, setSelectedKey] = useState("");
   const [reasoning, setReasoning] = useState<ReasoningLevel>("auto");
   const fileInput = useRef<HTMLInputElement>(null);
   const modelsQuery = useModelCatalog();
   const models = modelsQuery.data ?? [];
-  const selected = models.find(model => `${model.provider}/${model.model_id}` === modelKey);
+  const selected = models.find(model => modelKey(model) === selectedKey);
   const paletteOpen = useChatStore(state => state.commandPaletteOpen);
   const setPaletteOpen = useChatStore(state => state.setCommandPaletteOpen);
 
@@ -68,7 +67,7 @@ export function ChatComposer({ conversationId, branchId, generating = false, onS
     <p className="composer-notice" aria-live="polite">{notice}</p>
     <div className="chat-composer-tools">
       <button type="button" aria-label="Attach file" onClick={() => fileInput.current?.click()}>＋</button>
-      <ModelPicker models={models} value={modelKey} onChange={model => setModelKey(`${model.provider}/${model.model_id}`)} />
+      <ModelPicker models={models} value={selectedKey} onChange={model => setSelectedKey(modelKey(model))} />
       <ReasoningPicker value={reasoning} supported={selected ? supportedReasoning(selected) : ["auto"]} onChange={setReasoning} />
       <span className="branch-indicator">Branch {branchId}</span>
       <span className="composer-status" aria-live="polite">{generating ? "Generating…" : ""}</span>

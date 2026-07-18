@@ -38,7 +38,7 @@ class ChatContext:
     snapshot_id: str                         # 已持久化 ContextSnapshot id
     injected_fact_ids: tuple[str, ...]       # 本次注入的 story bible 条目 id
     model_snapshot: dict                     # {provider,model,context_window,max_output_tokens,source}
-    reasoning_snapshot: dict                 # {level,parameter,strength} 或 {level,supported:False,reason}
+    reasoning_snapshot: dict                 # {level,parameter,strength,provider_parameter,warnings} 或 {level,supported:False,reason}
 
 
 class CompileChatContext:

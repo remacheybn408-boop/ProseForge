@@ -8,6 +8,7 @@ import { ChatPage, type CompareViewData } from "../features/chat/ChatPage";
 import { branchKeys, branchTreeKeys, messageKeys, useBranches, useBranchTree, useChatConversation, useCompareBranches, useEditMessage, useRegenerate } from "../features/chat/chatQueries";
 import { toChatMessage, type ChatMessage } from "../features/chat/chatTypes";
 import { UsagePage } from "../features/usage/UsagePage";
+import { SettingsModelsPage } from "../features/models/SettingsModelsPage";
 import { ApiError, type BranchCompareResult, type BranchTreeMessage } from "../lib/api/client";
 import { AgentsPage } from "./pages/AgentsPage";
 import { ContextPage } from "./pages/ContextPage";
@@ -133,7 +134,7 @@ function ReviewRouteComponent() {
 const settingsModelsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/models",
-  component: () => page(<SettingsPage />),
+  component: () => page(<><SettingsModelsPage /><SettingsPage /></>),
 });
 
 const chatRoute = createRoute({

@@ -64,7 +64,7 @@ export function createWorkflow(projectId: string, chapterNumbers: number[]) { re
 export function getWorkflow(workflowId: string) { return request<Workflow>(`/api/v1/workflows/${workflowId}`); }
 export function controlWorkflow(workflowId: string, action: "pause" | "resume" | "cancel" | "retry") { return request<Workflow>(`/api/v1/workflows/${workflowId}/${action}`, { method: "POST" }); }
 export function createConversation(projectId: string) { return request<{ id: string; branch_id: string; title: string }>("/api/v1/conversations", { method: "POST", body: JSON.stringify({ project_id: projectId, title: "Writing companion" }) }); }
-export function sendMessage(conversationId: string, payload: { branch_id: string; content: string; client_request_id: string; provider?: string; model?: string }) { return request<{ user_message_id: string; assistant_message_id: string; task_id: string }>(`/api/v1/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(payload) }); }
+export function sendMessage(conversationId: string, payload: { branch_id: string; content: string; client_request_id: string; provider?: string; model?: string; reasoning_level?: string }) { return request<{ user_message_id: string; assistant_message_id: string; task_id: string }>(`/api/v2/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(payload) }); }
 export function listMessages(conversationId: string, branchId: string) { return request<ChatMessage[]>(`/api/v1/conversations/${conversationId}/branches/${branchId}/messages`); }
 export function forkConversation(conversationId: string, messageId: string, name: string) { return request<{ id: string; name: string }>(`/api/v1/conversations/${conversationId}/branches`, { method: "POST", body: JSON.stringify({ message_id: messageId, name }) }); }
 export function requestExport(projectId: string, format: "txt" | "md" | "json" | "docx" | "epub", versionIds: string[] = []) { return request<{ status: string; format: string; download_url: string; version_ids: string[] }>(`/api/v1/projects/${projectId}/exports`, { method: "POST", body: JSON.stringify({ format, version_ids: versionIds }) }); }
@@ -79,6 +79,12 @@ export function stopMessage(messageId: string) { return request<{ id: string; st
 export function retryMessage(messageId: string, payload: { provider?: string; model?: string } = {}) { return request<{ id: string; status: string; task_id: string }>(`/api/v1/messages/${messageId}/retry`, { method: "POST", body: JSON.stringify(payload) }); }
 export type V2CatalogModel = { provider: string; model_id: string; capabilities: Record<string, unknown>; context_window?: number | null; max_output_tokens?: number | null };
 export function listV2Models(filters: { provider?: string; capability?: string } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined) as [string, string][]).toString(); return request<V2CatalogModel[]>(`/api/v2/models${query ? `?${query}` : ""}`); }
+
+export type ModelCapabilitiesInfo = { provider: string; model_id: string; context_window: number; max_output_tokens: number; supports_reasoning: boolean; reasoning_parameter: string | null; supports_tools: boolean; supports_vision: boolean; source: string };
+export function getModelCapabilities(provider: string, modelId: string) { return request<ModelCapabilitiesInfo>(`/api/v2/models/${encodeURIComponent(provider)}/${encodeURIComponent(modelId)}/capabilities`); }
+
+export type ModelResolution = { provider: string; model_id: string; normalized_level: string; provider_parameter: Record<string, unknown> | null; context_window: number; warnings: string[] };
+export function validateModelResolution(payload: { provider: string; model_id: string; level: string }) { return request<ModelResolution>("/api/v2/model-resolutions/validate", { method: "POST", body: JSON.stringify(payload) }); }
 
 export type BranchInfo = { id: string; conversation_id: string; name: string; parent_branch_id?: string | null; forked_from_message_id?: string | null; status: string; title?: string | null };
 export type BranchTreeMessage = { id: string; branch_id: string; role: "user" | "assistant"; content: string; status: string; parent_message_id?: string | null; generation_attempt?: number };

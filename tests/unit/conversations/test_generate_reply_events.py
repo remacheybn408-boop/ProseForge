@@ -64,6 +64,20 @@ class TwoChunkProvider:
         yield GenerationEvent("content.delta", "two")
 
 
+class UsageRepo:
+    def __init__(self):
+        self.records = []
+
+    async def record(self, **kwargs):
+        self.records.append(kwargs)
+
+
+class UsageUow(Uow):
+    def __init__(self, repo, usage):
+        super().__init__(repo)
+        self.usage = usage
+
+
 class FailingProvider:
     async def stream(self, request):
         yield GenerationEvent("content.delta", "one")
@@ -101,3 +115,28 @@ async def test_failed_event_is_published_after_terminal_status():
     failed = [payload for _, payload in events.events if payload["event"] == "message.failed"][0]
     assert failed["status"] == "PARTIAL"
     assert repo.statuses[-1] == "PARTIAL"
+
+
+@pytest.mark.asyncio
+async def test_completion_without_provider_usage_records_missing_source():
+    repo, events, usage = Repo(), EventStream(), UsageRepo()
+    await GenerateReply(lambda: UsageUow(repo, usage), TwoChunkProvider(), events).execute(message_id="m1", request=object())
+    # provider 全程未回 usage → 落一条 source="missing" 的记录，绝不假装是 provider 值
+    assert len(usage.records) == 1
+    delta = usage.records[0]["delta"]
+    assert delta.source == "missing"
+    assert delta.final is True
+    usage_events = [payload for _, payload in events.events if payload["event"] == "usage.updated"]
+    assert [payload["source"] for payload in usage_events] == ["missing", "missing"]  # message + conversation 双 topic（既有发布模式）
+
+
+@pytest.mark.asyncio
+async def test_provider_usage_is_not_overwritten_with_missing():
+    class UsageProvider:
+        async def stream(self, request):
+            yield GenerationEvent("content.delta", "one")
+            yield GenerationEvent("usage.updated", data={"usage": {"input_tokens": 3, "output_tokens": 4}})
+
+    repo, events, usage = Repo(), EventStream(), UsageRepo()
+    await GenerateReply(lambda: UsageUow(repo, usage), UsageProvider(), events).execute(message_id="m1", request=object())
+    assert [record["delta"].source for record in usage.records] == ["provider"]
