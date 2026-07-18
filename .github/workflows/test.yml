@@ -309,11 +309,19 @@ jobs:
       - dependency-audit
     runs-on: ubuntu-latest
     steps:
+      # 逐个显式引用 needs 结果：表达式里不能用 bash 变量做索引，
+      # 带连字符的 job 名必须用字符串下标（needs['x-y'].result）。
       - run: |
-          echo "## ✅ ProseForge CI 汇总" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-          for job in test lint pg-integration docker-tests e2e security-scan dependency-audit; do
-            echo "| $job | \${{ needs[$job].result }} |" >> $GITHUB_STEP_SUMMARY
-          done
+          {
+            echo "## ✅ ProseForge CI 汇总"
+            echo ""
+            echo "| Job | Status |"
+            echo "|-----|--------|"
+            echo "| test | ${{ needs.test.result }} |"
+            echo "| lint | ${{ needs.lint.result }} |"
+            echo "| pg-integration | ${{ needs['pg-integration'].result }} |"
+            echo "| docker-tests | ${{ needs['docker-tests'].result }} |"
+            echo "| e2e | ${{ needs.e2e.result }} |"
+            echo "| security-scan | ${{ needs['security-scan'].result }} |"
+            echo "| dependency-audit | ${{ needs['dependency-audit'].result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
