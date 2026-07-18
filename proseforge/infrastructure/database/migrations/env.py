@@ -17,8 +17,8 @@ target_metadata = Base.metadata
 
 
 def _sync_driver_url(url: str) -> str:
-    """Alembic 用同步驱动执行迁移；aiosqlite 异步 URL 降级为 pysqlite。"""
-    return url.replace("+aiosqlite", "")
+    """Alembic 用同步驱动执行迁移；异步 URL 降级为同步驱动（psycopg v3 / pysqlite）。"""
+    return url.replace("+aiosqlite", "").replace("+asyncpg", "+psycopg")
 
 
 def run_migrations_offline() -> None:

@@ -270,7 +270,7 @@ def _sqlite_path_from_url(database_url: str | None, data_dir: Path | None = None
 
 def _sync_url(database_url: str) -> str:
     """Downgrade async drivers for the synchronous revision reader."""
-    return database_url.replace("+aiosqlite", "").replace("+asyncpg", "")
+    return database_url.replace("+aiosqlite", "").replace("+asyncpg", "+psycopg")
 
 
 def _can_create(path: Path) -> bool:

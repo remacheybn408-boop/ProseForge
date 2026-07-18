@@ -48,6 +48,14 @@ def test_check_blocked_by_upgrade_lock(tmp_path):
     assert "lock" in report["reason"]
 
 
+def test_sync_url_downgrades_async_drivers():
+    from proseforge.operations.upgrade import _sync_url
+
+    assert _sync_url("sqlite+aiosqlite:////data/x.sqlite3") == "sqlite:////data/x.sqlite3"
+    assert _sync_url("postgresql+asyncpg://u:p@db/x") == "postgresql+psycopg://u:p@db/x"
+    assert _sync_url("postgresql+psycopg://u:p@db/x") == "postgresql+psycopg://u:p@db/x"
+
+
 def test_check_blocked_when_data_dir_missing(tmp_path):
     report = check_upgrade(data_dir=tmp_path / "missing", backup_dir=tmp_path / "backups")
     assert report["status"] == "blocked"
