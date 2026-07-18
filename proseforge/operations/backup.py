@@ -44,7 +44,7 @@ class BackupService:
                 if path.is_file() and not path.is_symlink():
                     tar.add(path, arcname=path.relative_to(source))
                     files += 1
-                    manifest_entries.append({"path": str(path.relative_to(source)), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "bytes": path.stat().st_size})
+                    manifest_entries.append({"path": path.relative_to(source).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "bytes": path.stat().st_size})
             if database_dump is not None:
                 info = tarfile.TarInfo("database.dump")
                 info.size = len(database_dump)
