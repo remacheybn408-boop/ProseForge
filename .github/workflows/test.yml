@@ -259,7 +259,7 @@ jobs:
             fs --format sarif -o /src/artifacts/trivy-fs.sarif --severity HIGH,CRITICAL --ignore-unfixed /src
 
       - name: Gitleaks scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
