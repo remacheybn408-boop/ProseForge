@@ -11,7 +11,7 @@ dependencies = [
     "pydantic>=2.11,<3",
     "pydantic-settings>=2.9,<3",
     "orjson>=3.10,<4",
-    "structlog>=25.1,<26",
+    "structlog>=25.1,<27",
     "zstandard>=0.23,<1",
     "pyyaml>=6,<7",
 ]
