@@ -1,4 +1,4 @@
-﻿; ProseForge Windows installer (Inno Setup 6, Unicode).
+; ProseForge Windows installer (Inno Setup 6, Unicode).
 ; Build from a machine with Inno Setup installed:
 ;   ISCC.exe packaging\windows\ProseForge.iss
 ; This file is UTF-8 with BOM so the Chinese UI strings compile correctly.
@@ -6,7 +6,7 @@
 ; Contract:
 ;   payload   = artifacts\native\windows\ProseForge\ (proseforge.exe + _internal\)
 ;   data dir  = {localappdata}\ProseForge  (per-user; NEVER deleted on uninstall)
-;   upgrade   = stop task -> backup with OLD binary -> replace -> migrate with NEW binary
+;   upgrade   = stop app -> backup with OLD binary -> replace -> migrate with NEW binary
 #define MyAppVersion "1.5.0"
 
 [Setup]
@@ -40,11 +40,11 @@ Name: "{group}\ProseForge Web"; Filename: "{app}\proseforge.exe"; Parameters: "w
 Name: "{group}\卸载 ProseForge"; Filename: "{uninstallexe}"
 
 [Tasks]
-Name: "autostart"; Description: "注册开机自启计划任务（用户登录时启动 ProseForge Web）"; GroupDescription: "附加任务:"; Flags: unchecked
+Name: "autostart"; Description: "注册开机自启（用户登录时启动 ProseForge Web，写入 HKCU Run 键）"; GroupDescription: "附加任务:"; Flags: unchecked
 
 [Run]
 Filename: "{app}\proseforge.exe"; Parameters: "web --data-dir ""{localappdata}\ProseForge"""; Description: "立即启动 ProseForge Web（http://127.0.0.1:8000）"; Flags: postinstall nowait skipifsilent unchecked
-Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\service_install.ps1"" -Executable ""{app}\proseforge.exe"" -DataDir ""{localappdata}\ProseForge"""; StatusMsg: "正在注册开机自启计划任务..."; Flags: runhidden waituntilterminated; Tasks: autostart
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\service_install.ps1"" -Executable ""{app}\proseforge.exe"" -DataDir ""{localappdata}\ProseForge"""; StatusMsg: "正在注册开机自启..."; Flags: runhidden waituntilterminated; Tasks: autostart
 
 [UninstallRun]
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\service_uninstall.ps1"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveAutostartTask"
@@ -59,15 +59,16 @@ begin
   Result := ExpandConstant('{localappdata}\ProseForge');
 end;
 
-{ Stop the logon task if it exists. Never blocks install or uninstall. }
-procedure StopAutostartTask;
+{ Stop any running ProseForge instance (web server holds file locks on the
+  binaries being replaced). Never blocks install or uninstall. }
+procedure StopRunningApp;
 var
   ResultCode: Integer;
 begin
-  Exec('schtasks.exe', '/End /TN ProseForge', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec('taskkill.exe', '/F /IM proseforge.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
-{ Pre-install: stop the task, then back up user data with the OLD binary.
+{ Pre-install: stop the app, then back up user data with the OLD binary.
   A failed backup only warns; it must not block the upgrade. }
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
@@ -75,7 +76,7 @@ var
   ResultCode: Integer;
 begin
   Result := '';
-  StopAutostartTask;
+  StopRunningApp;
   OldBinary := ExpandConstant('{app}\proseforge.exe');
   if FileExists(OldBinary) then
   begin
@@ -109,5 +110,5 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usUninstall then
-    StopAutostartTask;
+    StopRunningApp;
 end;

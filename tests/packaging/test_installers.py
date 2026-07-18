@@ -139,7 +139,10 @@ def test_linux_build_scripts_require_native_bundle():
 
 def test_uninstall_preserves_user_data():
     ps1 = read(SERVICE_UNINSTALL)
-    assert "Remove-Item" not in ps1
+    # Remove-ItemProperty only deletes the HKCU Run registry value (autostart);
+    # the forbidden thing is deleting files/directories (Remove-Item with a path).
+    assert "Remove-Item " not in ps1
+    assert re.search(r"Remove-Item(?!Property)", ps1) is None
     assert "LOCALAPPDATA" in ps1  # tells the user where preserved data lives
 
     iss = read(ISS)
