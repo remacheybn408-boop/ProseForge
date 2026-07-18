@@ -45,3 +45,18 @@ def test_backup_create_json_cli(tmp_path, capsys):
     result = json.loads(capsys.readouterr().out)
     assert output.is_file()
     assert result["files"] == 1
+
+
+def test_backup_verify_rejects_corrupted_archive(tmp_path, capsys):
+    source = tmp_path / "data"
+    source.mkdir()
+    (source / "chapter.txt").write_text("chapter", encoding="utf-8")
+    archive = tmp_path / "backup.tar.gz"
+    assert main(["backup", "create", "--source", str(source), "--output", str(archive)]) == 0
+    capsys.readouterr()
+    payload = archive.read_bytes()
+    archive.write_bytes(payload[:-64] + b"CORRUPTED!")
+    assert main(["backup", "verify", str(archive)]) == 1
+    out = capsys.readouterr().out
+    assert "backup verify failed" in out
+    assert "Traceback" not in out

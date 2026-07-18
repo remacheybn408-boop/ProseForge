@@ -154,14 +154,22 @@ def main(argv: list[str] | None = None) -> int:
         elif args.archive is None:
             parser.error("backup verify/restore requires an archive")
         elif args.action == "verify":
-            print(service.verify(args.archive))
+            try:
+                print(service.verify(args.archive))
+            except Exception as exc:  # 损坏/截断/非本格式归档：干净报错而非堆栈
+                print(f"backup verify failed: {type(exc).__name__}: {exc}")
+                return 1
         elif args.action == "restore":
             destination = args.destination or args.staging
             if not destination:
                 parser.error("backup restore requires --destination staging path")
-            print(service.restore(args.archive, destination))
-            if args.restore_database_url:
-                print(service.restore_database(args.archive, args.restore_database_url))
+            try:
+                print(service.restore(args.archive, destination))
+                if args.restore_database_url:
+                    print(service.restore_database(args.archive, args.restore_database_url))
+            except Exception as exc:
+                print(f"backup restore failed: {type(exc).__name__}: {exc}")
+                return 1
         return 0
     elif args.command == "web":
         from proseforge.cli.commands.web import run_web
