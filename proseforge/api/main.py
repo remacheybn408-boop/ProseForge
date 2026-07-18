@@ -91,7 +91,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             await application.state.lifecycle.stop()
 
-    application = FastAPI(title="ProseForge API", version="1.0.0", lifespan=lifespan)
+    application = FastAPI(title="ProseForge API", version="1.5.0", lifespan=lifespan)
     application.add_middleware(CorrelationIdMiddleware)
     application.state.settings = resolved
     application.state.runtime = create_runtime(resolved)
