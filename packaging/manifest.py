@@ -10,7 +10,7 @@ from typing import Any
 from version import get_version
 
 
-def build_manifest(*, version: str | None = None, git_sha: str = "unknown", target_os: str | None = None, arch: str | None = None, python_version: str | None = None, dependency_hashes: dict[str, str] | None = None) -> dict[str, Any]:
+def build_manifest(*, version: str | None = None, git_sha: str = "unknown", target_os: str | None = None, arch: str | None = None, python_version: str | None = None, dependency_hashes: dict[str, str] | None = None, contents: list[str] | None = None) -> dict[str, Any]:
     return {
         "version": version or get_version(),
         "git_sha": git_sha,
@@ -18,7 +18,7 @@ def build_manifest(*, version: str | None = None, git_sha: str = "unknown", targ
         "target": {"os": target_os or platform.system().lower(), "arch": arch or platform.machine()},
         "build_time": datetime.now(UTC).isoformat(),
         "dependency_hashes": dependency_hashes or {},
-        "contents": ["proseforge", "migrations", "frontend-dist", "LICENSE"],
+        "contents": contents or ["proseforge", "migrations", "frontend-dist", "LICENSE"],
     }
 
 

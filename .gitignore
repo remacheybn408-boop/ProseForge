@@ -62,3 +62,4 @@ test-results/
 .coverage
 htmlcov/
 .tools/
+.venv-native-*/

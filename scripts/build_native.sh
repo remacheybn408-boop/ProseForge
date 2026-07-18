@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# 构建 PyInstaller onedir 原生包（V15-008）。
+# - Linux 宿主：直接调用 packaging.native_bundle（要求 Python 3.12）。
+# - Windows/macOS 宿主 + --target linux：在 podman python:3.12 容器内构建。
 set -euo pipefail
 target="linux"
 format="tar.gz"
@@ -14,10 +17,20 @@ done
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 out="$root/artifacts/native/$target"
 mkdir -p "$out"
-if [[ "$format" == "zip" ]]; then
-  archive_format=zip
+host="$(uname -s)"
+
+if [[ "$host" == "Linux" || ( "$host" == "Darwin" && "$target" == "macos" ) ]]; then
+  py_bin="python"
+  command -v python >/dev/null 2>&1 || py_bin="python3"
+  PYTHONPATH="$root" "$py_bin" -m packaging.native_bundle \
+    --root "$root" --output "$out" --target "$target" --format "$format"
+elif [[ "$target" == "linux" ]]; then
+  # podman 需要 Windows 风格源路径；MSYS_NO_PATHCONV=1 防止 Git Bash 改写 /src。
+  root_mnt="$(cd "$root" && pwd -W 2>/dev/null || echo "$root")"
+  MSYS_NO_PATHCONV=1 podman run --rm -v "$root_mnt:/src" -w /src python:3.12 bash -lc \
+    "pip install -q -e '.[api]' pyinstaller && python -m packaging.native_bundle --root /src --output /src/artifacts/native/linux --target linux --format tar.gz"
 else
-  archive_format=tar.gz
+  echo "unsupported combination: host=$host target=$target" >&2
+  echo "run on a matching host, or use --target linux (built via podman python:3.12)" >&2
+  exit 2
 fi
-PYTHONPATH="$root" python -m packaging.native_bundle \
-  --root "$root" --output "$out" --target "$target" --format "$archive_format"
