@@ -31,6 +31,10 @@ services:
     volumes:
       - .:/app
       - ./artifacts:/artifacts
+    # legacy 套件会向 /app/exports 写测试报告；Podman+Windows virtiofs 挂载
+    # 下写入 EACCES。tmpfs 提供可写内存层，CI（Linux Docker）行为一致。
+    tmpfs:
+      - /app/exports
 
   api-test:
     extends:
@@ -39,6 +43,8 @@ services:
       context: .
       dockerfile: docker/test.Dockerfile
     command: ["pytest", "-q", "--junitxml=/artifacts/api-pytest.xml"]
+    tmpfs:
+      - /app/exports
     environment:
       PROSEFORGE_DATABASE_URL: postgresql+asyncpg://proseforge:proseforge@postgres:5432/proseforge
       PROSEFORGE_SYNC_DATABASE_URL: postgresql+psycopg://proseforge:proseforge@postgres:5432/proseforge
@@ -88,6 +94,9 @@ services:
     environment:
       BASE_URL: http://web
     command: ["bash", "-lc", "corepack enable && pnpm install --frozen-lockfile --store-dir /pnpm-store && pnpm e2e"]
+    # Playwright 写 test-results 到挂载的 Windows 目录会 EACCES，用内存层
+    tmpfs:
+      - /app/apps/web/test-results
     depends_on:
       web:
         condition: service_healthy
