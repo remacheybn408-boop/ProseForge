@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { BranchInfo } from "../../lib/api/client";
 import { BranchTreeView } from "./BranchTreeView";
@@ -38,5 +39,23 @@ describe("BranchTreeView", () => {
     const compareButtons = screen.getAllByRole("button", { name: "Compare" });
     fireEvent.click(compareButtons[0]);
     expect(onCompare).toHaveBeenCalledWith("b2");
+  });
+
+  it("reveals archived branches when the show-archived toggle is on", () => {
+    // Mirrors the route wiring: the server excludes archived branches unless
+    // include_archived is requested, which the toggle flips.
+    function Harness() {
+      const [showArchived, setShowArchived] = useState(false);
+      const visible = showArchived ? branches : branches.filter(branch => branch.status !== "ARCHIVED");
+      return <BranchTreeView branches={visible} activeBranchId="b1" showArchived={showArchived} onToggleArchived={() => setShowArchived(value => !value)} />;
+    }
+    render(<Harness />);
+    const toggle = screen.getByRole("button", { name: /Show archived/ });
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.queryByText("Old draft")).toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("Old draft")).toBeTruthy();
+    expect(screen.getByLabelText("Archived")).toBeTruthy();
   });
 });

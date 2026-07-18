@@ -102,6 +102,9 @@
 .branch-tree-item.archived .branch-name{color:var(--ink-light)}
 .branch-tree-item .branch-name:disabled{cursor:default}
 .branch-parent-edge{font:11px var(--font-mono);color:var(--ink-light)}
+.branch-tree-toggle-archived{justify-self:start;border:1px dashed var(--ink-faint);background:transparent;color:var(--ink-mid);padding:3px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px}
+.branch-tree-toggle-archived:hover{background:var(--wash)}
+.branch-tree-toggle-archived[aria-pressed="true"]{border-style:solid;color:var(--ink-strong);background:var(--wash)}
 .branch-compare-trigger{border:1px solid var(--ink-faint);background:transparent;color:var(--ink-mid);padding:3px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px}
 .branch-compare-trigger:hover{background:var(--wash)}
 .branch-compare{display:grid;gap:10px;border-top:1px solid var(--ink-faint);padding-top:12px}

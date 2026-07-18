@@ -8,6 +8,10 @@ class RegenerateReply:
 
     async def execute(self, *, branch_id: str, parent_message_id: str, user_id: str, provider: str, model: str):
         async with self.uow_factory() as uow:
+            # 并发 regenerate 串行化：PG 下对 parent 取咨询锁（xact 锁，随 commit 释放）；sqlite 由库级写锁兜底。
+            lock = getattr(uow.conversations, "lock_regenerate", None)
+            if lock is not None:
+                await lock(parent_message_id)
             # 同分支候选：attempt = 同 parent 已有 assistant 候选数 + 1，不 fork。
             attempt = await uow.conversations.count_assistant_siblings(branch_id, parent_message_id) + 1
             assistant = await uow.conversations.append_message(branch_id, "assistant", "", None, "PENDING", parent_message_id=parent_message_id, generation_attempt=attempt)

@@ -23,6 +23,15 @@ class SqlAlchemyConversationRepository:
         if capabilities_for_engine(self.session.bind).supports_advisory_locks:
             await self.session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:client_request_id))"), {"client_request_id": client_request_id})
 
+    async def lock_regenerate(self, parent_message_id: str) -> None:
+        """Serialize concurrent regenerates for the same parent message in PostgreSQL.
+
+        SQLite 由数据库级写锁串行化写入者。锁键带 regenerate: 前缀，
+        避免与 lock_client_request 的锁域在 hashtext 下冲突。
+        """
+        if capabilities_for_engine(self.session.bind).supports_advisory_locks:
+            await self.session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"), {"lock_key": f"regenerate:{parent_message_id}"})
+
     async def create(self, conversation: Conversation) -> ConversationBranch:
         self.session.add(ConversationModel(id=conversation.id, project_id=conversation.project_id, title=conversation.title))
         branch = ConversationBranch(id=new_id(), conversation_id=conversation.id, name="Main")

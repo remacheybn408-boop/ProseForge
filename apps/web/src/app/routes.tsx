@@ -146,7 +146,8 @@ function ChatRouteComponent() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { messagesQuery, send, stop, retry, fork } = useChatConversation(conversationId, branchId);
-  const branchesQuery = useBranches(conversationId);
+  const [showArchived, setShowArchived] = useState(false);
+  const branchesQuery = useBranches(conversationId, showArchived);
   const treeQuery = useBranchTree(conversationId, branchId);
   const editMutation = useEditMessage();
   const regenerateMutation = useRegenerate();
@@ -195,6 +196,8 @@ function ChatRouteComponent() {
     branches={branches}
     treeMessages={treeQuery.data}
     compare={compare}
+    showArchived={showArchived}
+    onToggleArchived={() => setShowArchived(value => !value)}
     onSend={(text, options) => void send(text, options)}
     onStop={stop}
     onRetry={message => retry(message.id)}

@@ -53,3 +53,47 @@ async def test_regenerate_third_candidate_gets_attempt_three():
     repo = Repo(siblings=2)
     message, _ = await RegenerateReply(lambda: Uow(repo), Queue()).execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m")
     assert message.generation_attempt == 3
+
+
+class LockingRepo(Repo):
+    """Spy repo：记录 lock_regenerate 调用与 lock/count 顺序。"""
+
+    def __init__(self, siblings: int):
+        super().__init__(siblings)
+        self.locks = []
+        self.events = []
+
+    async def lock_regenerate(self, parent_message_id):
+        self.locks.append(parent_message_id)
+        self.events.append("lock")
+
+    async def count_assistant_siblings(self, branch_id, parent_message_id):
+        self.events.append("count")
+        return await super().count_assistant_siblings(branch_id, parent_message_id)
+
+
+@pytest.mark.asyncio
+async def test_regenerate_locks_parent_before_counting():
+    repo = LockingRepo(siblings=1)
+    message, _ = await RegenerateReply(lambda: Uow(repo), Queue()).execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m")
+    assert repo.locks == ["u1"]
+    assert repo.events[:2] == ["lock", "count"]  # 锁先于计数，串行化并发 regenerate
+    assert message.generation_attempt == 2
+
+
+class SequentialRepo(LockingRepo):
+    """计数反映已追加候选，模拟并发下锁内的真实读取。"""
+
+    async def count_assistant_siblings(self, branch_id, parent_message_id):
+        self.events.append("count")
+        return sum(1 for message in self.appended if message.parent_message_id == parent_message_id and message.role == "assistant")
+
+
+@pytest.mark.asyncio
+async def test_sequential_regenerates_increment_attempts_under_lock():
+    repo = SequentialRepo(siblings=0)
+    service = RegenerateReply(lambda: Uow(repo), Queue())
+    first, _ = await service.execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m")
+    second, _ = await service.execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m")
+    assert [first.generation_attempt, second.generation_attempt] == [1, 2]
+    assert repo.locks == ["u1", "u1"]

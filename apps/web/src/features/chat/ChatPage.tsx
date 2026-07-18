@@ -18,7 +18,7 @@ export type CompareViewData = {
   prefix: ComparePrefixMessage[];
 };
 
-export function ChatPage({ conversationId, branchId, messages = [], error, notice, branches, treeMessages, compare, onSend = () => undefined, onStop, onRetry, onFork, onReload, onSelectBranch, onCompareBranch, onEditMessage, onRegenerateMessage }: {
+export function ChatPage({ conversationId, branchId, messages = [], error, notice, branches, treeMessages, compare, showArchived, onSend = () => undefined, onStop, onRetry, onFork, onReload, onSelectBranch, onCompareBranch, onEditMessage, onRegenerateMessage, onToggleArchived }: {
   conversationId: string;
   branchId: string;
   messages?: ChatMessage[];
@@ -27,6 +27,7 @@ export function ChatPage({ conversationId, branchId, messages = [], error, notic
   branches?: BranchInfo[];
   treeMessages?: BranchTreeMessage[];
   compare?: CompareViewData;
+  showArchived?: boolean;
   onSend?: (text: string, options?: SendOptions) => void;
   onStop?: () => void;
   onRetry?: (message: ChatMessage) => void;
@@ -36,6 +37,7 @@ export function ChatPage({ conversationId, branchId, messages = [], error, notic
   onCompareBranch?: (branchId: string) => void;
   onEditMessage?: (message: ChatMessage, content: string) => void;
   onRegenerateMessage?: (message: ChatMessage) => void;
+  onToggleArchived?: () => void;
 }) {
   const generating = messages.some(message => message.status === "streaming" || message.status === "pending");
   const selection = useChatStore(state => state.visibleCandidates);
@@ -66,7 +68,7 @@ export function ChatPage({ conversationId, branchId, messages = [], error, notic
   const inspector = <PaperPanel>
     <h3>Conversation</h3>
     <p>{visible.length} messages</p>
-    {branches && <BranchTreeView branches={branches} activeBranchId={branchId} onSelect={onSelectBranch} onCompare={onCompareBranch} />}
+    {branches && <BranchTreeView branches={branches} activeBranchId={branchId} showArchived={showArchived} onSelect={onSelectBranch} onCompare={onCompareBranch} onToggleArchived={onToggleArchived} />}
     {compare && <BranchCompareView result={compare.result} leftLabel={compare.leftLabel} rightLabel={compare.rightLabel} prefix={compare.prefix} />}
   </PaperPanel>;
 

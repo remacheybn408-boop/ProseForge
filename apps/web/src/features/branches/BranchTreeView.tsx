@@ -1,15 +1,18 @@
 import { SealBadge } from "../../components/ink/Ink";
 import type { BranchInfo } from "../../lib/api/client";
 
-export function BranchTreeView({ branches, activeBranchId, onSelect, onCompare }: {
+export function BranchTreeView({ branches, activeBranchId, showArchived, onSelect, onCompare, onToggleArchived }: {
   branches: BranchInfo[];
   activeBranchId?: string;
+  showArchived?: boolean;
   onSelect?: (branchId: string) => void;
   onCompare?: (branchId: string) => void;
+  onToggleArchived?: () => void;
 }) {
   const byId = new Map(branches.map(branch => [branch.id, branch]));
   return <section className="branch-tree" aria-label="Branch tree">
     <h4>Branches</h4>
+    {onToggleArchived && <button type="button" className="branch-tree-toggle-archived" aria-pressed={Boolean(showArchived)} onClick={onToggleArchived}>显示已归档 / Show archived</button>}
     <ul>
       {branches.map(branch => {
         const parent = branch.parent_branch_id ? byId.get(branch.parent_branch_id) : undefined;
