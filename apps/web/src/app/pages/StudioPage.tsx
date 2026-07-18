@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listChapters, listChapterVersions, requestExport, saveChapterVersion, type Chapter, type ChapterVersion } from "../../lib/api/client";
 import { loadDraft, saveDraft } from "../../lib/drafts";
 import { ExportDialog } from "../../features/export/ExportDialog";
@@ -17,7 +17,9 @@ export function StudioPage({ projectId, chapterId }: { projectId: string; chapte
   const [exportOpen, setExportOpen] = useState(false);
   useEffect(() => { window.localStorage.setItem("proseforge.current-project", projectId); }, [projectId]);
   useEffect(() => { listChapters(projectId).then(items => { setChapters(items); setChapter(items.find(item => item.id === chapterId) ?? items[0] ?? null); setMessage(items.length ? "Ready to write" : "Import an outline to create chapters"); }).catch(() => setMessage("Unable to load chapters")); }, [projectId, chapterId]);
-  useEffect(() => { if (!chapter) return; let active = true; const loadVersions = () => listChapterVersions(chapter.id).then(items => { if (!active) return; setVersions(items); const current = items.find(item => item.id === chapter.active_version_id) ?? items.at(-1); if (!content.trim() || current?.content) setContent(current?.content ?? ""); setBaseVersion(current?.version_no); if (items.length) setMessage(`Loaded saved version ${current?.version_no ?? items.at(-1)?.version_no}`); }).catch(() => setMessage("Unable to load the saved chapter")); loadVersions(); const timer = window.setInterval(() => { if (!content.trim()) loadVersions(); }, 1000); return () => { active = false; window.clearInterval(timer); }; }, [chapter, content]);
+  const contentRef = useRef(content);
+  contentRef.current = content;
+  useEffect(() => { if (!chapter) return; let active = true; const loadVersions = (initial = false) => listChapterVersions(chapter.id).then(items => { if (!active) return; setVersions(items); const current = items.find(item => item.id === chapter.active_version_id) ?? items.at(-1); if (!initial && contentRef.current.trim()) return; if (!contentRef.current.trim() || current?.content) setContent(current?.content ?? ""); setBaseVersion(current?.version_no); if (items.length) setMessage(`Loaded saved version ${current?.version_no ?? items.at(-1)?.version_no}`); }).catch(() => setMessage("Unable to load the saved chapter")); loadVersions(true); const timer = window.setInterval(() => { if (!contentRef.current.trim()) loadVersions(); }, 1000); return () => { active = false; window.clearInterval(timer); }; }, [chapter]);
   const chapterDraftKey = { projectId, chapterId: chapter?.id ?? "none", draftType: "chapter" as const };
   useEffect(() => { if (!chapter) return; loadDraft(chapterDraftKey).then(value => { if (value.trim()) setContent(current => current.trim() ? current : value); }).catch(() => undefined); }, [chapter?.id]);
   useEffect(() => { if (chapter && content.trim()) saveDraft(chapterDraftKey, content).catch(() => undefined); }, [chapter?.id, content]);
