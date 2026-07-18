@@ -36,6 +36,20 @@ def test_doctor_infers_server_from_database_url(monkeypatch):
     assert doctor_report()["profile"] == "server"
 
 
+def test_doctor_survives_uncreatable_data_dir(tmp_path, monkeypatch):
+    """data_dir 不可创建时 doctor 如实报 error，不允许崩溃。
+
+    回归：CI 裸机上 server profile 解析到 /data，mkdir 无权限直接
+    PermissionError，诊断命令必须降级为 status=error。
+    """
+    monkeypatch.delenv("PROSEFORGE_DATABASE_URL", raising=False)
+    blocker = tmp_path / "blocked"
+    blocker.write_text("file", encoding="utf-8")
+    report = doctor_report(profile="native", data_dir=blocker / "child")
+    assert report["status"] == "error"
+    assert report["checks"]["data_dir"] is False
+
+
 def test_backup_create_json_cli(tmp_path, capsys):
     source = tmp_path / "data"
     source.mkdir()

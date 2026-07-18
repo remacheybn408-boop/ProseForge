@@ -26,7 +26,12 @@ def doctor_report(*, profile: RuntimeProfile | str | None = None, data_dir: str 
     # 不能做 I/O；本地目录检查仅对可具体化的路径执行。
     concrete = isinstance(paths.data_dir, Path)
     if concrete:
-        paths.data_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            paths.data_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            # 目录不可创建（如裸机上的 /data）时如实报 error，
+            # doctor 是诊断命令，不允许因此崩溃。
+            pass
     checks = {
         "data_dir": paths.data_dir.is_dir() if concrete else True,
         "data_writable": os.access(paths.data_dir, os.W_OK) if concrete else True,

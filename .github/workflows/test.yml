@@ -54,6 +54,9 @@ jobs:
           pytest tests/unit tests/architecture tests/quality tests/security tests/tasks tests/operations tests/agents tests/packaging tests/runtime tests/cli tests/docker tests/database tests/fault_injection -q --junitxml=junit-unit-${{ runner.os }}.xml
 
       - name: Run Python root-level tests
+        # 通配符 tests/test_*.py 依赖 shell 展开；Windows 默认 pwsh 不展开
+        # glob，必须显式用 bash（runner 自带 Git Bash）。
+        shell: bash
         run: |
           pytest tests/test_*.py -q --junitxml=junit-root-${{ runner.os }}.xml --ignore=tests/test_end_to_end_demo.py -k "not postgres and not e2e"
 
