@@ -21,7 +21,7 @@
 .workspace-inspector.drawer.open{transform:none}
 
 /* shared type */
-.eyebrow{font:11px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-light)}
+.eyebrow{font:11px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-mid)}
 
 /* Ink primitives (components/ink/Ink.tsx) */
 .paper-panel{background:var(--paper-raised);border:1px solid var(--ink-faint);border-radius:var(--radius-md);padding:24px;display:grid;gap:8px;align-content:start}
@@ -36,7 +36,7 @@
 .seal-badge-warning{background:transparent;border:1px solid var(--cinnabar);color:var(--cinnabar)}
 .empty-scroll{display:grid;place-items:center;gap:10px;padding:72px 24px;text-align:center;border:1px solid var(--ink-faint);background:var(--paper)}
 .empty-scroll-title{font:20px var(--font-seal);color:var(--ink-strong);margin:0}
-.empty-scroll-hint{font-size:13px;color:var(--ink-light);margin:0}
+.empty-scroll-hint{font-size:13px;color:var(--ink-mid);margin:0}
 .status-stamp{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 4px;border:1px solid var(--ink-light);color:var(--ink-mid);background:var(--paper);font:12px/1 var(--font-seal);border-radius:1px}
 .status-stamp-success{background:var(--cinnabar);border-color:var(--cinnabar);color:var(--paper)}
 .status-stamp-error{border-color:var(--cinnabar);color:var(--cinnabar);transform:rotate(-8deg)}
@@ -50,7 +50,7 @@
 .chat-notice{margin:12px 0 0;font-size:13px;color:var(--ink-mid)}
 .chat-error-card{border:1px solid var(--ink-mid);background:var(--paper);padding:20px;display:grid;gap:10px;max-width:480px;margin:32px auto;justify-items:start}
 .chat-error-card p{margin:0;color:var(--ink-strong)}
-.chat-error-card code{font:12px var(--font-mono);color:var(--ink-light)}
+.chat-error-card code{font:12px var(--font-mono);color:var(--ink-mid)}
 .chat-error-card button{border:1px solid var(--ink-mid);background:transparent;color:var(--ink);padding:6px 14px;border-radius:var(--radius-sm);cursor:pointer}
 .chat-error-card button:hover{background:var(--wash)}
 .chat-message-list{flex:1;min-height:0;overflow:auto;display:grid;align-content:start;gap:18px;padding:28px 0;max-width:760px;width:100%;margin:0 auto}
@@ -74,9 +74,9 @@
 .code-block pre code{background:transparent;padding:0}
 .code-copy{position:absolute;top:6px;right:6px;border:1px solid var(--ink-faint);background:var(--paper-raised);color:var(--ink-mid);font:11px var(--font-ui);padding:3px 8px;border-radius:var(--radius-sm);cursor:pointer}
 .code-copy:hover{background:var(--wash)}
-.branch-switcher{position:absolute;top:-16px;right:0;font:12px var(--font-mono);color:var(--ink-light);background:transparent}
+.branch-switcher{position:absolute;top:-16px;right:0;font:12px var(--font-mono);color:var(--ink-mid);background:transparent}
 .branch-switcher:hover{background:var(--wash)}
-.branch-counter,.branch-indicator{font:12px var(--font-mono);color:var(--ink-light)}
+.branch-counter,.branch-indicator{font:12px var(--font-mono);color:var(--ink-mid)}
 .message-failed{display:flex;gap:10px;align-items:center;margin-top:10px}
 .message-failed button{border:1px solid var(--ink-mid);background:transparent;color:var(--ink);padding:5px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px}
 .message-failed button:hover{background:var(--wash)}
@@ -89,7 +89,7 @@
 .message-actions.editing textarea{width:100%;border:1px solid var(--ink-faint);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink);padding:8px 10px;font:14px/1.6 var(--font-ui);resize:vertical;outline:0}
 .message-actions-row{display:flex;gap:8px}
 .candidate-switcher{display:inline-flex;gap:6px;align-items:center}
-.candidate-counter{font:12px var(--font-mono);color:var(--ink-light)}
+.candidate-counter{font:12px var(--font-mono);color:var(--ink-mid)}
 
 /* branch tree + compare (inspector) */
 .branch-tree{display:grid;gap:8px}
@@ -99,16 +99,16 @@
 .branch-tree-item .branch-name{border:0;background:transparent;text-align:left;color:var(--ink-mid);padding:4px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px}
 .branch-tree-item .branch-name:hover:not(:disabled){background:var(--wash);color:var(--ink)}
 .branch-tree-item.active .branch-name{color:var(--ink-strong);box-shadow:inset 2px 0 0 var(--ink)}
-.branch-tree-item.archived .branch-name{color:var(--ink-light)}
+.branch-tree-item.archived .branch-name{color:var(--ink-mid)}
 .branch-tree-item .branch-name:disabled{cursor:default}
-.branch-parent-edge{font:11px var(--font-mono);color:var(--ink-light)}
+.branch-parent-edge{font:11px var(--font-mono);color:var(--ink-mid)}
 .branch-tree-toggle-archived{justify-self:start;border:1px dashed var(--ink-faint);background:transparent;color:var(--ink-mid);padding:3px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px}
 .branch-tree-toggle-archived:hover{background:var(--wash)}
 .branch-tree-toggle-archived[aria-pressed="true"]{border-style:solid;color:var(--ink-strong);background:var(--wash)}
 .branch-compare-trigger{border:1px solid var(--ink-faint);background:transparent;color:var(--ink-mid);padding:3px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px}
 .branch-compare-trigger:hover{background:var(--wash)}
 .branch-compare{display:grid;gap:10px;border-top:1px solid var(--ink-faint);padding-top:12px}
-.branch-compare-summary{margin:0;font:12px var(--font-mono);color:var(--ink-light)}
+.branch-compare-summary{margin:0;font:12px var(--font-mono);color:var(--ink-mid)}
 .branch-compare-prefix{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .branch-compare-prefix .dimmed{opacity:.55}
 .branch-compare-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -116,9 +116,9 @@
 .branch-compare-column ol{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .branch-compare-message{border:1px solid var(--ink-faint);border-radius:var(--radius-sm);background:var(--paper);padding:8px 10px;display:grid;gap:4px}
 .branch-compare-message p{margin:0;font-size:13px;color:var(--ink)}
-.branch-compare-role{font:10px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-light)}
-.branch-compare-attempt{font:11px var(--font-mono);color:var(--ink-light)}
-.branch-compare-empty{margin:0;font-size:12px;color:var(--ink-light)}
+.branch-compare-role{font:10px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mid)}
+.branch-compare-attempt{font:11px var(--font-mono);color:var(--ink-mid)}
+.branch-compare-empty{margin:0;font-size:12px;color:var(--ink-mid)}
 
 /* composer */
 .chat-composer-v2{position:relative;border:1px solid var(--ink-faint);background:var(--paper-raised);padding:10px 12px;box-shadow:var(--shadow-raise);border-radius:var(--radius-md);display:grid;gap:8px}
@@ -126,16 +126,16 @@
 .chat-composer-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .chat-composer-tools>button{border:1px solid var(--ink-faint);background:transparent;color:var(--ink-mid);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer}
 .chat-composer-tools>button:hover{background:var(--wash)}
-.chat-composer-tools label{display:grid;gap:2px;font-size:11px;color:var(--ink-light)}
+.chat-composer-tools label{display:grid;gap:2px;font-size:11px;color:var(--ink-mid)}
 .chat-composer-tools select{border:1px solid var(--ink-faint);background:var(--paper);color:var(--ink-mid);padding:6px 8px;border-radius:var(--radius-sm);font-size:12px}
 .chat-composer-tools .send-button{margin-left:auto;background:var(--ink);border-color:var(--ink);color:var(--paper-raised)}
 .stop-stamp{font-family:var(--font-seal);border:1px solid var(--ink-light);color:var(--ink-mid);border-radius:1px;background:var(--paper)}
 .composer-notice,.composer-status{margin:0;font-size:12px;color:var(--ink-mid);min-height:1em}
-.composer-status{color:var(--ink-light)}
+.composer-status{color:var(--ink-mid)}
 .attachment-input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .attachment-list{list-style:none;display:flex;gap:8px;flex-wrap:wrap;margin:0;padding:0}
 .attachment-chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--ink-faint);background:var(--paper);color:var(--ink-mid);font-size:12px;padding:4px 8px;border-radius:var(--radius-sm)}
-.attachment-chip button{border:0;background:transparent;color:var(--ink-light);cursor:pointer;padding:0 2px}
+.attachment-chip button{border:0;background:transparent;color:var(--ink-mid);cursor:pointer;padding:0 2px}
 .attachment-chip button:hover{color:var(--ink)}
 
 /* command palette */

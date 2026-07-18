@@ -24,6 +24,7 @@ def api_settings(tmp_path_factory):
         public_url=ORIGIN,
         blob_root=str(tmp_path_factory.mktemp("blobs")),
         backup_root=str(tmp_path_factory.mktemp("backups")),
+        data_dir=str(tmp_path_factory.mktemp("data")),
         runtime_profile="test",
     )
 
@@ -42,7 +43,11 @@ def client(api_settings):
     alembic_cfg.set_main_option("script_location", str(REPO_ROOT / "proseforge" / "infrastructure" / "database" / "migrations"))
     alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
     command.upgrade(alembic_cfg, "head")  # 顺便验证迁移链
-    yield TestClient(create_app(api_settings))
+    # 必须走上下文管理器：裸 TestClient 每个请求新开 anyio portal（独立事件循环），
+    # 跨请求复用的 asyncpg 连接会报 "attached to a different loop"。
+    # with 块内整个会话共享一个 portal，并运行 lifespan（启动真实生命周期）。
+    with TestClient(create_app(api_settings)) as test_client:
+        yield test_client
 
 
 class AuthClient:
