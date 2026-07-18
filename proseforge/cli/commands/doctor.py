@@ -11,17 +11,27 @@ from version import get_version
 
 def doctor_report(*, profile: RuntimeProfile | str | None = None, data_dir: str | Path | None = None) -> dict[str, Any]:
     """Return stable, redacted diagnostics for support and installers."""
-    selected = RuntimeProfile(profile or os.getenv("PROSEFORGE_RUNTIME_PROFILE", RuntimeProfile.SERVER.value))
+    raw = profile or os.getenv("PROSEFORGE_RUNTIME_PROFILE")
+    if raw is None:
+        # 未显式配置时按环境推断：只有存在 server 指标（数据库 URL）才走
+        # server；否则桌面/原生安装场景默认 native，避免在 Windows/macOS 上
+        # 解析容器专用的 /data 路径导致崩溃。
+        raw = RuntimeProfile.SERVER.value if os.getenv("PROSEFORGE_DATABASE_URL") else RuntimeProfile.NATIVE.value
+    selected = RuntimeProfile(raw)
     env = dict(os.environ)
     if data_dir is not None:
         env["PROSEFORGE_DATA_DIR"] = str(data_dir)
     paths = resolve_paths(selected, env)
-    paths.data_dir.mkdir(parents=True, exist_ok=True)
+    # server profile 在非 posix 宿主上只得到 Pure 路径（仅用于报告），
+    # 不能做 I/O；本地目录检查仅对可具体化的路径执行。
+    concrete = isinstance(paths.data_dir, Path)
+    if concrete:
+        paths.data_dir.mkdir(parents=True, exist_ok=True)
     checks = {
-        "data_dir": paths.data_dir.is_dir(),
-        "data_writable": os.access(paths.data_dir, os.W_OK),
-        "backup_dir": paths.backup_dir.is_dir() or _can_create(paths.backup_dir),
-        "database": paths.database_path is None or paths.database_path.exists() or paths.database_path.parent.is_dir(),
+        "data_dir": paths.data_dir.is_dir() if concrete else True,
+        "data_writable": os.access(paths.data_dir, os.W_OK) if concrete else True,
+        "backup_dir": (paths.backup_dir.is_dir() or _can_create(paths.backup_dir)) if concrete else True,
+        "database": not concrete or paths.database_path is None or paths.database_path.exists() or paths.database_path.parent.is_dir(),
     }
     return {
         "status": "ok" if all(checks.values()) else "error",

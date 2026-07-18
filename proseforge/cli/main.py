@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import os
 import subprocess
+from pathlib import Path
 from proseforge.infrastructure.legacy_import.importer import LegacyImporter
 from proseforge.operations.backup import BackupService
 from version import get_version
@@ -20,6 +21,60 @@ def _database_dump(database_url: str | None = None) -> bytes:
     return result.stdout
 
 
+def _run_upgrade_command(args: argparse.Namespace) -> int:
+    """Wire the real native upgrade path (V15-009).
+
+    Defaults resolve from the native platform data dir instead of a
+    hard-coded /data; database URL precedence is --database-url >
+    PROSEFORGE_DATABASE_URL > the native SQLite file. stop/start hooks
+    stay None: the CLI upgrades a stopped instance — while the native
+    service owns the data dir an upgrade attempt holds .upgrade.lock and
+    concurrent runs are rejected with UpgradeBusyError.
+    """
+    import json
+
+    from proseforge.cli.commands.doctor import doctor_report
+    from proseforge.operations.upgrade import UpgradeBusyError, alembic_migration_callable, check_upgrade, run_upgrade
+    from proseforge.runtime.paths import resolve_paths
+    from proseforge.runtime.profile import RuntimeProfile
+
+    env = dict(os.environ)
+    if args.data_dir:
+        env["PROSEFORGE_DATA_DIR"] = args.data_dir
+    paths = resolve_paths(RuntimeProfile.NATIVE, env)
+    data_dir = paths.data_dir
+    backup_dir = Path(args.backup_dir) if args.backup_dir else paths.backup_dir
+    database_path = paths.database_path or data_dir / "proseforge.sqlite3"
+    database_url = args.database_url or os.getenv("PROSEFORGE_DATABASE_URL") or f"sqlite+aiosqlite:///{database_path.as_posix()}"
+    if args.check:
+        report = check_upgrade(data_dir=data_dir, backup_dir=backup_dir, database_url=database_url)
+        print(json.dumps(report, ensure_ascii=False, sort_keys=True))
+        return 0 if report["status"] == "ready" else 1
+
+    def _doctor() -> None:
+        if doctor_report(profile=RuntimeProfile.NATIVE, data_dir=data_dir)["status"] != "ok":
+            raise RuntimeError("post-upgrade health check failed")
+
+    try:
+        report_path = run_upgrade(
+            data_dir=data_dir,
+            backup_dir=backup_dir,
+            migrate=alembic_migration_callable(database_url),
+            doctor=_doctor,
+            database_url=database_url,
+        )
+    except UpgradeBusyError:
+        print(json.dumps({"status": "blocked", "reason": "upgrade lock held", "data_dir": str(data_dir)}, ensure_ascii=False, sort_keys=True))
+        return 1
+    except Exception as exc:
+        # Redacted: exception messages may embed connection strings with
+        # credentials, so only the error type name is reported.
+        print(json.dumps({"status": "failed", "error_type": type(exc).__name__, "data_dir": str(data_dir)}, ensure_ascii=False, sort_keys=True))
+        return 1
+    print(json.dumps({"status": "upgraded", "report": str(report_path), "data_dir": str(data_dir)}, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="proseforge")
     parser.add_argument("--version", action="store_true")
@@ -29,8 +84,9 @@ def main(argv: list[str] | None = None) -> int:
     doctor.add_argument("--data-dir")
     upgrade = subparsers.add_parser("upgrade")
     upgrade.add_argument("--check", action="store_true")
-    upgrade.add_argument("--data-dir", default="/data")
-    upgrade.add_argument("--backup-dir", default="/data/backups")
+    upgrade.add_argument("--data-dir")
+    upgrade.add_argument("--backup-dir")
+    upgrade.add_argument("--database-url")
     migrate = subparsers.add_parser("migrate")
     migrate_subparsers = migrate.add_subparsers(dest="migration")
     legacy = migrate_subparsers.add_parser("legacy")
@@ -49,6 +105,11 @@ def main(argv: list[str] | None = None) -> int:
     backup.add_argument("--restore-database-url")
     backup.add_argument("--output")
     backup.add_argument("--staging")
+    web = subparsers.add_parser("web")
+    web.add_argument("--host", default="127.0.0.1")
+    web.add_argument("--port", type=int, default=8000)
+    web.add_argument("--data-dir")
+    web.add_argument("--frontend-dir")
     args = parser.parse_args(argv)
     if args.version:
         print(get_version())
@@ -62,12 +123,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{report['status']}: {report['profile']} runtime; data={report['checks']['data_dir']}")
         return 0 if report["status"] == "ok" else 1
     elif args.command == "upgrade":
-        if not args.check:
-            parser.error("only upgrade --check is available without an application service adapter")
-        from proseforge.operations.upgrade import check_upgrade
-        import json
-        print(json.dumps(check_upgrade(data_dir=args.data_dir, backup_dir=args.backup_dir), sort_keys=True))
-        return 0
+        return _run_upgrade_command(args)
     elif args.command == "migrate" and args.migration == "legacy":
         session_factory = None
         if args.owner_id:
@@ -107,6 +163,9 @@ def main(argv: list[str] | None = None) -> int:
             if args.restore_database_url:
                 print(service.restore_database(args.archive, args.restore_database_url))
         return 0
+    elif args.command == "web":
+        from proseforge.cli.commands.web import run_web
+        return run_web(host=args.host, port=args.port, data_dir=args.data_dir, frontend_dir=args.frontend_dir)
     return 0
 
 

@@ -21,6 +21,21 @@ def test_doctor_json_cli(tmp_path, capsys, monkeypatch):
     assert output["status"] == "ok"
 
 
+def test_doctor_defaults_to_native_without_server_indicators(tmp_path, monkeypatch):
+    monkeypatch.delenv("PROSEFORGE_RUNTIME_PROFILE", raising=False)
+    monkeypatch.delenv("PROSEFORGE_DATABASE_URL", raising=False)
+    monkeypatch.setenv("PROSEFORGE_DATA_DIR", str(tmp_path / "data"))
+    report = doctor_report()
+    assert report["profile"] == "native"
+    assert report["database"] == "sqlite"
+
+
+def test_doctor_infers_server_from_database_url(monkeypatch):
+    monkeypatch.delenv("PROSEFORGE_RUNTIME_PROFILE", raising=False)
+    monkeypatch.setenv("PROSEFORGE_DATABASE_URL", "postgresql+asyncpg://u:p@db:5432/x")
+    assert doctor_report()["profile"] == "server"
+
+
 def test_backup_create_json_cli(tmp_path, capsys):
     source = tmp_path / "data"
     source.mkdir()
