@@ -347,8 +347,11 @@ async def generate_chat(payload: dict[str, object]) -> str:
     import hashlib
     import json
 
+    from proseforge.application.conversations.compile_chat_context import CompileChatContext
     from proseforge.application.conversations.generate_reply import GenerateReply
     from proseforge.application.conversations.terminal_state import terminal_message_status
+    from proseforge.application.models.reasoning_policy import resolve_reasoning
+    from proseforge.domain.model.capabilities import ModelCapabilities, capabilities_from_model
     from proseforge.domain.ports.model_provider import GenerationRequest
     from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
     from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
@@ -364,16 +367,32 @@ async def generate_chat(payload: dict[str, object]) -> str:
         user_id = str(payload.get("user_id", ""))
         provider_id = str(payload.get("provider", "openai"))
         model = str(payload.get("model", "gpt-4.1-mini"))
+        reasoning_level = str(payload.get("reasoning_level", "auto"))
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             credential = await uow.credentials.get_for_user(user_id, provider_id)
             message = await uow.conversations.get_message(message_id)
             visible = await uow.conversations.list_visible_messages(message.branch_id) if message else []
-            user_message = next((item for item in reversed(visible) if item.role == "user"), None)
-            if credential is None or user_message is None:
+            if credential is None or message is None or not visible:
                 if message:
                     await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
                     await uow.commit()
                 return "provider-not-configured"
+            catalog = await uow.model_catalog.get(provider_id, model)  # catalog 为事实
+            if catalog is not None:
+                capabilities = capabilities_from_model(catalog)
+            else:
+                # 未知模型 → 保守 fallback，绝不让生成崩溃。
+                capabilities = ModelCapabilities(8192, 1024, False, None, False, False, "fallback")
+            try:
+                resolution = resolve_reasoning(reasoning_level, capabilities)  # 不支持已在路由层 422
+            except ValueError as exc:
+                resolution = {"level": reasoning_level, "supported": False, "reason": str(exc), "parameter": None}
+            project_id = await uow.conversations.project_id_for_message(message_id)
+            context = await CompileChatContext(uow).execute(
+                project_id=project_id, history=visible, capabilities=capabilities,
+                provider=provider_id, model=model, reasoning=resolution, user_id=user_id,
+            )
+            await uow.conversations.set_message_snapshots(message_id, context.model_snapshot, context.reasoning_snapshot)
             try:
                 raw = base64.b64decode(settings.master_key.get_secret_value(), validate=True)
             except (ValueError, binascii.Error):
@@ -382,6 +401,7 @@ async def generate_chat(payload: dict[str, object]) -> str:
                 raw = hashlib.sha256(settings.master_key.get_secret_value().encode()).digest()
             associated = f"{user_id}:{provider_id}:{credential.id}".encode()
             secret = json.loads(CredentialCipher(raw).decrypt(base64.b64decode(credential.encrypted_payload), associated_data=associated))
+            await uow.commit()  # ContextSnapshot 与 message snapshot 字段在生成开始前落库（不可变）
         base_url = secret.get("base_url")
         try:
             provider = build_provider(provider_id, secret["api_key"], base_url=base_url)
@@ -392,11 +412,17 @@ async def generate_chat(payload: dict[str, object]) -> str:
                     await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
                     await uow.commit()
             return "provider-not-supported"
-        input_blocks = [{"role": "user", "text": user_message.content}]
+        input_blocks = [dict(block) for block in context.messages]
         if message is not None and message.status == "PARTIAL" and message.content:
             input_blocks.append({"role": "assistant", "text": message.content})
             input_blocks.append({"role": "user", "text": "Continue from the saved partial response without repeating existing text."})
-        request = GenerationRequest(model=model, system_blocks=(), input_blocks=tuple(input_blocks))
+        request = GenerationRequest(
+            model=model,
+            system_blocks=context.system_blocks,
+            input_blocks=tuple(input_blocks),
+            max_output_tokens=capabilities.max_output_tokens,
+            reasoning=resolution.get("parameter"),
+        )
         await GenerateReply(lambda: SqlAlchemyUnitOfWork(session_factory), provider, DatabaseEventStream(session_factory)).execute(message_id=message_id, request=request, user_id=user_id, provider=provider_id, model=model)
         return "completed"
     finally:

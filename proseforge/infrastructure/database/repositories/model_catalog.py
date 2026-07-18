@@ -14,6 +14,15 @@ class SqlAlchemyModelCatalogRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
+    async def get(self, provider: str, model_id: str) -> ProviderModel | None:
+        row = await self.session.scalar(
+            select(ModelCatalogModel).where(
+                ModelCatalogModel.provider == provider,
+                ModelCatalogModel.model_id == model_id,
+            )
+        )
+        return self._entity(row) if row is not None else None
+
     async def list(self, provider: str | None = None, search: str | None = None, available_only: bool = False) -> list[ProviderModel]:
         query = select(ModelCatalogModel).order_by(ModelCatalogModel.provider, ModelCatalogModel.model_id)
         if provider:

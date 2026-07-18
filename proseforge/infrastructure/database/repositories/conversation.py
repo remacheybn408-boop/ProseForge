@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
+
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from proseforge.domain.common.ids import new_id
 from proseforge.domain.conversation.entity import Conversation, ConversationBranch, Message, MessageChunk
+from proseforge.infrastructure.database.dialect import capabilities_for_engine
 from proseforge.infrastructure.database.models.conversation import ConversationBranchModel, ConversationModel, MessageChunkModel, MessageModel
 
 
@@ -13,8 +16,12 @@ class SqlAlchemyConversationRepository:
         self.session = session
 
     async def lock_client_request(self, client_request_id: str) -> None:
-        """Serialize concurrent retries for the same idempotency key in PostgreSQL."""
-        await self.session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:client_request_id))"), {"client_request_id": client_request_id})
+        """Serialize concurrent retries for the same idempotency key in PostgreSQL.
+
+        SQLite 由数据库级写锁串行化写入者，client_request_id 唯一约束兜底。
+        """
+        if capabilities_for_engine(self.session.bind).supports_advisory_locks:
+            await self.session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:client_request_id))"), {"client_request_id": client_request_id})
 
     async def create(self, conversation: Conversation) -> ConversationBranch:
         self.session.add(ConversationModel(id=conversation.id, project_id=conversation.project_id, title=conversation.title))
@@ -30,7 +37,9 @@ class SqlAlchemyConversationRepository:
                 return self._message(existing)
         next_sequence = (await self.session.scalar(select(func.coalesce(func.max(MessageModel.sequence_no), 0)).where(MessageModel.branch_id == branch_id))) + 1
         message = Message(id=new_id(), branch_id=branch_id, role=role, content=content, client_request_id=client_request_id, status=status, parent_message_id=parent_message_id)
-        self.session.add(MessageModel(**message.__dict__, sequence_no=next_sequence))
+        # model_snapshot/reasoning_snapshot 是领域字段；ORM 列是 *_json，由 set_message_snapshots 写入。
+        data = {key: value for key, value in message.__dict__.items() if key not in {"model_snapshot", "reasoning_snapshot"}}
+        self.session.add(MessageModel(**data, sequence_no=next_sequence))
         await self.session.flush()
         return message
 
@@ -180,9 +189,34 @@ class SqlAlchemyConversationRepository:
         row = await self.session.get(MessageModel, message_id)
         return row.status if row else None
 
+    async def set_content_hash(self, message_id: str, content_hash: str) -> None:
+        row = await self.session.get(MessageModel, message_id)
+        if row is None:
+            raise ValueError("message does not exist")
+        row.content_hash = content_hash
+        await self.session.flush()
+
+    async def set_message_snapshots(self, message_id: str, model_snapshot: dict, reasoning_snapshot: dict) -> None:
+        row = await self.session.get(MessageModel, message_id)
+        if row is None:
+            raise ValueError("message does not exist")
+        row.model_snapshot_json = json.dumps(model_snapshot, ensure_ascii=False, sort_keys=True)
+        row.reasoning_snapshot_json = json.dumps(reasoning_snapshot, ensure_ascii=False, sort_keys=True)
+        await self.session.flush()
+
+    async def project_id_for_message(self, message_id: str) -> str | None:
+        return await self.session.scalar(
+            select(ConversationModel.project_id)
+            .join(ConversationBranchModel, ConversationBranchModel.conversation_id == ConversationModel.id)
+            .join(MessageModel, MessageModel.branch_id == ConversationBranchModel.id)
+            .where(MessageModel.id == message_id)
+        )
+
     @staticmethod
     def _message(item: MessageModel) -> Message:
-        return Message(id=item.id, branch_id=item.branch_id, role=item.role, content=item.content, client_request_id=item.client_request_id, status=item.status, parent_message_id=item.parent_message_id, generation_attempt=item.generation_attempt or 1)
+        model_snapshot = json.loads(item.model_snapshot_json) if item.model_snapshot_json else None
+        reasoning_snapshot = json.loads(item.reasoning_snapshot_json) if item.reasoning_snapshot_json else None
+        return Message(id=item.id, branch_id=item.branch_id, role=item.role, content=item.content, client_request_id=item.client_request_id, status=item.status, parent_message_id=item.parent_message_id, generation_attempt=item.generation_attempt or 1, model_snapshot=model_snapshot, reasoning_snapshot=reasoning_snapshot, content_hash=item.content_hash)
 
     @staticmethod
     def _chunk(item: MessageChunkModel) -> MessageChunk:

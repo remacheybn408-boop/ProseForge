@@ -10,8 +10,12 @@ from proseforge.application.auth.service import AuthUser
 from proseforge.application.conversations.edit_message import EditMessage
 from proseforge.application.conversations.regenerate_reply import RegenerateReply
 from proseforge.application.conversations.compare_branches import compare_messages
+from proseforge.domain.model.capabilities import ModelCapabilities, ReasoningLevel, capabilities_from_model
 
 router = APIRouter(prefix="/api/v2", tags=["conversation-branches"])
+
+# 未知模型 → 保守 fallback（与 generate_chat 一致；catalog 为事实来源）。
+FALLBACK_CAPABILITIES = ModelCapabilities(8192, 1024, False, None, False, False, "fallback")
 
 
 class V2MessageRequest(BaseModel):
@@ -20,6 +24,34 @@ class V2MessageRequest(BaseModel):
     client_request_id: str = Field(min_length=1, max_length=128)
     provider: str = "openai"
     model: str = "gpt-4.1-mini"
+    reasoning_level: str = "auto"
+
+
+def _reasoning_error(message: str, supported_levels: list[str]) -> HTTPException:
+    return HTTPException(
+        status_code=422,
+        detail={
+            "code": "UNSUPPORTED_REASONING_LEVEL",
+            "message": message,
+            "retryable": False,
+            "details": {"supported_levels": supported_levels},
+        },
+    )
+
+
+def _validate_reasoning_level(level: str, capabilities: ModelCapabilities) -> None:
+    try:
+        selected = ReasoningLevel(level)
+    except ValueError as exc:
+        raise _reasoning_error(
+            f"Unknown reasoning level {level!r}.",
+            [item.value for item in ReasoningLevel],
+        ) from exc
+    if selected is not ReasoningLevel.AUTO and not capabilities.supports_reasoning:
+        raise _reasoning_error(
+            f"Model does not support reasoning level {selected.value!r}; use auto.",
+            [ReasoningLevel.AUTO.value],
+        )
 
 
 class EditRequest(BaseModel):
@@ -36,8 +68,11 @@ async def append_message(conversation_id: str, payload: V2MessageRequest, reques
     async with unit_of_work(request) as uow:
         if not await uow.conversations.branch_belongs_to_conversation(payload.branch_id, conversation_id, user.id):
             raise HTTPException(status_code=404, detail="conversation or branch not found")
+        catalog = await uow.model_catalog.get(payload.provider, payload.model)
+        capabilities = capabilities_from_model(catalog) if catalog is not None else FALLBACK_CAPABILITIES
+        _validate_reasoning_level(payload.reasoning_level, capabilities)  # 入队前路由层校验
     from proseforge.application.conversations.send_message import SendMessage
-    result = await SendMessage(lambda: unit_of_work(request), request.app.state.queue).execute(branch_id=payload.branch_id, content=payload.content, client_request_id=payload.client_request_id, user_id=user.id, provider=payload.provider, model=payload.model)
+    result = await SendMessage(lambda: unit_of_work(request), request.app.state.queue).execute(branch_id=payload.branch_id, content=payload.content, client_request_id=payload.client_request_id, user_id=user.id, provider=payload.provider, model=payload.model, reasoning_level=payload.reasoning_level)
     return {"user_message_id": result[0].id, "assistant_message_id": result[1].id, "task_id": result[2]}
 
 

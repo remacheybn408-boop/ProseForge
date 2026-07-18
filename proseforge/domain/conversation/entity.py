@@ -37,6 +37,9 @@ class Message:
     status: str = "COMPLETED"
     parent_message_id: str | None = None
     generation_attempt: int = 1
+    model_snapshot: dict | None = None
+    reasoning_snapshot: dict | None = None
+    content_hash: str | None = None
 
 
 @dataclass(frozen=True)

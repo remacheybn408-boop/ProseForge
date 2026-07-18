@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -14,6 +15,8 @@ from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
 router = APIRouter(prefix="/api/v1", tags=["conversations"])
 
+SSE_HEARTBEAT_SECONDS = 15.0
+
 
 class ConversationCreateRequest(BaseModel):
     project_id: str
@@ -26,6 +29,7 @@ class MessageRequest(BaseModel):
     client_request_id: str = Field(min_length=1, max_length=128)
     provider: str = "openai"
     model: str = "gpt-4.1-mini"
+    reasoning_level: str = "auto"  # v1 容忍透传，不在此校验
 
 
 class BranchRequest(BaseModel):
@@ -70,7 +74,7 @@ async def send_message(
             raise HTTPException(status_code=404, detail="conversation or branch not found")
     result = await SendMessage(
         lambda: unit_of_work(request), request.app.state.queue,
-    ).execute(branch_id=payload.branch_id, content=payload.content, client_request_id=payload.client_request_id, user_id=user.id, provider=payload.provider, model=payload.model)
+    ).execute(branch_id=payload.branch_id, content=payload.content, client_request_id=payload.client_request_id, user_id=user.id, provider=payload.provider, model=payload.model, reasoning_level=payload.reasoning_level)
     return {"user_message_id": result[0].id, "assistant_message_id": result[1].id, "task_id": result[2]}
 
 
@@ -154,7 +158,27 @@ async def stream_events(conversation_id: str, request: Request, user: Annotated[
     last_id = request.headers.get("last-event-id")
 
     async def body():
-        async for event in request.app.state.event_stream.subscribe(f"conversation:{conversation_id}", last_id):
-            yield encode_sse(event_id=str(event["id"]), event=str(event.get("event", "message")), data=event)
+        subscription = request.app.state.event_stream.subscribe(f"conversation:{conversation_id}", last_id)
+        iterator = subscription.__aiter__()
+        pending: asyncio.Task | None = None
+        try:
+            while True:
+                if pending is None:
+                    pending = asyncio.ensure_future(iterator.__anext__())
+                done, _ = await asyncio.wait({pending}, timeout=SSE_HEARTBEAT_SECONDS)
+                if not done:
+                    yield b": heartbeat\n\n"
+                    continue
+                pending = None
+                try:
+                    event = done.pop().result()
+                except StopAsyncIteration:
+                    return
+                yield encode_sse(event_id=str(event["id"]), event=str(event.get("event", "message")), data=event)
+        finally:
+            # 客户端断连时 StreamingResponse 取消本生成器；清理待取的轮询任务。
+            if pending is not None:
+                pending.cancel()
+            await subscription.aclose()
 
     return StreamingResponse(body(), media_type="text/event-stream", headers={"cache-control": "no-cache", "x-accel-buffering": "no"})
