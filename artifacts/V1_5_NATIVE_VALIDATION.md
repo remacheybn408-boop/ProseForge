@@ -1,10 +1,12 @@
 # V1.5 Native Validation
 
-Status: **BLOCKED — release gate not green**
+Status: **BLOCKED — release gate not green**（2026-07-18 复核：维持 BLOCKED，且下文部分证据行失效，见标注）
 
 Repository SHA: `a679a92`
 Execution date: 2026-07-18  
 Local container runtime: Podman
+
+> **2026-07-18 复核标注**：① 下表 "packaging tests and manifest/bundle builder / real Linux archive" 一行的 "real archive" 实为**源码包**（`packaging/native_bundle.py` 拷贝源码树 + 调系统 Python 的启动器），不是蓝图 V15-008 要求的 PyInstaller onedir 原生可执行包，该行证据**失效**。② `build-pkg.sh`/`build-deb.sh`/`build-rpm.sh`/`service_install.ps1` 均为 echo 占位脚本，安装器本身尚不可用。③ CLI 无 `web` 子命令，`proseforge.service` 引用的入口不存在。V15-008 基本未实现，V1.5 阻塞不只是"缺平台测试"。
 
 ## Evidence
 
