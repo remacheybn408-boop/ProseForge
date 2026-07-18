@@ -368,14 +368,26 @@ async def generate_chat(payload: dict[str, object]) -> str:
         provider_id = str(payload.get("provider", "openai"))
         model = str(payload.get("model", "gpt-4.1-mini"))
         reasoning_level = str(payload.get("reasoning_level", "auto"))
+        event_stream = DatabaseEventStream(session_factory)
+
+        async def fail_message(uow, status: str, reason: str) -> None:
+            # 先落库终态再广播 message.failed——SSE live tail 靠终态事件收尾，
+            # 缺了它订阅方会永远挂起（d72fb93 引入的早退路径原本不发布）。
+            await uow.conversations.set_message_status(message_id, status)
+            conversation_id = await uow.conversations.conversation_id_for_message(message_id)
+            await uow.commit()
+            failed_payload = {"event": "message.failed", "message_id": message_id, "status": status, "reason": reason}
+            await event_stream.publish(f"message:{message_id}", failed_payload)
+            if conversation_id:
+                await event_stream.publish(f"conversation:{conversation_id}", failed_payload)
+
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             credential = await uow.credentials.get_for_user(user_id, provider_id)
             message = await uow.conversations.get_message(message_id)
             visible = await uow.conversations.list_visible_messages(message.branch_id) if message else []
             if credential is None or message is None or not visible:
                 if message:
-                    await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
-                    await uow.commit()
+                    await fail_message(uow, terminal_message_status(len(message.content)), "provider-not-configured")
                 return "provider-not-configured"
             catalog = await uow.model_catalog.get(provider_id, model)  # catalog 为事实
             if catalog is not None:
@@ -388,8 +400,13 @@ async def generate_chat(payload: dict[str, object]) -> str:
             except ValueError as exc:
                 resolution = {"level": reasoning_level, "supported": False, "reason": str(exc), "parameter": None}
             project_id = await uow.conversations.project_id_for_message(message_id)
+            history = visible
+            if message.status == "PARTIAL" and message.content:
+                # PARTIAL 续写：目标消息内容仅由下方 continue block 追加一次，
+                # 从编译历史中剔除，否则 provider 会收到两遍 partial。
+                history = [item for item in visible if item.id != message_id]
             context = await CompileChatContext(uow).execute(
-                project_id=project_id, history=visible, capabilities=capabilities,
+                project_id=project_id, history=history, capabilities=capabilities,
                 provider=provider_id, model=model, reasoning=resolution, user_id=user_id,
             )
             await uow.conversations.set_message_snapshots(message_id, context.model_snapshot, context.reasoning_snapshot)
@@ -409,8 +426,7 @@ async def generate_chat(payload: dict[str, object]) -> str:
             async with SqlAlchemyUnitOfWork(session_factory) as uow:
                 message = await uow.conversations.get_message(message_id)
                 if message:
-                    await uow.conversations.set_message_status(message_id, terminal_message_status(len(message.content)))
-                    await uow.commit()
+                    await fail_message(uow, terminal_message_status(len(message.content)), "provider-not-supported")
             return "provider-not-supported"
         input_blocks = [dict(block) for block in context.messages]
         if message is not None and message.status == "PARTIAL" and message.content:
@@ -423,7 +439,7 @@ async def generate_chat(payload: dict[str, object]) -> str:
             max_output_tokens=capabilities.max_output_tokens,
             reasoning=resolution.get("parameter"),
         )
-        await GenerateReply(lambda: SqlAlchemyUnitOfWork(session_factory), provider, DatabaseEventStream(session_factory)).execute(message_id=message_id, request=request, user_id=user_id, provider=provider_id, model=model)
+        await GenerateReply(lambda: SqlAlchemyUnitOfWork(session_factory), provider, event_stream).execute(message_id=message_id, request=request, user_id=user_id, provider=provider_id, model=model)
         return "completed"
     finally:
         await engine.dispose()

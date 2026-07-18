@@ -58,7 +58,7 @@ def chat_settings(tmp_path, monkeypatch):
     get_settings.cache_clear()
 
 
-async def _seed(settings: Settings, *, with_catalog: bool = True) -> dict[str, str]:
+async def _seed(settings: Settings, *, with_catalog: bool = True, with_credential: bool = True, partial_content: str = "") -> dict[str, str]:
     engine, factory = create_engine_and_sessionmaker(settings)
     try:
         async with engine.begin() as connection:
@@ -67,12 +67,13 @@ async def _seed(settings: Settings, *, with_catalog: bool = True) -> dict[str, s
             user = await uow.users.create("writer@example.local", "hash-not-used", "ADMIN")
             project = Project.create(owner_id=user.id, slug="novel", title="Novel")
             await uow.projects.add(project)
-            credential_id = "cred-test"
-            associated = f"{user.id}:openai:{credential_id}".encode()
-            encrypted = CredentialCipher(base64.b64decode(MASTER_KEY)).encrypt(
-                json.dumps({"api_key": "sk-test"}).encode(), associated_data=associated
-            )
-            await uow.credentials.create(user.id, "openai", base64.b64encode(encrypted).decode(), record_id=credential_id)
+            if with_credential:
+                credential_id = "cred-test"
+                associated = f"{user.id}:openai:{credential_id}".encode()
+                encrypted = CredentialCipher(base64.b64decode(MASTER_KEY)).encrypt(
+                    json.dumps({"api_key": "sk-test"}).encode(), associated_data=associated
+                )
+                await uow.credentials.create(user.id, "openai", base64.b64encode(encrypted).decode(), record_id=credential_id)
             if with_catalog:
                 await uow.model_catalog.upsert([
                     ProviderModel("openai", "gpt-test", "GPT Test", {"reasoning": True, "reasoning_parameter": "effort"}, context_window=2048, max_output_tokens=333)
@@ -84,7 +85,8 @@ async def _seed(settings: Settings, *, with_catalog: bool = True) -> dict[str, s
             await uow.conversations.append_message(main.id, "user", "主线分支的第三条")
             fork = await uow.conversations.fork(conversation.id, second.id, "alternative")
             await uow.conversations.append_message(fork.id, "user", "分叉后的新问题")
-            target = await uow.conversations.append_message(fork.id, "assistant", "", None, "PENDING")
+            target_status = "PARTIAL" if partial_content else "PENDING"
+            target = await uow.conversations.append_message(fork.id, "assistant", partial_content, None, target_status)
             fact_id = new_id()
             now = datetime.now(UTC)
             uow.session.add(StoryBibleEntryModel(
@@ -93,7 +95,7 @@ async def _seed(settings: Settings, *, with_catalog: bool = True) -> dict[str, s
                 status="active", confidence=1.0, source="user", pinned=True, version=1, created_at=now, updated_at=now,
             ))
             await uow.commit()
-            return {"user_id": user.id, "project_id": project.id, "message_id": target.id, "fact_id": fact_id}
+            return {"user_id": user.id, "project_id": project.id, "conversation_id": conversation.id, "message_id": target.id, "fact_id": fact_id}
     finally:
         await engine.dispose()
 
@@ -180,3 +182,115 @@ async def test_unknown_model_uses_conservative_fallback(chat_settings, monkeypat
             assert reasoning_snapshot["supported"] is False
     finally:
         await engine.dispose()
+
+
+async def _stream_events(settings: Settings, stream_key: str) -> list[tuple[str, dict]]:
+    engine, factory = create_engine_and_sessionmaker(settings)
+    try:
+        async with factory() as session:
+            rows = list((await session.scalars(
+                select(ConversationEventModel)
+                .where(ConversationEventModel.conversation_id == stream_key)
+                .order_by(ConversationEventModel.event_sequence)
+            )).all())
+            return [(row.event_type, json.loads(row.payload)) for row in rows]
+    finally:
+        await engine.dispose()
+
+
+async def _persisted_status(settings: Settings, message_id: str) -> str:
+    engine, factory = create_engine_and_sessionmaker(settings)
+    try:
+        async with factory() as session:
+            row = await session.get(MessageModel, message_id)
+            return row.status
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_partial_resume_sends_partial_content_exactly_once(chat_settings, monkeypatch):
+    seeded = await _seed(chat_settings, partial_content="夜色压下来，")
+    spy = SpyProvider()
+    monkeypatch.setattr("proseforge.providers.factory.build_provider", lambda *args, **kwargs: spy)
+
+    result = await generate_chat({
+        "message_id": seeded["message_id"],
+        "user_id": seeded["user_id"],
+        "provider": "openai",
+        "model": "gpt-test",
+        "reasoning_level": "deep",
+    })
+
+    assert result == "completed"
+    assert len(spy.requests) == 1
+    blocks = list(spy.requests[0].input_blocks)
+    texts = [block["text"] for block in blocks]
+    # 历史 + 恰好一个 partial assistant block + continue 指令，partial 不得出现两遍
+    assert texts[:-2] == ["第一章写得再暗一点", "好的，基调压暗", "分叉后的新问题"]
+    assert texts.count("夜色压下来，") == 1
+    assert blocks[-2] == {"role": "assistant", "text": "夜色压下来，"}
+    assert blocks[-1]["role"] == "user"
+    assert "Continue from the saved partial response" in blocks[-1]["text"]
+
+    engine, factory = create_engine_and_sessionmaker(chat_settings)
+    try:
+        async with factory() as session:
+            snapshots = list((await session.scalars(select(ContextSnapshotModel))).all())
+            assert len(snapshots) == 1
+            snapshot_payload = json.loads(snapshots[0].payload)
+            assert seeded["message_id"] not in snapshot_payload["message_ids"]  # 目标 partial 不进编译历史
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_provider_not_configured_publishes_terminal_failed_event(chat_settings):
+    seeded = await _seed(chat_settings, with_credential=False)
+
+    result = await generate_chat({
+        "message_id": seeded["message_id"],
+        "user_id": seeded["user_id"],
+        "provider": "openai",
+        "model": "gpt-test",
+        "reasoning_level": "deep",
+    })
+
+    assert result == "provider-not-configured"
+    # 先落库终态，再广播：广播 payload 的 status 与已提交终态一致
+    assert await _persisted_status(chat_settings, seeded["message_id"]) == "FAILED"
+    for stream_key in (seeded["message_id"], seeded["conversation_id"]):
+        events = await _stream_events(chat_settings, stream_key)
+        failed = [payload for event_type, payload in events if event_type == "message.failed"]
+        assert len(failed) == 1, f"stream {stream_key} must end with exactly one message.failed"
+        assert failed[0]["message_id"] == seeded["message_id"]
+        assert failed[0]["status"] == "FAILED"
+        assert failed[0]["reason"] == "provider-not-configured"
+
+
+@pytest.mark.asyncio
+async def test_provider_not_supported_publishes_terminal_failed_event(chat_settings, monkeypatch):
+    seeded = await _seed(chat_settings)
+
+    def _unknown_provider(*args, **kwargs):
+        raise KeyError("openai")
+
+    monkeypatch.setattr("proseforge.providers.factory.build_provider", _unknown_provider)
+
+    result = await generate_chat({
+        "message_id": seeded["message_id"],
+        "user_id": seeded["user_id"],
+        "provider": "openai",
+        "model": "gpt-test",
+        "reasoning_level": "deep",
+    })
+
+    assert result == "provider-not-supported"
+    assert await _persisted_status(chat_settings, seeded["message_id"]) == "FAILED"
+    for stream_key in (seeded["message_id"], seeded["conversation_id"]):
+        events = await _stream_events(chat_settings, stream_key)
+        failed = [payload for event_type, payload in events if event_type == "message.failed"]
+        assert len(failed) == 1, f"stream {stream_key} must end with exactly one message.failed"
+        assert failed[0]["message_id"] == seeded["message_id"]
+        assert failed[0]["status"] == "FAILED"
+        assert failed[0]["reason"] == "provider-not-supported"
