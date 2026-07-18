@@ -56,6 +56,7 @@ def test_run_web_assembles_native_env(tmp_path, fake_server, no_frontend):
     assert os.environ["PROSEFORGE_DATABASE_URL"] == expected_db
     assert os.environ["PROSEFORGE_BLOB_ROOT"] == str(data_dir / "blobs")
     assert os.environ["PROSEFORGE_BACKUP_ROOT"] == str(data_dir / "backups")
+    assert os.environ["PROSEFORGE_PUBLIC_URL"] == "http://127.0.0.1:8901"
     assert "PROSEFORGE_SERVE_WEB" not in os.environ
 
 
@@ -70,6 +71,12 @@ def test_run_web_preserves_user_env(tmp_path, fake_server, no_frontend):
     assert os.environ["PROSEFORGE_JWT_SECRET"] == "user-provided-jwt-secret"
     assert not (data_dir / "master.key").exists()
     assert not (data_dir / "jwt.key").exists()
+
+
+def test_run_web_preserves_user_public_url(tmp_path, fake_server, no_frontend):
+    os.environ["PROSEFORGE_PUBLIC_URL"] = "https://novels.example.com"
+    assert run_web(host="127.0.0.1", port=8901, data_dir=str(tmp_path / "data"), frontend_dir=None) == 0
+    assert os.environ["PROSEFORGE_PUBLIC_URL"] == "https://novels.example.com"
 
 
 def test_run_web_generates_then_reuses_keys(tmp_path, fake_server, no_frontend, capsys):

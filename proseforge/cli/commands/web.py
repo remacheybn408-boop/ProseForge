@@ -51,6 +51,9 @@ def run_web(*, host: str, port: int, data_dir: str | None, frontend_dir: str | N
     _setdefault_env("PROSEFORGE_DATABASE_URL", f"sqlite+aiosqlite:///{(data / _DATABASE_NAME).as_posix()}")
     _setdefault_env("PROSEFORGE_BLOB_ROOT", str(paths.blob_dir))
     _setdefault_env("PROSEFORGE_BACKUP_ROOT", str(paths.backup_dir))
+    # SPA 与 API 同源：浏览器 Origin 即 http://host:port，必须与服务端
+    # require_same_origin 校验的 public_url 一致，否则同源 POST 全部 403。
+    _setdefault_env("PROSEFORGE_PUBLIC_URL", f"http://{host}:{port}")
 
     resolved_frontend = Path(frontend_dir) if frontend_dir else locate_frontend_dir(os.environ)
     if resolved_frontend is not None and resolved_frontend.is_dir():
