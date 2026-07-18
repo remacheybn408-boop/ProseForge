@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 
 export function PaperPanel({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <section className={`paper-panel ${className}`}>{children}</section>;
@@ -12,8 +12,8 @@ export function BrushDivider() {
   return <div className="brush-divider" aria-hidden="true" />;
 }
 
-export function SealBadge({ children, tone = "default" }: { children: ReactNode; tone?: "default" | "success" | "warning" }) {
-  return <span className={`seal-badge seal-badge-${tone}`}>{children}</span>;
+export function SealBadge({ children, tone = "default", ...props }: { children: ReactNode; tone?: "default" | "success" | "warning" } & HTMLAttributes<HTMLSpanElement>) {
+  return <span className={`seal-badge seal-badge-${tone}`} {...props}>{children}</span>;
 }
 
 export function EmptyScroll({ children }: { children: ReactNode }) {

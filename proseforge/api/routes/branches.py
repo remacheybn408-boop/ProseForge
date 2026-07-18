@@ -92,14 +92,16 @@ async def regenerate_reply(conversation_id: str, message_id: str, payload: Regen
         if source is None or not await uow.conversations.belongs_to_owner(conversation_id, user.id):
             raise HTTPException(status_code=404, detail="message not found")
         branch_id = source.branch_id
-    result = await RegenerateReply(lambda: unit_of_work(request), request.app.state.queue).execute(branch_id=branch_id, parent_message_id=message_id, user_id=user.id, provider=payload.provider, model=payload.model)
+        # 候选与源消息共享 parent 边（用户消息）；无 parent 的历史消息退化为挂在自身。
+        parent_message_id = source.parent_message_id or message_id
+    result = await RegenerateReply(lambda: unit_of_work(request), request.app.state.queue).execute(branch_id=branch_id, parent_message_id=parent_message_id, user_id=user.id, provider=payload.provider, model=payload.model)
     return {"message_id": result[0].id, "task_id": result[1]}
 
 
 @router.get("/conversations/{conversation_id}/branches")
-async def list_branches(conversation_id: str, user: Annotated[AuthUser, Depends(current_user)], uow=Depends(unit_of_work)) -> list[dict[str, object]]:
+async def list_branches(conversation_id: str, user: Annotated[AuthUser, Depends(current_user)], include_archived: bool = False, uow=Depends(unit_of_work)) -> list[dict[str, object]]:
     async with uow:
-        return [branch.__dict__ for branch in await uow.conversations.list_branches(conversation_id, user.id)]
+        return [branch.__dict__ for branch in await uow.conversations.list_branches(conversation_id, user.id, include_archived=include_archived)]
 
 
 @router.get("/conversations/{conversation_id}/branches/{branch_id}/tree")

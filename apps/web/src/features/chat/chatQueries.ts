@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { forkConversation, listMessages, listV2Models, retryMessage, sendMessage, stopMessage, subscribeConversationEvents, type ChatMessage as ApiChatMessage } from "../../lib/api/client";
+import { compareBranches, editMessageV2, forkConversation, getBranchTree, listBranchesV2, listMessages, listV2Models, regenerateReply, retryMessage, sendMessage, stopMessage, subscribeConversationEvents, type ChatMessage as ApiChatMessage } from "../../lib/api/client";
 import { useChatStore } from "./chatStore";
 import type { SendOptions } from "./chatTypes";
 
@@ -35,6 +35,38 @@ export function useRetryMessage() {
 
 export function useModelCatalog() {
   return useQuery({ queryKey: ["v2", "models"], queryFn: () => listV2Models(), staleTime: 300_000, retry: false });
+}
+
+export function branchKeys(conversationId: string) {
+  return ["conversations", conversationId, "branches"] as const;
+}
+
+export function branchTreeKeys(conversationId: string, branchId: string) {
+  return ["conversations", conversationId, "branches", branchId, "tree"] as const;
+}
+
+export function useBranches(conversationId: string, includeArchived = false) {
+  return useQuery({ queryKey: [...branchKeys(conversationId), { includeArchived }], queryFn: () => listBranchesV2(conversationId, { includeArchived }), enabled: Boolean(conversationId) });
+}
+
+export function useBranchTree(conversationId: string, branchId: string) {
+  return useQuery({ queryKey: branchTreeKeys(conversationId, branchId), queryFn: () => getBranchTree(conversationId, branchId), enabled: Boolean(conversationId && branchId) });
+}
+
+export function useCompareBranches(conversationId: string, left: string, right: string | null) {
+  return useQuery({ queryKey: [...branchKeys(conversationId), "compare", left, right], queryFn: () => compareBranches(conversationId, left, right as string), enabled: Boolean(conversationId && left && right) });
+}
+
+export function useEditMessage() {
+  return useMutation({
+    mutationFn: ({ conversationId, messageId, content }: { conversationId: string; messageId: string; content: string }) => editMessageV2(conversationId, messageId, content),
+  });
+}
+
+export function useRegenerate() {
+  return useMutation({
+    mutationFn: ({ conversationId, messageId, options }: { conversationId: string; messageId: string; options?: SendOptions }) => regenerateReply(conversationId, messageId, { provider: options?.provider, model: options?.model }),
+  });
 }
 
 export function useChatConversation(conversationId: string, branchId: string) {

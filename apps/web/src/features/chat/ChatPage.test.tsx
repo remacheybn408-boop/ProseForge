@@ -38,7 +38,7 @@ const fixture: ChatMessage[] = [
 
 beforeEach(() => {
   vi.clearAllMocks();
-  useChatStore.setState({ inspectorOpen: false, commandPaletteOpen: false, streaming: false });
+  useChatStore.setState({ inspectorOpen: false, commandPaletteOpen: false, streaming: false, visibleCandidates: {} });
   stubMatchMedia(false);
 });
 
@@ -150,5 +150,49 @@ describe("ChatPage", () => {
     await vi.waitFor(() => {
       expect(saveDraft).toHaveBeenCalledWith({ conversationId: "c1", branchId: "main", draftType: "chat" }, "Unsent thought");
     });
+  });
+
+  it("shows the branch indicator once branch data is available", () => {
+    renderWithQuery(<ChatPage conversationId="c1" branchId="b2" messages={[]} branches={[
+      { id: "b1", conversation_id: "c1", name: "Main", parent_branch_id: null, forked_from_message_id: null, status: "ACTIVE", title: null },
+      { id: "b2", conversation_id: "c1", name: "Edited message", parent_branch_id: "b1", forked_from_message_id: "u1", status: "ACTIVE", title: null },
+      { id: "b3", conversation_id: "c1", name: "Second edit", parent_branch_id: "b1", forked_from_message_id: "u2", status: "ACTIVE", title: null },
+    ]} />);
+    expect(screen.getByText("‹ 2/3 ›")).toBeTruthy();
+  });
+
+  it("submits an edit on an old user message through the inline editor", () => {
+    const onEditMessage = vi.fn();
+    renderWithQuery(<ChatPage conversationId="c1" branchId="main" messages={[{ id: "u1", role: "user", content: "original question", status: "completed" }]} onEditMessage={onEditMessage} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Edit message"), { target: { value: "rewritten question" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save edit" }));
+    expect(onEditMessage).toHaveBeenCalledWith(expect.objectContaining({ id: "u1" }), "rewritten question");
+  });
+
+  it("shows only the latest candidate and pages through siblings with the switcher", () => {
+    const treeMessages = [
+      { id: "u1", branch_id: "main", role: "user" as const, content: "q", status: "COMPLETED", parent_message_id: null, generation_attempt: 1 },
+      { id: "a1", branch_id: "main", role: "assistant" as const, content: "take one", status: "COMPLETED", parent_message_id: "u1", generation_attempt: 1 },
+      { id: "a2", branch_id: "main", role: "assistant" as const, content: "take two", status: "COMPLETED", parent_message_id: "u1", generation_attempt: 2 },
+    ];
+    const messages: ChatMessage[] = [
+      { id: "u1", role: "user", content: "q", status: "completed" },
+      { id: "a1", role: "assistant", content: "take one", status: "completed" },
+      { id: "a2", role: "assistant", content: "take two", status: "completed" },
+    ];
+    const onRegenerateMessage = vi.fn();
+    renderWithQuery(<ChatPage conversationId="c1" branchId="main" messages={messages} treeMessages={treeMessages} onRegenerateMessage={onRegenerateMessage} />);
+    expect(screen.getByText("take two")).toBeTruthy();
+    expect(screen.queryByText("take one")).toBeNull();
+    expect(screen.getByText("2/2")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Previous candidate" }));
+    expect(screen.getByText("take one")).toBeTruthy();
+    expect(screen.queryByText("take two")).toBeNull();
+    expect(screen.getByText("1/2")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Regenerate" }));
+    expect(onRegenerateMessage).toHaveBeenCalledWith(expect.objectContaining({ id: "a1" }));
   });
 });

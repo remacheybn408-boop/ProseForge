@@ -211,6 +211,123 @@ def test_v2_send_rejects_unknown_reasoning_level(auth_client):
     assert "supported_levels" in str(response.json())
 
 
+def test_tree_entries_carry_attempt_and_parent_and_regenerate_increments(auth_client):
+    project_id = _create_project(auth_client)
+    conversation = _create_conversation(auth_client, project_id)
+    sent = _send(auth_client, conversation, "two takes please")
+
+    first = auth_client.post_json(
+        f"/api/v2/conversations/{conversation['id']}/messages/{sent['assistant_message_id']}/regenerate",
+        {"provider": "openai", "model": "gpt-4.1-mini"},
+    )
+    assert first.status_code == 200
+    second = auth_client.post_json(
+        f"/api/v2/conversations/{conversation['id']}/messages/{sent['assistant_message_id']}/regenerate",
+        {"provider": "openai", "model": "gpt-4.1-mini"},
+    )
+    assert second.status_code == 200
+
+    tree = auth_client.get(f"/api/v2/conversations/{conversation['id']}/branches/{conversation['branch_id']}/tree").json()
+    assistants = [message for message in tree if message["role"] == "assistant"]
+    assert len(assistants) == 3  # 同分支三个候选，旧候选保留
+    attempts = {message["id"]: message["generation_attempt"] for message in assistants}
+    assert attempts[sent["assistant_message_id"]] == 1
+    assert attempts[first.json()["message_id"]] == 2
+    assert attempts[second.json()["message_id"]] == 3
+    # 全部候选共享同一条 parent 边（用户消息），供前端候选切换器分组
+    assert {message["parent_message_id"] for message in assistants} == {sent["user_message_id"]}
+    user_entry = next(message for message in tree if message["id"] == sent["user_message_id"])
+    assert "generation_attempt" in user_entry and "parent_message_id" in user_entry
+
+
+def test_compare_returns_common_prefix_and_message_level_diffs(auth_client):
+    project_id = _create_project(auth_client)
+    conversation = _create_conversation(auth_client, project_id)
+    sent = _send(auth_client, conversation, "base question")
+
+    edited = auth_client.post_json(
+        f"/api/v2/conversations/{conversation['id']}/messages/{sent['user_message_id']}/edit",
+        {"content": "edited question"},
+    )
+    assert edited.status_code == 200
+
+    response = auth_client.get(
+        f"/api/v2/conversations/{conversation['id']}/branches/compare?left={conversation['branch_id']}&right={edited.json()['branch_id']}",
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["common_count"] == 1  # fork 点（原用户消息）是共同前缀
+    assert [entry["id"] for entry in body["left"]] == [sent["assistant_message_id"]]
+    right_tail = body["right"]
+    assert [entry["id"] for entry in right_tail] == [edited.json()["replacement_message_id"]]
+    assert right_tail[0]["content"] == "edited question"
+    assert right_tail[0]["role"] == "user"
+    assert right_tail[0]["parent_message_id"] == sent["user_message_id"]
+    assert right_tail[0]["generation_attempt"] == 1
+
+
+def test_archived_branch_hidden_by_default_and_visible_with_include_archived(auth_client):
+    project_id = _create_project(auth_client)
+    conversation = _create_conversation(auth_client, project_id)
+    sent = _send(auth_client, conversation, "fork me")
+    edited = auth_client.post_json(
+        f"/api/v2/conversations/{conversation['id']}/messages/{sent['user_message_id']}/edit",
+        {"content": "forked"},
+    )
+    assert edited.status_code == 200
+    forked_id = edited.json()["branch_id"]
+
+    archived = auth_client.post(f"/api/v2/conversations/{conversation['id']}/branches/{forked_id}/archive")
+    assert archived.status_code == 200
+    assert archived.json()["status"] == "ARCHIVED"
+
+    default_list = auth_client.get(f"/api/v2/conversations/{conversation['id']}/branches").json()
+    assert {branch["id"] for branch in default_list} == {conversation["branch_id"]}
+
+    full_list = auth_client.get(f"/api/v2/conversations/{conversation['id']}/branches?include_archived=true").json()
+    assert {branch["id"] for branch in full_list} == {conversation["branch_id"], forked_id}
+    archived_entry = next(branch for branch in full_list if branch["id"] == forked_id)
+    assert archived_entry["status"] == "ARCHIVED"
+
+    # 归档是状态翻转不是删除：owner 仍能读归档分支的树
+    tree = auth_client.get(f"/api/v2/conversations/{conversation['id']}/branches/{forked_id}/tree")
+    assert tree.status_code == 200
+    assert tree.json()[-1]["content"] == "forked"
+
+
+def test_cross_user_branch_tree_compare_and_archive_return_404(auth_client, client, api_settings):
+    project_id = _create_project(auth_client)
+    conversation = _create_conversation(auth_client, project_id)
+    _send(auth_client, conversation, "private")
+
+    app = client.app
+    other_email = f"other-{uuid.uuid4().hex[:8]}@example.local"
+
+    async def create_other_user():
+        # 独立引擎：避免在测试线程的事件循环里复用 app loop 的连接池。
+        from proseforge.infrastructure.database.session import create_engine_and_sessionmaker
+
+        engine, factory = create_engine_and_sessionmaker(api_settings)
+        try:
+            async with SqlAlchemyUnitOfWork(factory) as uow:
+                await uow.users.create(other_email, app.state.auth.hash_password("twelve-char-pw"), "USER")
+                await uow.commit()
+        finally:
+            await engine.dispose()
+
+    asyncio.run(create_other_user())
+    other = TestClient(app)
+    login = other.post("/api/v1/auth/login", json={"email": other_email, "password": "twelve-char-pw"}, headers={"Origin": "http://testserver"})
+    assert login.status_code == 200
+
+    base = f"/api/v2/conversations/{conversation['id']}/branches"
+    assert other.get(f"{base}/{conversation['branch_id']}/tree").status_code == 404
+    assert other.get(f"{base}/compare?left={conversation['branch_id']}&right={conversation['branch_id']}").status_code == 404
+    archive = other.post(f"{base}/{conversation['branch_id']}/archive", headers={"Origin": "http://testserver"})
+    assert archive.status_code == 404
+    assert other.get(base).json() == []  # 列表不泄露他人分支
+
+
 def test_v1_send_tolerates_reasoning_level(auth_client):
     project_id = _create_project(auth_client)
     conversation = _create_conversation(auth_client, project_id)

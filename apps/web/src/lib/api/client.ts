@@ -80,6 +80,18 @@ export function retryMessage(messageId: string, payload: { provider?: string; mo
 export type V2CatalogModel = { provider: string; model_id: string; capabilities: Record<string, unknown>; context_window?: number | null; max_output_tokens?: number | null };
 export function listV2Models(filters: { provider?: string; capability?: string } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined) as [string, string][]).toString(); return request<V2CatalogModel[]>(`/api/v2/models${query ? `?${query}` : ""}`); }
 
+export type BranchInfo = { id: string; conversation_id: string; name: string; parent_branch_id?: string | null; forked_from_message_id?: string | null; status: string; title?: string | null };
+export type BranchTreeMessage = { id: string; branch_id: string; role: "user" | "assistant"; content: string; status: string; parent_message_id?: string | null; generation_attempt?: number };
+export type BranchCompareEntry = { id: string; role: string; content: string; generation_attempt: number; parent_message_id?: string | null };
+export type BranchCompareResult = { common_count: number; left: BranchCompareEntry[]; right: BranchCompareEntry[] };
+
+export function listBranchesV2(conversationId: string, options: { includeArchived?: boolean } = {}) { return request<BranchInfo[]>(`/api/v2/conversations/${conversationId}/branches${options.includeArchived ? "?include_archived=true" : ""}`); }
+export function getBranchTree(conversationId: string, branchId: string) { return request<BranchTreeMessage[]>(`/api/v2/conversations/${conversationId}/branches/${branchId}/tree`); }
+export function compareBranches(conversationId: string, left: string, right: string) { return request<BranchCompareResult>(`/api/v2/conversations/${conversationId}/branches/compare?left=${encodeURIComponent(left)}&right=${encodeURIComponent(right)}`); }
+export function editMessageV2(conversationId: string, messageId: string, content: string) { return request<{ branch_id: string; source_message_id: string; replacement_message_id: string }>(`/api/v2/conversations/${conversationId}/messages/${messageId}/edit`, { method: "POST", body: JSON.stringify({ content }) }); }
+export function regenerateReply(conversationId: string, messageId: string, payload: { provider?: string; model?: string } = {}) { return request<{ message_id: string; task_id: string }>(`/api/v2/conversations/${conversationId}/messages/${messageId}/regenerate`, { method: "POST", body: JSON.stringify(payload) }); }
+export function archiveBranch(conversationId: string, branchId: string) { return request<{ id: string; status: string }>(`/api/v2/conversations/${conversationId}/branches/${branchId}/archive`, { method: "POST", body: JSON.stringify({}) }); }
+
 export type ConversationEvent = { event?: string; message_id?: string; text?: string } & Record<string, unknown>;
 export const CONVERSATION_EVENT_NAMES = ["content.delta", "usage.updated", "message.started", "message.completed", "message.failed"] as const;
 

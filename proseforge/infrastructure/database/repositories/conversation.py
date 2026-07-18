@@ -30,13 +30,13 @@ class SqlAlchemyConversationRepository:
         await self.session.flush()
         return branch
 
-    async def append_message(self, branch_id: str, role: str, content: str, client_request_id: str | None = None, status: str = "COMPLETED", *, parent_message_id: str | None = None) -> Message:
+    async def append_message(self, branch_id: str, role: str, content: str, client_request_id: str | None = None, status: str = "COMPLETED", *, parent_message_id: str | None = None, generation_attempt: int = 1) -> Message:
         if client_request_id:
             existing = await self.session.scalar(select(MessageModel).where(MessageModel.client_request_id == client_request_id))
             if existing:
                 return self._message(existing)
         next_sequence = (await self.session.scalar(select(func.coalesce(func.max(MessageModel.sequence_no), 0)).where(MessageModel.branch_id == branch_id))) + 1
-        message = Message(id=new_id(), branch_id=branch_id, role=role, content=content, client_request_id=client_request_id, status=status, parent_message_id=parent_message_id)
+        message = Message(id=new_id(), branch_id=branch_id, role=role, content=content, client_request_id=client_request_id, status=status, parent_message_id=parent_message_id, generation_attempt=generation_attempt)
         # model_snapshot/reasoning_snapshot 是领域字段；ORM 列是 *_json，由 set_message_snapshots 写入。
         data = {key: value for key, value in message.__dict__.items() if key not in {"model_snapshot", "reasoning_snapshot"}}
         self.session.add(MessageModel(**data, sequence_no=next_sequence))
@@ -57,6 +57,16 @@ class SqlAlchemyConversationRepository:
             .order_by(MessageModel.sequence_no)
         )
         return self._message(row) if row else None
+
+    async def count_assistant_siblings(self, branch_id: str, parent_message_id: str) -> int:
+        """Count assistant candidates sharing the same parent edge (regenerate siblings)."""
+        return int(await self.session.scalar(
+            select(func.count()).select_from(MessageModel).where(
+                MessageModel.branch_id == branch_id,
+                MessageModel.role == "assistant",
+                MessageModel.parent_message_id == parent_message_id,
+            )
+        ) or 0)
 
     async def fork(self, conversation_id: str, forked_from_message_id: str, name: str) -> ConversationBranch:
         source = await self.session.scalar(select(MessageModel).where(MessageModel.id == forked_from_message_id))
@@ -161,9 +171,18 @@ class SqlAlchemyConversationRepository:
         )
         return row is not None
 
-    async def list_branches(self, conversation_id: str, owner_id: str) -> list[ConversationBranch]:
+    async def list_branches(self, conversation_id: str, owner_id: str, include_archived: bool = False) -> list[ConversationBranch]:
         from proseforge.infrastructure.database.models.project import ProjectModel
-        rows = (await self.session.scalars(select(ConversationBranchModel).join(ConversationModel, ConversationModel.id == ConversationBranchModel.conversation_id).join(ProjectModel, ProjectModel.id == ConversationModel.project_id).where(ConversationBranchModel.conversation_id == conversation_id, ProjectModel.owner_id == owner_id).order_by(ConversationBranchModel.id))).all()
+        query = (
+            select(ConversationBranchModel)
+            .join(ConversationModel, ConversationModel.id == ConversationBranchModel.conversation_id)
+            .join(ProjectModel, ProjectModel.id == ConversationModel.project_id)
+            .where(ConversationBranchModel.conversation_id == conversation_id, ProjectModel.owner_id == owner_id)
+        )
+        if not include_archived:
+            # status 可空：NULL 视作 ACTIVE，归档分支默认从导航隐藏。
+            query = query.where((ConversationBranchModel.status.is_(None)) | (ConversationBranchModel.status != "ARCHIVED"))
+        rows = (await self.session.scalars(query.order_by(ConversationBranchModel.id))).all()
         return [ConversationBranch(id=row.id, conversation_id=row.conversation_id, name=row.name, parent_branch_id=row.parent_branch_id, forked_from_message_id=row.forked_from_message_id, status=row.status or "ACTIVE", title=row.title) for row in rows]
 
     async def archive_branch(self, branch_id: str, conversation_id: str, owner_id: str) -> bool:

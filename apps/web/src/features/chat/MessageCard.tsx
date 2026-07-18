@@ -12,7 +12,7 @@ function CodeBlock({ children }: { children?: ReactNode }) {
   return <div className="code-block"><button type="button" className="code-copy" onClick={copy}>Copy</button><pre ref={block}>{children}</pre></div>;
 }
 
-export function MessageCard({ message, onRetry }: { message: ChatMessage; onRetry?: () => void }) {
+export function MessageCard({ message, onRetry, actions }: { message: ChatMessage; onRetry?: () => void; actions?: ReactNode }) {
   const streaming = message.status === "streaming";
   const failed = message.status === "failed" || message.status === "cancelled";
   return <article className={`chat-message-card chat-message-${message.role}${streaming ? " streaming" : ""}${failed ? " failed" : ""}`} aria-label={`${message.role} message`}>
@@ -23,6 +23,7 @@ export function MessageCard({ message, onRetry }: { message: ChatMessage; onRetr
       {!message.content && message.status === "pending" ? "Thinking…" : null}
       {streaming && <span className="streaming-cursor" aria-hidden="true" />}
     </div>
+    {actions}
     {failed && <div className="message-failed"><StatusStamp>止</StatusStamp>{onRetry && <button type="button" onClick={onRetry}>Retry</button>}</div>}
   </article>;
 }

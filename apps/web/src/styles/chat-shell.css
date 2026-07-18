@@ -81,6 +81,42 @@
 .message-failed button{border:1px solid var(--ink-mid);background:transparent;color:var(--ink);padding:5px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px}
 .message-failed button:hover{background:var(--wash)}
 
+/* message actions: edit / regenerate / candidate switcher */
+.message-actions{display:flex;gap:8px;align-items:center;margin-top:8px;font:12px var(--font-ui)}
+.message-actions>button,.message-actions-row>button,.candidate-switcher>button{border:1px solid var(--ink-faint);background:transparent;color:var(--ink-mid);padding:4px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px}
+.message-actions>button:hover,.message-actions-row>button:hover,.candidate-switcher>button:hover{background:var(--wash)}
+.message-actions.editing{display:grid;gap:8px}
+.message-actions.editing textarea{width:100%;border:1px solid var(--ink-faint);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink);padding:8px 10px;font:14px/1.6 var(--font-ui);resize:vertical;outline:0}
+.message-actions-row{display:flex;gap:8px}
+.candidate-switcher{display:inline-flex;gap:6px;align-items:center}
+.candidate-counter{font:12px var(--font-mono);color:var(--ink-light)}
+
+/* branch tree + compare (inspector) */
+.branch-tree{display:grid;gap:8px}
+.branch-tree h4,.branch-compare h4{font-family:var(--font-seal);color:var(--ink-strong);margin:0;font-size:14px}
+.branch-tree ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.branch-tree-item{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.branch-tree-item .branch-name{border:0;background:transparent;text-align:left;color:var(--ink-mid);padding:4px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px}
+.branch-tree-item .branch-name:hover:not(:disabled){background:var(--wash);color:var(--ink)}
+.branch-tree-item.active .branch-name{color:var(--ink-strong);box-shadow:inset 2px 0 0 var(--ink)}
+.branch-tree-item.archived .branch-name{color:var(--ink-light)}
+.branch-tree-item .branch-name:disabled{cursor:default}
+.branch-parent-edge{font:11px var(--font-mono);color:var(--ink-light)}
+.branch-compare-trigger{border:1px solid var(--ink-faint);background:transparent;color:var(--ink-mid);padding:3px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px}
+.branch-compare-trigger:hover{background:var(--wash)}
+.branch-compare{display:grid;gap:10px;border-top:1px solid var(--ink-faint);padding-top:12px}
+.branch-compare-summary{margin:0;font:12px var(--font-mono);color:var(--ink-light)}
+.branch-compare-prefix{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.branch-compare-prefix .dimmed{opacity:.55}
+.branch-compare-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.branch-compare-column{display:grid;gap:8px;align-content:start}
+.branch-compare-column ol{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.branch-compare-message{border:1px solid var(--ink-faint);border-radius:var(--radius-sm);background:var(--paper);padding:8px 10px;display:grid;gap:4px}
+.branch-compare-message p{margin:0;font-size:13px;color:var(--ink)}
+.branch-compare-role{font:10px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-light)}
+.branch-compare-attempt{font:11px var(--font-mono);color:var(--ink-light)}
+.branch-compare-empty{margin:0;font-size:12px;color:var(--ink-light)}
+
 /* composer */
 .chat-composer-v2{position:relative;border:1px solid var(--ink-faint);background:var(--paper-raised);padding:10px 12px;box-shadow:var(--shadow-raise);border-radius:var(--radius-md);display:grid;gap:8px}
 .chat-composer-v2 textarea{display:block;width:100%;min-height:72px;border:0;resize:vertical;background:transparent;color:var(--ink);outline:0;font:15px/1.6 var(--font-ui);background-image:repeating-linear-gradient(transparent,transparent calc(1.6em - 1px),var(--paper-line) calc(1.6em - 1px),var(--paper-line) 1.6em);background-attachment:local}

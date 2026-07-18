@@ -7,7 +7,7 @@ class Repo:
     def __init__(self):
         self.calls = []
 
-    async def append_message(self, *args):
+    async def append_message(self, *args, **kwargs):
         self.calls.append(args)
         return type("Message", (), {"id": str(len(self.calls))})()
 
