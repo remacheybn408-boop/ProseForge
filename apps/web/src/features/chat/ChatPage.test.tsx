@@ -68,11 +68,10 @@ describe("ChatPage", () => {
       <ChatPage conversationId="c1" branchId="main" messages={[{ id: "a8", role: "assistant", content, status: "completed" }]} />
     );
     // Raw HTML in the markdown source is not rendered as HTML: react-markdown
-    // (no rehype-raw) drops raw nodes, so nothing is injected or executed.
+    // (no rehype-raw) never creates live elements from it — the markup survives
+    // only as inert escaped text, so nothing is injected or executed.
     expect(container.querySelector("script")).toBeNull();
     expect(container.querySelector(".injected")).toBeNull();
-    expect(container.textContent).not.toContain("xss");
-    expect(container.textContent).not.toContain("injected text");
     // Tag-shaped text inside a code block survives as plain text.
     const code = container.querySelector("pre code");
     expect(code?.textContent).toContain('<div class="sample">hello</div>');

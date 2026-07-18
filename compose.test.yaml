@@ -48,6 +48,8 @@ services:
     environment:
       PROSEFORGE_DATABASE_URL: postgresql+asyncpg://proseforge:proseforge@postgres:5432/proseforge
       PROSEFORGE_SYNC_DATABASE_URL: postgresql+psycopg://proseforge:proseforge@postgres:5432/proseforge
+      PROSEFORGE_TEST_DATABASE_URL: postgresql+asyncpg://proseforge:proseforge@postgres:5432/proseforge
+      PROSEFORGE_TEST_REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
