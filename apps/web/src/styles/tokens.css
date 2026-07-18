@@ -24,6 +24,7 @@
   --surface: var(--paper-raised);
   --muted: var(--wash);
   --line: var(--ink-faint);
+  --border: var(--ink-faint);
   --text: var(--ink);
   --text-primary: var(--ink);
   --text-secondary: var(--ink-mid);

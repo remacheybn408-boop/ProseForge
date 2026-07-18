@@ -1,6 +1,13 @@
-import type { ChatMessage } from "./chatTypes";
+import { Fragment } from "react";
+import { BrushDivider, EmptyScroll } from "../../components/ink/Ink";
 import { MessageCard } from "./MessageCard";
+import type { ChatMessage } from "./chatTypes";
 
 export function MessageList({ messages, onRetry }: { messages: ChatMessage[]; onRetry?: (message: ChatMessage) => void }) {
-  return <section className="chat-message-list" aria-live="polite">{messages.length ? messages.map(message => <MessageCard key={message.id} message={message} onRetry={() => onRetry?.(message)} />) : <p className="chat-empty">落笔即是开篇。</p>}</section>;
+  if (messages.length === 0) {
+    return <section className="chat-message-list" aria-live="polite"><EmptyScroll><p className="empty-scroll-title">落笔即是开篇。</p><p className="empty-scroll-hint">Try an opening prompt: “Draft the first scene where Mira reaches the flooded archive.”</p></EmptyScroll></section>;
+  }
+  return <section className="chat-message-list" aria-live="polite">
+    {messages.map((message, index) => <Fragment key={message.id}>{index > 0 && message.role === "user" && <BrushDivider />}<MessageCard message={message} onRetry={onRetry ? () => onRetry(message) : undefined} /></Fragment>)}
+  </section>;
 }

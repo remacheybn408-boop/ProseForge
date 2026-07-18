@@ -1,11 +1,21 @@
-export function chatDraftKey(conversationId: string, branchId: string): string {
-  return `proseforge:draft:${conversationId}:${branchId}`;
-}
+import { create } from "zustand";
 
-export function loadChatDraft(conversationId: string, branchId: string): string {
-  return window.localStorage.getItem(chatDraftKey(conversationId, branchId)) ?? "";
-}
+type ChatUiState = {
+  inspectorOpen: boolean;
+  commandPaletteOpen: boolean;
+  streaming: boolean;
+  toggleInspector: () => void;
+  setInspectorOpen: (open: boolean) => void;
+  setCommandPaletteOpen: (open: boolean) => void;
+  setStreaming: (streaming: boolean) => void;
+};
 
-export function saveChatDraft(conversationId: string, branchId: string, value: string): void {
-  window.localStorage.setItem(chatDraftKey(conversationId, branchId), value);
-}
+export const useChatStore = create<ChatUiState>()(set => ({
+  inspectorOpen: false,
+  commandPaletteOpen: false,
+  streaming: false,
+  toggleInspector: () => set(state => ({ inspectorOpen: !state.inspectorOpen })),
+  setInspectorOpen: inspectorOpen => set({ inspectorOpen }),
+  setCommandPaletteOpen: commandPaletteOpen => set({ commandPaletteOpen }),
+  setStreaming: streaming => set({ streaming }),
+}));

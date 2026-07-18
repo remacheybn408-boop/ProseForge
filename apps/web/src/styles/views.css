@@ -14,7 +14,7 @@
 .primary { border: 1px solid var(--primary); background: var(--primary); color: #fff; border-radius: 8px; padding: 10px 15px; cursor: pointer; }
 .primary:disabled { opacity: .5; cursor: not-allowed; }
 .create-button { margin-top: 24px; }
-.studio-layout { display: grid; grid-template-columns: 190px minmax(300px, 1fr) 220px; gap: 24px; padding-top: 38px; min-height: 620px; }
+.studio-layout { display: grid; grid-template-columns: 190px minmax(300px, 1fr); gap: 24px; padding-top: 38px; min-height: 620px; }
 .chapter-tree { border-right: 1px solid var(--line); padding-right: 18px; display: grid; align-content: start; gap: 8px; }
 .chapter-tree strong { font-size: 12px; margin-bottom: 8px; }
 .chapter-tree button { text-align: left; border: 0; background: transparent; color: var(--secondary); padding: 9px; border-radius: 7px; cursor: pointer; font-size: 12px; }

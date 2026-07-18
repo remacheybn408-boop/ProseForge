@@ -1,10 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 test("ordinary user can use the Docker-backed writing workspace", async ({ page, request }) => {
-  // Post-reload workspace state restoration (line 55-56) requires the V2-001
-  // router/workspace rebuild; the V1 shell keeps view state in memory only.
-  // Tracked in artifacts/VALIDATION_STATUS.md (V2-001 will unskip this).
-  test.skip(true, "post-reload workspace restoration is V2-001 scope");
+  // Post-reload workspace restoration is provided by the V2-001 router shell:
+  // project/conversation state is restored from the URL after a reload.
   const email = process.env.E2E_EMAIL ?? "v2-e2e-b074fc29@example.local";
   const password = process.env.E2E_PASSWORD ?? "E2ePassw0rd!";
   await request.post("/api/v1/auth/setup", { data: { email, password } });
@@ -50,6 +48,7 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByRole("button", { name: "Save version" }).click();
   await expect(page.getByText(/Saved version \d+/)).toBeVisible();
 
+  await page.getByRole("button", { name: "Companion chat" }).click();
   await page.getByPlaceholder(/Ask your companion/i).fill("Give me one continuity check.");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("Mock provider response")).toBeVisible({ timeout: 15_000 });
@@ -57,5 +56,6 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByRole("button", { name: "Fork branch" }).click();
   await expect(page.getByText("Alternative branch created.")).toBeVisible();
   await page.reload();
+  await page.getByRole("button", { name: "Writing Studio" }).click();
   await expect(page.getByRole("button", { name: /Chapter 1/i })).toBeVisible();
 });

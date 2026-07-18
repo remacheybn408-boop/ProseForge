@@ -75,11 +75,19 @@ export function getAgentRun(runId: string) { return request<AgentRun>("/api/v3/a
 export function listAgentTasks(runId: string) { return request<AgentTask[]>("/api/v3/agent-runs/" + runId + "/tasks"); }
 export function controlAgentRun(runId: string, action: "pause" | "resume" | "cancel" | "retry") { return request<AgentRun>("/api/v3/agent-runs/" + runId + "/" + action, { method: "POST" }); }
 
-export function subscribeConversationEvents(conversationId: string, onEvent: (event: { event?: string; message_id?: string; text?: string }) => void) {
+export function stopMessage(messageId: string) { return request<{ id: string; status: string }>(`/api/v1/messages/${messageId}/stop`, { method: "POST" }); }
+export function retryMessage(messageId: string, payload: { provider?: string; model?: string } = {}) { return request<{ id: string; status: string; task_id: string }>(`/api/v1/messages/${messageId}/retry`, { method: "POST", body: JSON.stringify(payload) }); }
+export type V2CatalogModel = { provider: string; model_id: string; capabilities: Record<string, unknown>; context_window?: number | null; max_output_tokens?: number | null };
+export function listV2Models(filters: { provider?: string; capability?: string } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined) as [string, string][]).toString(); return request<V2CatalogModel[]>(`/api/v2/models${query ? `?${query}` : ""}`); }
+
+export type ConversationEvent = { event?: string; message_id?: string; text?: string } & Record<string, unknown>;
+export const CONVERSATION_EVENT_NAMES = ["content.delta", "usage.updated", "message.started", "message.completed", "message.failed"] as const;
+
+export function subscribeConversationEvents(conversationId: string, onEvent: (event: ConversationEvent) => void) {
   const source = new EventSource(`/api/v1/conversations/${conversationId}/events`);
   const handle = (event: MessageEvent<string>) => {
-    try { onEvent(JSON.parse(event.data) as { event?: string; message_id?: string; text?: string }); } catch { /* reconnect will replay the durable event */ }
+    try { onEvent(JSON.parse(event.data) as ConversationEvent); } catch { /* reconnect will replay the durable event */ }
   };
-  source.addEventListener("content.delta", handle);
+  for (const name of CONVERSATION_EVENT_NAMES) source.addEventListener(name, handle);
   return () => source.close();
 }
