@@ -1,4 +1,3 @@
-import DOMPurify from "dompurify";
 import { useRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import { StatusStamp } from "../../components/ink/Ink";
@@ -19,7 +18,7 @@ export function MessageCard({ message, onRetry }: { message: ChatMessage; onRetr
   return <article className={`chat-message-card chat-message-${message.role}${streaming ? " streaming" : ""}${failed ? " failed" : ""}`} aria-label={`${message.role} message`}>
     {message.branchCount !== undefined && <span className="branch-switcher">‹ {message.branchIndex ?? 1}/{message.branchCount} ›</span>}
     <div className="chat-message-body">
-      {message.role === "assistant" && message.content ? <ReactMarkdown components={{ pre: CodeBlock }}>{DOMPurify.sanitize(message.content)}</ReactMarkdown> : null}
+      {message.role === "assistant" && message.content ? <ReactMarkdown components={{ pre: CodeBlock }}>{message.content}</ReactMarkdown> : null}
       {message.role !== "assistant" ? message.content : null}
       {!message.content && message.status === "pending" ? "Thinking…" : null}
       {streaming && <span className="streaming-cursor" aria-hidden="true" />}

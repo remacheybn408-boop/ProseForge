@@ -53,6 +53,31 @@ describe("ChatPage", () => {
     expect(screen.getAllByText("止").length).toBeGreaterThan(0);
   });
 
+  it("does not render raw HTML from assistant messages but preserves tag-shaped code", () => {
+    const content = [
+      "Here is a snippet:",
+      "",
+      "```html",
+      '<div class="sample">hello</div>',
+      "```",
+      "",
+      "<script>alert(\"xss\")</script>",
+      '<div class="injected">injected text</div>',
+    ].join("\n");
+    const { container } = renderWithQuery(
+      <ChatPage conversationId="c1" branchId="main" messages={[{ id: "a8", role: "assistant", content, status: "completed" }]} />
+    );
+    // Raw HTML in the markdown source is not rendered as HTML: react-markdown
+    // (no rehype-raw) drops raw nodes, so nothing is injected or executed.
+    expect(container.querySelector("script")).toBeNull();
+    expect(container.querySelector(".injected")).toBeNull();
+    expect(container.textContent).not.toContain("xss");
+    expect(container.textContent).not.toContain("injected text");
+    // Tag-shaped text inside a code block survives as plain text.
+    const code = container.querySelector("pre code");
+    expect(code?.textContent).toContain('<div class="sample">hello</div>');
+  });
+
   it("submits the composer draft exactly once on Enter", () => {
     const onSend = vi.fn();
     renderWithQuery(<ChatPage conversationId="c1" branchId="main" messages={[]} onSend={onSend} />);
