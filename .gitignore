@@ -63,3 +63,4 @@ test-results/
 htmlcov/
 .tools/
 .venv-native-*/
+.superpowers/
