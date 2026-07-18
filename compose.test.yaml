@@ -75,16 +75,19 @@ services:
     volumes:
       - .:/app
       - web-node-modules:/app/apps/web/node_modules
-    command: ["sh", "-lc", "corepack enable && pnpm install --frozen-lockfile && pnpm typecheck && pnpm test:unit && pnpm build"]
+      - web-pnpm-store:/pnpm-store
+    command: ["sh", "-lc", "corepack enable && pnpm install --frozen-lockfile --store-dir /pnpm-store && pnpm typecheck && pnpm test:unit && pnpm build"]
 
   e2e:
     image: mcr.microsoft.com/playwright:v1.61.1-noble
     working_dir: /app/apps/web
     volumes:
       - .:/app
+      - e2e-node-modules:/app/apps/web/node_modules
+      - web-pnpm-store:/pnpm-store
     environment:
       BASE_URL: http://web
-    command: ["bash", "-lc", "corepack enable && pnpm install --frozen-lockfile && pnpm e2e"]
+    command: ["bash", "-lc", "corepack enable && pnpm install --frozen-lockfile --store-dir /pnpm-store && pnpm e2e"]
     depends_on:
       web:
         condition: service_healthy
@@ -97,5 +100,7 @@ services:
 
 volumes:
   web-node-modules:
+  e2e-node-modules:
+  web-pnpm-store:
   postgres-test-data:
   redis-test-data:
