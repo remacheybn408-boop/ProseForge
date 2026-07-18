@@ -26,8 +26,12 @@ if [[ "$host" == "Linux" || ( "$host" == "Darwin" && "$target" == "macos" ) ]]; 
     --root "$root" --output "$out" --target "$target" --format "$format"
 elif [[ "$target" == "linux" ]]; then
   # podman 需要 Windows 风格源路径；MSYS_NO_PATHCONV=1 防止 Git Bash 改写 /src。
+  # 显式清空代理变量：podman 会把宿主/服务端的 http_proxy 注入容器，
+  # 若该代理对容器不可达（如指向宿主 127.0.0.1），pip 会全部失败。
   root_mnt="$(cd "$root" && pwd -W 2>/dev/null || echo "$root")"
-  MSYS_NO_PATHCONV=1 podman run --rm -v "$root_mnt:/src" -w /src python:3.12 bash -lc \
+  MSYS_NO_PATHCONV=1 podman run --rm \
+    -e http_proxy= -e https_proxy= -e HTTP_PROXY= -e HTTPS_PROXY= -e ALL_PROXY= -e all_proxy= \
+    -v "$root_mnt:/src" -w /src python:3.12 bash -lc \
     "pip install -q -e '.[api]' pyinstaller && python -m packaging.native_bundle --root /src --output /src/artifacts/native/linux --target linux --format tar.gz"
 else
   echo "unsupported combination: host=$host target=$target" >&2
