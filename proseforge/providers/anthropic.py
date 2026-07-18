@@ -83,6 +83,10 @@ class AnthropicProvider(ModelProvider):
             value = getattr(request, field)
             if value is not None:
                 payload[field] = value
+        # 思考强度载荷按 catalog reasoning_parameter 的名字落到请求体顶层；
+        # None（AUTO）时不多发任何字段，由 provider 默认值接管。
+        if request.reasoning is not None:
+            payload.update(request.reasoning)
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             async with client.stream("POST", f"{self.base_url}/messages", headers=self._headers, json=payload) as response:
                 response.raise_for_status()

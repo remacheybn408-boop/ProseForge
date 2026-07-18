@@ -44,10 +44,14 @@ class OpenAIProvider(ModelProvider):
             "stream": True,
             "input": [*request.system_blocks, *request.input_blocks],
         }
-        for field in ("temperature", "top_p", "max_output_tokens", "reasoning"):
+        for field in ("temperature", "top_p", "max_output_tokens"):
             value = getattr(request, field)
             if value is not None:
                 payload[field] = value
+        # 思考强度载荷按 catalog reasoning_parameter 的名字落到请求体顶层；
+        # None（AUTO）时不多发任何字段，由 provider 默认值接管。
+        if request.reasoning is not None:
+            payload.update(request.reasoning)
         if request.response_schema is not None:
             payload["text"] = {"format": {"type": "json_schema", "schema": request.response_schema}}
         async with self._client().stream("POST", f"{self.base_url}/responses", headers=self._headers, json=payload) as response:

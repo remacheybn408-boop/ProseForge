@@ -36,10 +36,11 @@ describe("ReasoningPicker", () => {
     render(<ReasoningPicker value="standard" supported={all} onChange={() => undefined} />);
     const standard = screen.getByRole("radio", { name: "standard" });
     expect(standard.getAttribute("aria-checked")).toBe("true");
-    expect(standard.textContent).toContain("●●○○");
-    expect(screen.getByRole("radio", { name: "fast" }).textContent).toContain("●○○○");
-    expect(screen.getByRole("radio", { name: "deep" }).textContent).toContain("●●●○");
-    expect(screen.getByRole("radio", { name: "max" }).textContent).toContain("●●●●");
+    expect(standard.textContent).toContain("●●○○○");
+    expect(screen.getByRole("radio", { name: "fast" }).textContent).toContain("●○○○○");
+    expect(screen.getByRole("radio", { name: "deep" }).textContent).toContain("●●●○○");
+    expect(screen.getByRole("radio", { name: "max" }).textContent).toContain("●●●●●");
+    expect(screen.getByRole("radio", { name: "auto" }).textContent).not.toContain("●");
   });
 
   it("greys out unsupported levels with a tooltip reason and blocks selection", () => {

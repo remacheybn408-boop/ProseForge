@@ -3,12 +3,24 @@
 catalog `reasoning_parameter` 决定载荷形状：OpenAI reasoning_effort /
 Anthropic thinking / Google thinking_budget；其它参数名按 strength 透传。
 不支持的级别抛 ValueError（路由层转 422 + supported_levels），绝不静默降级。
+
+后半部分钉线上载荷：provider 实现必须把 ``GenerationRequest.reasoning``
+按 catalog 参数名序列化进请求体；None（AUTO/不支持时的取值）一律不发，
+由 provider 默认值接管——绝不允许选了 deep 和 fast 发出同样的请求。
 """
 
+import json
+
+import httpx
 import pytest
+import respx
 
 from proseforge.application.models.reasoning_policy import resolve_reasoning
 from proseforge.domain.model.capabilities import ModelCapabilities
+from proseforge.domain.ports.model_provider import GenerationRequest
+from proseforge.providers.anthropic import AnthropicProvider
+from proseforge.providers.google import GoogleProvider
+from proseforge.providers.openai import OpenAIProvider
 
 
 def _caps(parameter: str | None, *, max_output: int = 4096) -> ModelCapabilities:
@@ -69,3 +81,111 @@ def test_unsupported_level_raises_instead_of_silent_downgrade():
         resolve_reasoning("max", caps)
     with pytest.raises(ValueError, match="unsupported"):
         resolve_reasoning("fast", caps)
+
+
+# --- 线上载荷：request.reasoning 必须落到序列化后的请求体 -----------------
+
+_OPENAI_SSE = "\n".join([
+    'data: {"type":"response.created"}',
+    'data: {"type":"response.output_text.delta","delta":"Hi"}',
+    'data: {"type":"response.completed"}',
+    "data: [DONE]",
+    "",
+])
+_ANTHROPIC_SSE = 'data: {"type":"content_block_delta","delta":{"text":"Hi"}}\n\ndata: {"type":"message_stop"}\n\n'
+_GOOGLE_SSE = 'data: {"candidates":[{"content":{"parts":[{"text":"Hi"}]}}]}\n\n'
+
+
+def _request(reasoning: dict[str, object] | None) -> GenerationRequest:
+    return GenerationRequest(
+        "test-model",
+        ({"text": "Be concise"},),
+        ({"role": "user", "text": "Hi"},),
+        max_output_tokens=4096,
+        reasoning=reasoning,
+    )
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_openai_wire_payload_carries_reasoning_effort():
+    route = respx.post("https://api.test/v1/responses").mock(
+        return_value=httpx.Response(200, text=_OPENAI_SSE, headers={"content-type": "text/event-stream"})
+    )
+    provider = OpenAIProvider("secret", "https://api.test/v1")
+
+    [event async for event in provider.stream(_request({"reasoning_effort": "high"}))]
+
+    body = json.loads(route.calls[0].request.content)
+    assert body["reasoning_effort"] == "high"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_openai_wire_payload_omits_reasoning_when_none():
+    route = respx.post("https://api.test/v1/responses").mock(
+        return_value=httpx.Response(200, text=_OPENAI_SSE, headers={"content-type": "text/event-stream"})
+    )
+    provider = OpenAIProvider("secret", "https://api.test/v1")
+
+    [event async for event in provider.stream(_request(None))]  # AUTO → provider_parameter=None
+
+    body = json.loads(route.calls[0].request.content)
+    assert "reasoning_effort" not in body
+    assert "reasoning" not in body
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_anthropic_wire_payload_carries_thinking():
+    route = respx.post("https://anthropic.test/v1/messages").mock(
+        return_value=httpx.Response(200, content=_ANTHROPIC_SSE, headers={"content-type": "text/event-stream"})
+    )
+    provider = AnthropicProvider("secret", base_url="https://anthropic.test/v1")
+
+    [event async for event in provider.stream(_request({"thinking": {"type": "enabled", "budget_tokens": 2048}}))]
+
+    body = json.loads(route.calls[0].request.content)
+    assert body["thinking"] == {"type": "enabled", "budget_tokens": 2048}
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_anthropic_wire_payload_omits_thinking_when_none():
+    route = respx.post("https://anthropic.test/v1/messages").mock(
+        return_value=httpx.Response(200, content=_ANTHROPIC_SSE, headers={"content-type": "text/event-stream"})
+    )
+    provider = AnthropicProvider("secret", base_url="https://anthropic.test/v1")
+
+    [event async for event in provider.stream(_request(None))]
+
+    body = json.loads(route.calls[0].request.content)
+    assert "thinking" not in body
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_google_wire_payload_carries_thinking_budget():
+    route = respx.post("https://google.test/v1beta/models/test-model:streamGenerateContent?alt=sse").mock(
+        return_value=httpx.Response(200, content=_GOOGLE_SSE, headers={"content-type": "text/event-stream"})
+    )
+    provider = GoogleProvider("secret", base_url="https://google.test/v1beta")
+
+    [event async for event in provider.stream(_request({"thinking_budget": 2048}))]
+
+    body = json.loads(route.calls[0].request.content)
+    assert body["thinking_budget"] == 2048
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_google_wire_payload_omits_thinking_budget_when_none():
+    route = respx.post("https://google.test/v1beta/models/test-model:streamGenerateContent?alt=sse").mock(
+        return_value=httpx.Response(200, content=_GOOGLE_SSE, headers={"content-type": "text/event-stream"})
+    )
+    provider = GoogleProvider("secret", base_url="https://google.test/v1beta")
+
+    [event async for event in provider.stream(_request(None))]
+
+    body = json.loads(route.calls[0].request.content)
+    assert "thinking_budget" not in body

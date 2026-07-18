@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from unittest.mock import Mock
 
 from proseforge.domain.ports.model_provider import ProviderModel
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
@@ -86,6 +87,8 @@ def test_validate_maps_provider_specific_reasoning_parameters(auth_client, api_s
     assert body["normalized_level"] == "deep"
     assert body["provider_parameter"] == {"reasoning_effort": "high"}
     assert body["context_window"] == 2048
+    # 契约是 {normalized_level, provider_parameter, context_window, warnings}——不冗余回传整个 policy
+    assert "reasoning" not in body
 
     anthropic = auth_client.post_json("/api/v2/model-resolutions/validate", {"provider": provider, "model_id": "anthropic-style", "level": "standard"})
     assert anthropic.json()["provider_parameter"] == {"thinking": {"type": "enabled", "budget_tokens": 2048}}
@@ -144,18 +147,19 @@ def test_validate_probe_false_never_calls_provider(auth_client, api_settings, mo
         ProviderModel(provider, "openai-style", "OpenAI Style", {"reasoning": True, "reasoning_parameter": "reasoning_effort"}, context_window=2048, max_output_tokens=333),
     ])
 
-    def forbidden_call(*args, **kwargs):
-        raise AssertionError("probe=false must not build or call a provider")
-
-    monkeypatch.setattr("proseforge.providers.factory.build_provider", forbidden_call)
+    # 路由模块按名绑定 build_provider，必须 patch 路由侧绑定才会生效。
+    builder = Mock(side_effect=AssertionError("probe=false must not build or call a provider"))
+    monkeypatch.setattr("proseforge.api.routes.model_capabilities.build_provider", builder)
 
     response = auth_client.post_json("/api/v2/model-resolutions/validate", {"provider": provider, "model_id": "openai-style", "level": "deep", "probe": False})
     assert response.status_code == 200
+    builder.assert_not_called()
 
     skipped = auth_client.post_json("/api/v2/model-resolutions/validate", {"provider": provider, "model_id": "openai-style", "level": "deep", "probe": True})
     assert skipped.status_code == 200
     # 未配置凭据时 probe 落 warning（仍不呼 provider），不脱敏任何 secret
     assert any("credentials" in warning for warning in skipped.json()["warnings"])
+    builder.assert_not_called()
 
 
 def test_context_route_uses_catalog_window_for_requested_model(auth_client, api_settings):

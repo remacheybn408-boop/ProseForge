@@ -1,6 +1,6 @@
 import { REASONING_LEVELS, type ReasoningLevel } from "./modelCapabilities";
 
-const DOTS: Record<ReasoningLevel, string> = { auto: "", fast: "●○○○", standard: "●●○○", deep: "●●●○", max: "●●●●" };
+const DOTS: Record<ReasoningLevel, string> = { auto: "", fast: "●○○○○", standard: "●●○○○", deep: "●●●○○", max: "●●●●●" };
 const UNSUPPORTED_REASON = "This model does not support adjustable reasoning; only auto is available.";
 
 export function ReasoningPicker({ value, supported, onChange }: { value: ReasoningLevel; supported: ReasoningLevel[]; onChange: (level: ReasoningLevel) => void }) {

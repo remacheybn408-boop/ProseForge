@@ -85,6 +85,10 @@ class GoogleProvider(ModelProvider):
                 ]
             }
         model = request.model if request.model.startswith("models/") else f"models/{request.model}"
+        # 思考强度载荷按 catalog reasoning_parameter 的名字落到请求体顶层；
+        # None（AUTO）时不多发任何字段，由 provider 默认值接管。
+        if request.reasoning is not None:
+            payload.update(request.reasoning)
         url = f"{self.base_url}/{model}:streamGenerateContent?alt=sse"
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             async with client.stream("POST", url, headers=self._headers, json=payload) as response:

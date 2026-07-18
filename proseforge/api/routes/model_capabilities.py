@@ -103,6 +103,5 @@ async def validate_resolution(payload: ReasoningValidation, request: Request, us
             "normalized_level": policy["level"],
             "provider_parameter": policy.get("provider_parameter"),
             "context_window": caps.context_window,
-            "reasoning": policy,
             "warnings": warnings,
         }
