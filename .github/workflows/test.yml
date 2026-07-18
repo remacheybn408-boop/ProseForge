@@ -34,7 +34,7 @@ jobs:
         shell: ${{ matrix.os == 'windows-latest' && 'pwsh' || 'bash' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # ---- Python 环境 ----
       - name: Install Python ${{ env.PYTHON_VERSION }}
@@ -110,7 +110,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Run Ruff lint
         # 只跑 ruff check：项目代码风格允许紧凑单行（E701/E702 已在
@@ -150,7 +150,7 @@ jobs:
           --health-retries 12
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
@@ -185,7 +185,7 @@ jobs:
   docker-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Validate Compose topology
         run: docker compose -f compose.yaml -f compose.test.yaml config --quiet
@@ -226,7 +226,7 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build API, worker and web images
         run: docker compose -f compose.yaml -f compose.test.yaml build api worker web
@@ -248,7 +248,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -284,7 +284,7 @@ jobs:
   dependency-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Audit Python deps
         run: |
