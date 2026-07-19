@@ -180,7 +180,7 @@ test("v2 professional flow completes the real ten-step workspace journey", async
   await test.step("5. Regenerate a reply and compare candidates in the UI", async () => {
     const branches = await json<Branch[]>(await request.get(`/api/v2/conversations/${conversation.id}/branches`));
     const originalBranch = branches.find(branch => branch.id === originalBranchId)!;
-    await page.getByRole("button", { name: new RegExp(originalBranch.name) }).click();
+    await page.getByRole("button", { name: originalBranch.name, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/${originalBranchId}$`));
 
     const assistantCard = page.locator('article[aria-label="assistant message"]').filter({ hasText: initialAssistant.content });

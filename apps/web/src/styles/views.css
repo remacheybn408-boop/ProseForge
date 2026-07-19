@@ -84,6 +84,7 @@
 .resolution-result { margin-top: 8px; }
 .resolution-result code { white-space: pre-wrap; word-break: break-all; font-size: 11px; }
 
-/* React Flow attribution watermark: keep visible (OSS license) with WCAG-AA contrast on the paper canvas */
-.react-flow__attribution { background: var(--paper); color: var(--ink); }
-.react-flow__attribution a { color: var(--ink); }
+/* React Flow attribution watermark: keep visible (OSS license) with WCAG-AA contrast on the paper canvas.
+   Two-class selectors beat React Flow's own .react-flow__attribution rules regardless of load order. */
+.react-flow__panel.react-flow__attribution { background: var(--paper); color: var(--ink); }
+.react-flow__panel.react-flow__attribution a { color: var(--ink); }
