@@ -227,7 +227,7 @@ test("v2 professional flow completes the real ten-step workspace journey", async
     const pinResponse = await pinResponsePromise;
     rememberRequestId(pinResponse);
     expect((await json<{ pinned: boolean }>(pinResponse)).pinned).toBeTruthy();
-    await expect(factCard.getByText("PIN")).toBeVisible();
+    await expect(factCard.getByText("PIN", { exact: true })).toBeVisible();
 
     await page.goBack();
     await expect(page).toHaveURL(new RegExp(`/chat/${conversation.id}/${editedBranchId}$`));
