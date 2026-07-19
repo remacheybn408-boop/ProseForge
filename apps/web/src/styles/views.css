@@ -83,3 +83,7 @@
 .settings-models .detail-card { grid-template-columns: 1fr 1fr 1fr; }
 .resolution-result { margin-top: 8px; }
 .resolution-result code { white-space: pre-wrap; word-break: break-all; font-size: 11px; }
+
+/* React Flow attribution watermark: keep visible (OSS license) with WCAG-AA contrast on the paper canvas */
+.react-flow__attribution { background: var(--paper); color: var(--ink); }
+.react-flow__attribution a { color: var(--ink); }

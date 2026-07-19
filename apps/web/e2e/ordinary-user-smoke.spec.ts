@@ -40,11 +40,11 @@ test("ordinary user can use the Docker-backed writing workspace", async ({ page,
   await page.getByPlaceholder("Answer the missing requirement").fill("Mira, a determined cartographer");
   await page.getByRole("button", { name: "Save answer" }).click();
   await page.getByRole("button", { name: /confirm and create workflow/i }).click();
-  await expect(page.getByRole("heading", { name: "Chapter workflow" })).toBeVisible();
+  await expect(page.locator(".eyebrow", { hasText: "WORKFLOW STUDIO" })).toBeVisible();
   await page.getByRole("button", { name: "Writing Studio" }).click();
   await expect(page.getByRole("button", { name: /Chapter 1/i })).toBeVisible();
-  await expect(page.locator("textarea.editor")).toHaveValue("Mock provider response", { timeout: 15_000 });
-  await page.getByRole("textbox", { name: "" }).first().fill("A first draft written through the browser.");
+  await expect(page.locator("[data-testid='tiptap-manuscript']")).toContainText("Mock provider response", { timeout: 15_000 });
+  await page.locator("[data-testid='tiptap-manuscript']").fill("A first draft written through the browser.");
   await page.getByRole("button", { name: "Save version" }).click();
   await expect(page.getByText(/Saved version \d+/)).toBeVisible();
 

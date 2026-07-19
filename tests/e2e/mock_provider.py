@@ -24,7 +24,7 @@ class Handler(BaseHTTPRequestHandler):
         events = [
             {"type": "response.created", "id": "mock-response"},
             {"type": "response.output_text.delta", "delta": response_text},
-            {"type": "response.completed"},
+            {"type": "response.completed", "usage": {"input_tokens": 24, "output_tokens": 12, "total_tokens": 36}},
         ]
         body = "".join(f"data: {json.dumps(event)}\n\n" for event in events) + "data: [DONE]\n\n"
         encoded = body.encode()
