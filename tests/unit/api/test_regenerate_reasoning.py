@@ -1,4 +1,4 @@
-"""regenerate 复用源消息落库的思考强度（V2-004 fix round 3）。
+"""regenerate 复用源消息落库的思考强度与目标模型（V2-004 fix round 3/4）。
 
 此前 ``RegenerateRequest`` 没有 ``reasoning_level``，路由不读源消息
 ``reasoning_snapshot["level"]``，``RegenerateReply`` 入队也不带该键，worker 端
@@ -6,6 +6,10 @@
 在 regenerate 时丢失。现与 retry 同规则：显式指定优先（入队前过 catalog
 校验，不支持 → 422）；缺省复用落库级别（含现已不支持的级别也原样复用，
 不悄悄改级）；无快照才回落 auto。
+
+provider/model 同理（fix round 4）：省略时复用源消息 ``model_snapshot``，
+不再回落 pydantic 默认值把非默认模型的消息 regenerate 到
+openai/gpt-4.1-mini；显式级别的 422 校验同样按解析后的目标模型查 catalog。
 """
 
 from __future__ import annotations
@@ -71,9 +75,9 @@ def _catalog_with_reasoning():
     )
 
 
-def _patch_dependencies(monkeypatch: pytest.MonkeyPatch, snapshot: dict | None, catalog_entry=None):
+def _patch_dependencies(monkeypatch: pytest.MonkeyPatch, snapshot: dict | None, model_snapshot: dict | None = None, catalog_entry=None):
     _FakeRegenerateReply.calls = []
-    source = types.SimpleNamespace(branch_id="b1", parent_message_id="u1", reasoning_snapshot=snapshot)
+    source = types.SimpleNamespace(branch_id="b1", parent_message_id="u1", reasoning_snapshot=snapshot, model_snapshot=model_snapshot)
     monkeypatch.setattr(branches, "unit_of_work", lambda request: _FakeUow(source, catalog_entry))
     monkeypatch.setattr(branches, "RegenerateReply", _FakeRegenerateReply)
     return types.SimpleNamespace(app=types.SimpleNamespace(state=types.SimpleNamespace(queue=None)))
@@ -81,12 +85,14 @@ def _patch_dependencies(monkeypatch: pytest.MonkeyPatch, snapshot: dict | None, 
 
 @pytest.mark.asyncio
 async def test_regenerate_explicit_reasoning_level_is_honored(monkeypatch: pytest.MonkeyPatch):
-    request = _patch_dependencies(monkeypatch, {"level": "fast"}, _catalog_with_reasoning())
+    request = _patch_dependencies(monkeypatch, {"level": "fast"}, catalog_entry=_catalog_with_reasoning())
     payload = branches.RegenerateRequest(provider="openai", model="gpt-4.1", reasoning_level="deep")
 
     result = await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
 
     assert _FakeRegenerateReply.calls[0]["reasoning_level"] == "deep"
+    assert _FakeRegenerateReply.calls[0]["provider"] == "openai"
+    assert _FakeRegenerateReply.calls[0]["model"] == "gpt-4.1"
     assert result == {"message_id": "m-new", "task_id": "task-1"}
 
 
@@ -101,13 +107,48 @@ async def test_regenerate_reuses_the_source_messages_stored_level(monkeypatch: p
 
 
 @pytest.mark.asyncio
-async def test_regenerate_without_snapshot_falls_back_to_auto(monkeypatch: pytest.MonkeyPatch):
-    request = _patch_dependencies(monkeypatch, None)
+async def test_regenerate_without_overrides_reuses_the_model_snapshot(monkeypatch: pytest.MonkeyPatch):
+    # 空载荷 {}（UI 默认路径）：provider/model 复用源消息落库 model_snapshot，
+    # 不再回落 pydantic 默认值把非默认模型的消息 regenerate 到 openai/gpt-4.1-mini。
+    request = _patch_dependencies(
+        monkeypatch,
+        {"level": "deep"},
+        model_snapshot={"provider": "anthropic", "model": "claude-sonnet", "context_window": 200000, "max_output_tokens": 8192, "source": "catalog"},
+    )
     payload = branches.RegenerateRequest()
 
     await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
 
-    assert _FakeRegenerateReply.calls[0]["reasoning_level"] == "auto"
+    call = _FakeRegenerateReply.calls[0]
+    assert call["provider"] == "anthropic"
+    assert call["model"] == "claude-sonnet"
+    assert call["reasoning_level"] == "deep"
+
+
+@pytest.mark.asyncio
+async def test_regenerate_without_any_snapshot_keeps_the_default_model(monkeypatch: pytest.MonkeyPatch):
+    # 两个快照都缺失（历史消息）才回落默认模型与 auto，行为与旧默认一致。
+    request = _patch_dependencies(monkeypatch, None, model_snapshot=None)
+    payload = branches.RegenerateRequest()
+
+    await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
+
+    call = _FakeRegenerateReply.calls[0]
+    assert call["provider"] == "openai"
+    assert call["model"] == "gpt-4.1-mini"
+    assert call["reasoning_level"] == "auto"
+
+
+@pytest.mark.asyncio
+async def test_regenerate_explicit_provider_model_still_win_over_snapshot(monkeypatch: pytest.MonkeyPatch):
+    request = _patch_dependencies(monkeypatch, None, model_snapshot={"provider": "anthropic", "model": "claude-sonnet"})
+    payload = branches.RegenerateRequest(provider="openai", model="gpt-4.1")
+
+    await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
+
+    call = _FakeRegenerateReply.calls[0]
+    assert call["provider"] == "openai"
+    assert call["model"] == "gpt-4.1"
 
 
 @pytest.mark.asyncio
@@ -120,6 +161,21 @@ async def test_regenerate_reuses_unsupported_stored_level_verbatim(monkeypatch: 
     await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
 
     assert _FakeRegenerateReply.calls[0]["reasoning_level"] == "max"
+
+
+@pytest.mark.asyncio
+async def test_regenerate_explicit_level_is_validated_against_the_resolved_model(monkeypatch: pytest.MonkeyPatch):
+    # 省略 provider/model 时显式 level 按 snapshot 模型的 catalog 校验：支持则通过，
+    # 且入队的也是解析后的目标模型（而非 pydantic 默认值）。
+    request = _patch_dependencies(monkeypatch, None, model_snapshot={"provider": "anthropic", "model": "claude-sonnet"}, catalog_entry=_catalog_with_reasoning())
+    payload = branches.RegenerateRequest(reasoning_level="deep")
+
+    await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
+
+    call = _FakeRegenerateReply.calls[0]
+    assert call["provider"] == "anthropic"
+    assert call["model"] == "claude-sonnet"
+    assert call["reasoning_level"] == "deep"
 
 
 @pytest.mark.asyncio
@@ -140,7 +196,7 @@ async def test_regenerate_explicit_unsupported_level_returns_422(monkeypatch: py
 
 @pytest.mark.asyncio
 async def test_regenerate_explicit_unknown_level_returns_422(monkeypatch: pytest.MonkeyPatch):
-    request = _patch_dependencies(monkeypatch, None, _catalog_with_reasoning())
+    request = _patch_dependencies(monkeypatch, None, catalog_entry=_catalog_with_reasoning())
     payload = branches.RegenerateRequest(reasoning_level="bogus")
 
     with pytest.raises(HTTPException) as excinfo:

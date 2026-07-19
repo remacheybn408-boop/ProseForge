@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from proseforge.api.dependencies import current_user, unit_of_work
-from proseforge.api.routes.branches import _validate_reasoning_level
+from proseforge.api.routes.branches import _resolve_reasoning_level, _validate_reasoning_level
 from proseforge.api.sse.encoder import encode_sse
 from proseforge.application.auth.service import AuthUser
 from proseforge.application.conversations.send_message import SendMessage
@@ -44,16 +44,6 @@ class MessageControlRequest(BaseModel):
     provider: str | None = None  # 缺省 → 复用消息落库 model_snapshot
     model: str | None = None
     reasoning_level: str | None = None
-
-
-def _resolve_retry_reasoning_level(explicit: str | None, snapshot: dict | None) -> str:
-    """retry/continue 的思考强度：显式指定优先；否则复用消息落库的原级别
-    （绝不静默降级为 auto）；无快照才回落 auto。"""
-    if explicit:
-        return explicit
-    if snapshot and snapshot.get("level"):
-        return str(snapshot["level"])
-    return "auto"
 
 
 def _resolve_retry_target_model(payload: MessageControlRequest, message) -> tuple[str, str]:
@@ -165,7 +155,7 @@ async def _requeue_message(message_id: str, payload: MessageControlRequest, requ
             _validate_reasoning_level(payload.reasoning_level, capabilities)
         await uow.conversations.set_message_status(message_id, "PENDING")
         await uow.commit()
-    reasoning_level = _resolve_retry_reasoning_level(payload.reasoning_level, message.reasoning_snapshot)
+    reasoning_level = _resolve_reasoning_level(payload.reasoning_level, message.reasoning_snapshot)
     task_id = await request.app.state.queue.enqueue("proseforge.chat.generate", {"message_id": message_id, "user_id": user.id, "provider": provider, "model": model, "reasoning_level": reasoning_level})
     return {"id": message_id, "status": "PENDING", "task_id": task_id}
 

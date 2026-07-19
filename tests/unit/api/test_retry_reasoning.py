@@ -211,3 +211,13 @@ async def test_retry_explicit_unknown_level_returns_422(monkeypatch: pytest.Monk
     assert excinfo.value.status_code == 422
     assert excinfo.value.detail["details"]["supported_levels"] == ["auto", "fast", "standard", "deep", "max"]
     assert queue.enqueued == []
+
+
+def test_reasoning_level_resolution_has_a_single_canonical_home():
+    # fix round 4：retry 与 regenerate 曾各持一份逐字相同的级别解析；现收敛为
+    # branches.py 单一出处，conversations.py 复用（与 _validate_reasoning_level 同一模式）。
+    from proseforge.api.routes import branches
+
+    assert conversations._resolve_reasoning_level is branches._resolve_reasoning_level
+    assert not hasattr(conversations, "_resolve_retry_reasoning_level")
+    assert not hasattr(branches, "_resolve_regenerate_reasoning_level")
