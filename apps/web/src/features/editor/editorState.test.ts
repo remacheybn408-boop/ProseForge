@@ -9,6 +9,8 @@ import {
   proseMirrorRangeToTextRange,
   resolveOptimisticSave,
   restoreLocalEditorDraft,
+  sha256,
+  sha256Fallback,
   toSelectionActionRequest,
   updateLocalEditorDraft,
 } from "./editorState";
@@ -56,5 +58,19 @@ describe("editor state", () => {
     expect(restoreLocalEditorDraft("new server", dirty).content).toBe("local edit");
     const saving = beginOptimisticSave(dirty);
     expect(resolveOptimisticSave(saving, false, "server")).toMatchObject({ content: "local edit", savedContent: "server", dirty: true, pendingSave: false });
+  });
+});
+
+describe("sha256", () => {
+  it("fallback matches published vectors", () => {
+    expect(sha256Fallback(new TextEncoder().encode(""))).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect(sha256Fallback(new TextEncoder().encode("abc"))).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  });
+
+  it("sha256 resolves identically with or without WebCrypto", async () => {
+    const text = "Mira unfolded the brass map.";
+    await expect(sha256(text)).resolves.toBe(sha256Fallback(new TextEncoder().encode(text)));
+    const action = await buildEditorAction("review", text, { from: 0, to: 4 });
+    expect(action.selectedTextHash).toMatch(/^[a-f0-9]{64}$/);
   });
 });
