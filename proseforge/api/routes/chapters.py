@@ -4,14 +4,21 @@ import difflib
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.application.auth.service import AuthUser
+from proseforge.application.writing.selection_action import (
+    SelectionActionConflict,
+    SelectionActionRequest,
+    SelectionActionValidationError,
+    create_selection_action_proposals,
+)
 from proseforge.domain.chapter.entity import Chapter
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
 router = APIRouter(prefix="/api/v1", tags=["chapters"])
+v2_router = APIRouter(prefix="/api/v2", tags=["chapters"])
 
 
 class ChapterCreateRequest(BaseModel):
@@ -22,6 +29,23 @@ class ChapterCreateRequest(BaseModel):
 class VersionCreateRequest(BaseModel):
     content: str = Field(min_length=0)
     base_version: int | None = Field(default=None, ge=1)
+
+
+class SelectionActionPayload(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: str = Field(pattern=r"^(continue|expand|shorten|rewrite|change-tone|review)$")
+    start: int = Field(alias="from", ge=0)
+    end: int = Field(alias="to", ge=0)
+    selected_text_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    base_version_id: str = Field(min_length=1)
+    params: dict[str, object] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_range(self) -> "SelectionActionPayload":
+        if self.end <= self.start:
+            raise ValueError("to must be greater than from")
+        return self
 
 
 def chapter_response(chapter: Chapter) -> dict[str, object]:
@@ -138,3 +162,41 @@ async def chapter_diff(
         raise HTTPException(status_code=404, detail="version not found")
     diff = list(difflib.unified_diff(source.content.splitlines(), target.content.splitlines(), fromfile=f"v{from_version}", tofile=f"v{to_version}", lineterm=""))
     return {"chapter_id": chapter_id, "from_version": from_version, "to_version": to_version, "changed": source.content != target.content, "diff": diff}
+
+
+@v2_router.post("/chapters/{chapter_id}/selection-actions", status_code=status.HTTP_201_CREATED)
+async def create_selection_action(
+    chapter_id: str,
+    payload: SelectionActionPayload,
+    user: Annotated[AuthUser, Depends(current_user)],
+    uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+) -> dict[str, object]:
+    request = SelectionActionRequest(
+        action=payload.action,  # type: ignore[arg-type]
+        start=payload.start,
+        end=payload.end,
+        selected_text_hash=payload.selected_text_hash,
+        base_version_id=payload.base_version_id,
+        params=payload.params,
+    )
+    async with uow:
+        try:
+            result = await create_selection_action_proposals(
+                uow=uow,
+                owner_id=user.id,
+                chapter_id=chapter_id,
+                request=request,
+            )
+        except LookupError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except SelectionActionConflict as error:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": error.code, "current_version_id": error.current_version_id},
+            ) from error
+        except SelectionActionValidationError as error:
+            raise HTTPException(status_code=422, detail={"code": error.code}) from error
+        await uow.commit()
+    if payload.action == "continue":
+        return {"candidate_proposal_ids": list(result.proposal_ids)}
+    return {"proposal_id": result.proposal_ids[0]}

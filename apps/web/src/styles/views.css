@@ -17,11 +17,17 @@
 .studio-layout { display: grid; grid-template-columns: 190px minmax(300px, 1fr); gap: 24px; padding-top: 38px; min-height: 620px; }
 .chapter-tree { border-right: 1px solid var(--line); padding-right: 18px; display: grid; align-content: start; gap: 8px; }
 .chapter-tree strong { font-size: 12px; margin-bottom: 8px; }
-.chapter-tree button { text-align: left; border: 0; background: transparent; color: var(--secondary); padding: 9px; border-radius: 7px; cursor: pointer; font-size: 12px; }
+.chapter-tree button { text-align: left; border: 0; background: transparent; color: var(--secondary); padding: 9px; border-radius: 7px; cursor: pointer; font-size: 12px; display:flex; gap:8px; align-items:center; justify-content:space-between; }
+.chapter-tree button[draggable="true"]:active { transform: scale(.96); box-shadow: 0 12px 20px rgba(55, 35, 22, .18); }
 .chapter-tree button.selected, .chapter-tree button:hover { background: var(--muted); color: var(--text); }
 .chapter-tree small { color: var(--faint); line-height: 1.5; }
 .editor-pane { display: grid; grid-template-rows: auto 1fr auto; gap: 14px; min-height: 560px; }
 .editor { width: 100%; min-height: 470px; resize: vertical; border: 1px solid var(--line); border-radius: 10px; padding: 22px; background: var(--surface); color: var(--text); font: 17px/1.8 Georgia, serif; }
+.manuscript-editor { min-height: 470px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); font: 17px/1.8 var(--font-prose); }
+.manuscript-editor .tiptap, .manuscript-editor textarea { min-height: 420px; padding: 22px; outline: 0; white-space: pre-wrap; }
+.manuscript-editor textarea { width: 100%; border: 0; resize: vertical; background: transparent; color: inherit; font: inherit; }
+.selection-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); color: var(--secondary); font: 12px var(--font-ui); }
+.selection-toolbar button { border: 1px solid var(--line); border-radius: 5px; padding: 4px 8px; color: var(--secondary); background: var(--paper-raised); cursor: pointer; }
 .version-history { max-width: 760px; margin: 24px 0 40px; border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 10px; }
 .version-chapter { display: flex; align-items: center; gap: 8px; color: var(--secondary); font-size: 12px; }
 .version-chapter select { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--surface); color: var(--text); }

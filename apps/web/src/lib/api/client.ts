@@ -57,6 +57,10 @@ export function saveChapterVersion(chapterId: string, content: string, baseVersi
 export function listChapterVersions(chapterId: string) { return request<ChapterVersion[]>(`/api/v1/chapters/${chapterId}/versions`); }
 export function activateChapterVersion(chapterId: string, versionId: string) { return request<{ chapter_id: string; active_version_id: string; version_no: number }>(`/api/v1/chapters/${chapterId}/activate-version?version_id=${encodeURIComponent(versionId)}`, { method: "POST" }); }
 export function getChapterDiff(chapterId: string, fromVersion: number, toVersion: number) { return request<{ changed: boolean; diff: string[] }>(`/api/v1/chapters/${chapterId}/diff?from_version=${fromVersion}&to_version=${toVersion}`); }
+export type SelectionAction = "continue" | "expand" | "shorten" | "rewrite" | "change-tone" | "review";
+export type SelectionActionPayload = { action: SelectionAction; from: number; to: number; selected_text_hash: string; base_version_id: string; params?: Record<string, unknown> };
+export type SelectionActionResult = { proposal_id?: string; candidate_proposal_ids?: string[] };
+export function createSelectionAction(chapterId: string, payload: SelectionActionPayload) { return request<SelectionActionResult>(`/api/v2/chapters/${chapterId}/selection-actions`, { method: "POST", body: JSON.stringify(payload) }); }
 export function listOutlines(projectId: string) { return request<Outline[]>(`/api/v1/projects/${projectId}/outlines`); }
 export function importOutline(projectId: string, payload: { title: string; content?: string; data?: Record<string, unknown> }) { return request<Outline>(`/api/v1/projects/${projectId}/outlines/import`, { method: "POST", body: JSON.stringify(payload) }); }
 export function answerOutline(outlineId: string, answers: Record<string, unknown>) { return request<Outline>(`/api/v1/outlines/${outlineId}/parse`, { method: "POST", body: JSON.stringify({ answers }) }); }

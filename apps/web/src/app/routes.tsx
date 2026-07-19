@@ -19,6 +19,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { StudioPage } from "./pages/StudioPage";
 import { WorkflowPage } from "./pages/WorkflowPage";
 import { StoryBiblePage } from "../features/story-bible/StoryBiblePage";
+import { ManuscriptPage } from "../features/editor/ManuscriptPage";
 
 function WorkspaceShell() {
   return <div className="workspace-shell"><Sidebar /><TopBar /><Outlet /></div>;
@@ -59,7 +60,7 @@ const manuscriptRoute = createRoute({
 });
 function ManuscriptRouteComponent() {
   const { projectId, chapterId } = manuscriptRoute.useParams();
-  return page(<StudioPage projectId={projectId} chapterId={chapterId} />);
+  return page(<ManuscriptPage projectId={projectId} chapterId={chapterId} />);
 }
 
 const outlineRoute = createRoute({
