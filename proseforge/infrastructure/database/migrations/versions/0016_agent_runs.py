@@ -3,7 +3,7 @@ from alembic import op
 from sqlalchemy import Column, DateTime, Integer, String, Text, inspect
 
 revision = "0016_agent_runs"
-down_revision = "0012_review_revision"
+down_revision = "0015_review_reports"
 branch_labels = None
 depends_on = None
 

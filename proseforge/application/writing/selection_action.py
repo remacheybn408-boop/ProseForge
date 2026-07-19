@@ -54,6 +54,7 @@ class SelectionActionRequest:
 @dataclass(frozen=True)
 class SelectionActionResult:
     proposal_ids: tuple[str, ...]
+    review_id: str | None = None
 
 
 def _candidate_count(request: SelectionActionRequest) -> int:
@@ -126,6 +127,17 @@ async def create_selection_action_proposals(
         sort_keys=True,
         separators=(",", ":"),
     )
+    if request.action == "review":
+        report = await uow.revisions.create_review(
+            project_id=chapter.project_id,
+            scope="selection",
+            subject_type="chapter",
+            subject_id=chapter_id,
+            findings=[],
+            scores={},
+            model_snapshot={"source": "selection-action"},
+        )
+        return SelectionActionResult((), report.id)
     proposal_ids: list[str] = []
     for candidate in range(1, _candidate_count(request) + 1):
         proposal = await uow.revisions.create(

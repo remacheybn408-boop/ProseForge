@@ -59,8 +59,12 @@ export function activateChapterVersion(chapterId: string, versionId: string) { r
 export function getChapterDiff(chapterId: string, fromVersion: number, toVersion: number) { return request<{ changed: boolean; diff: string[] }>(`/api/v1/chapters/${chapterId}/diff?from_version=${fromVersion}&to_version=${toVersion}`); }
 export type SelectionAction = "continue" | "expand" | "shorten" | "rewrite" | "change-tone" | "review";
 export type SelectionActionPayload = { action: SelectionAction; from: number; to: number; selected_text_hash: string; base_version_id: string; params?: Record<string, unknown> };
-export type SelectionActionResult = { proposal_id?: string; candidate_proposal_ids?: string[] };
+export type SelectionActionResult = { proposal_id?: string; candidate_proposal_ids?: string[]; review_id?: string };
 export function createSelectionAction(chapterId: string, payload: SelectionActionPayload) { return request<SelectionActionResult>(`/api/v2/chapters/${chapterId}/selection-actions`, { method: "POST", body: JSON.stringify(payload) }); }
+export type ProposalDiff = { proposal_id: string; guard_status?: "clear" | "blocked" | "pending"; hunks: { start: number; end: number; replacement: string }[]; after_text: string };
+export function getProposalDiff(proposalId: string) { return request<ProposalDiff>(`/api/v2/proposals/${proposalId}/diff`); }
+export function approveProposal(proposalId: string, acceptHunks?: number[]) { return request<{ status: string; version?: ChapterVersion | null }>(`/api/v2/proposals/${proposalId}/approve`, { method: "POST", body: JSON.stringify({ accept_hunks: acceptHunks }) }); }
+export function rejectProposal(proposalId: string) { return request<{ status: string }>(`/api/v2/proposals/${proposalId}/reject`, { method: "POST", body: JSON.stringify({}) }); }
 export function listOutlines(projectId: string) { return request<Outline[]>(`/api/v1/projects/${projectId}/outlines`); }
 export function importOutline(projectId: string, payload: { title: string; content?: string; data?: Record<string, unknown> }) { return request<Outline>(`/api/v1/projects/${projectId}/outlines/import`, { method: "POST", body: JSON.stringify(payload) }); }
 export function answerOutline(outlineId: string, answers: Record<string, unknown>) { return request<Outline>(`/api/v1/outlines/${outlineId}/parse`, { method: "POST", body: JSON.stringify({ answers }) }); }

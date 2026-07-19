@@ -4,7 +4,7 @@ from .chapter import ChapterModel, ChapterVersionModel
 from .conversation import ConversationBranchModel, ConversationEventModel, ConversationModel, MessageChunkModel, MessageEditModel, MessageModel
 from .project import ProjectModel
 from .story_bible import StoryBibleEntryModel
-from .revision import RevisionProposalModel
+from .revision import RevisionProposalModel, ReviewReportModel
 from .agents import (
     AgentArtifactModel, AgentEvaluationModel, AgentEventModel, AgentMemoryModel,
     AgentPolicySnapshotModel, AgentReviewModel, AgentRunModel, AgentTaskModel,
@@ -33,7 +33,7 @@ from .remaining import (
 
 __all__ = [
     "ChapterModel", "ChapterVersionModel", "ProjectModel", "UserModel",
-    "ConversationModel", "ConversationBranchModel", "MessageModel", "MessageChunkModel", "MessageEditModel", "StoryBibleEntryModel", "RevisionProposalModel",
+    "ConversationModel", "ConversationBranchModel", "MessageModel", "MessageChunkModel", "MessageEditModel", "StoryBibleEntryModel", "RevisionProposalModel", "ReviewReportModel",
     "ConversationEventModel", "ArtifactModel", "AttachmentModel", "AuditLogModel",
     "AgentRunModel", "AgentTaskModel", "AgentEventModel", "AgentArtifactModel", "AgentReviewModel", "AgentMemoryModel", "AgentPolicySnapshotModel", "AgentEvaluationModel",
     "ContextItemModel", "ContextSnapshotModel", "EmbeddingModel", "HealthCheckModel",

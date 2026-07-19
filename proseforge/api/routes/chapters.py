@@ -199,4 +199,6 @@ async def create_selection_action(
         await uow.commit()
     if payload.action == "continue":
         return {"candidate_proposal_ids": list(result.proposal_ids)}
+    if payload.action == "review":
+        return {"review_id": result.review_id}
     return {"proposal_id": result.proposal_ids[0]}

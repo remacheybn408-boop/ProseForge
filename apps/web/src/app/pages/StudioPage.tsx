@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { createSelectionAction, listChapters, listChapterVersions, requestExport, saveChapterVersion, type Chapter, type ChapterVersion } from "../../lib/api/client";
+import { approveProposal, createSelectionAction, getProposalDiff, listChapters, listChapterVersions, rejectProposal, requestExport, saveChapterVersion, type Chapter, type ChapterVersion, type ProposalDiff } from "../../lib/api/client";
 import { loadDraft, saveDraft } from "../../lib/drafts";
 import { ChapterTree } from "../../features/editor/ChapterTree";
 import { ManuscriptEditor } from "../../features/editor/ManuscriptEditor";
 import { toSelectionActionRequest, type EditorAction } from "../../features/editor/editorState";
+import { ProposalActions } from "../../features/revision/ProposalActions";
+import { ProposalDiff as ProposalDiffView } from "../../features/revision/ProposalDiff";
 import { ExportDialog } from "../../features/export/ExportDialog";
 import { ProjectVersionHistory } from "../../features/VersionHistory";
 import { useProjectsQuery } from "../query";
@@ -19,6 +21,8 @@ export function StudioPage({ projectId, chapterId }: { projectId: string; chapte
   const [baseVersionId, setBaseVersionId] = useState<string | null>(null);
   const [message, setMessage] = useState("Loading chapters…");
   const [exportOpen, setExportOpen] = useState(false);
+  const [proposal, setProposal] = useState<ProposalDiff | null>(null);
+  const [acceptedHunks, setAcceptedHunks] = useState<number[]>([]);
 
   useEffect(() => { window.localStorage.setItem("proseforge.current-project", projectId); }, [projectId]);
   useEffect(() => {
@@ -69,13 +73,31 @@ export function StudioPage({ projectId, chapterId }: { projectId: string; chapte
     if (!chapter || !baseVersionId) { setMessage("Save the chapter before creating a proposal."); return; }
     try {
       const result = await createSelectionAction(chapter.id, { ...toSelectionActionRequest(action), base_version_id: baseVersionId });
+      if (result.review_id) { setMessage("Review report ready."); return; }
       const count = result.candidate_proposal_ids?.length ?? (result.proposal_id ? 1 : 0);
+      const proposalId = result.proposal_id ?? result.candidate_proposal_ids?.[0];
+      if (proposalId) {
+        const diff = await getProposalDiff(proposalId);
+        setProposal(diff);
+        setAcceptedHunks(diff.hunks.map((_, index) => index));
+      }
       setMessage(count === 1 ? "Proposal ready for review." : `${count} candidate proposals ready for review.`);
     } catch { setMessage("Selection changed elsewhere. Reload and try again."); }
+  };
+  const decideProposal = async (decision: "approve" | "reject") => {
+    if (!proposal) return;
+    try {
+      if (decision === "approve") {
+        const result = await approveProposal(proposal.proposal_id, acceptedHunks);
+        if (result.version) { setContent(result.version.content); setBaseVersion(result.version.version_no); setBaseVersionId(result.version.id); }
+        setMessage("Proposal approved as a new version.");
+      } else { await rejectProposal(proposal.proposal_id); setMessage("Proposal rejected."); }
+      setProposal(null);
+    } catch { setMessage("Proposal changed elsewhere. Reload and try again."); }
   };
 
   const downloadMarkdown = async () => { try { const result = await requestExport(projectId, "md", versions.map(item => item.id)); window.open(result.download_url, "_blank", "noopener,noreferrer"); } catch { setMessage("Export could not be prepared."); } };
   const exportSnapshot = async (payload: { format: "txt" | "md" | "docx" | "epub"; version_ids: string[] }) => { try { const result = await requestExport(projectId, payload.format, payload.version_ids); window.open(result.download_url, "_blank", "noopener,noreferrer"); setExportOpen(false); } catch { setMessage("Export could not be prepared."); } };
 
-  return <><section className="studio-layout"><ChapterTree chapters={chapters} currentChapterId={chapter?.id} onSelect={setChapter} /><div className="editor-pane"><div className="chapter-head"><span>{chapter ? `Chapter ${String(chapter.chapter_no).padStart(2, "0")}` : (project?.title ?? "Writing Studio")}</span><span className="status" aria-live="polite">{message}</span></div><ManuscriptEditor content={content} baseVersionId={baseVersionId} onContentChange={setContent} onAction={createProposal} /><button className="primary" onClick={save} disabled={!chapter}>Save version</button><button onClick={downloadMarkdown}>Download Markdown</button><button onClick={() => setExportOpen(true)}>Export snapshot</button>{exportOpen && <div role="dialog" aria-modal="true" aria-label="Export snapshot"><ExportDialog projectId={projectId} versionIds={versions.map(item => item.id)} onExport={exportSnapshot} /><button onClick={() => setExportOpen(false)}>Cancel</button></div>}</div></section>{project && <ProjectVersionHistory project={project} />}</>;
+  return <><section className="studio-layout"><ChapterTree chapters={chapters} currentChapterId={chapter?.id} onSelect={setChapter} /><div className="editor-pane"><div className="chapter-head"><span>{chapter ? `Chapter ${String(chapter.chapter_no).padStart(2, "0")}` : (project?.title ?? "Writing Studio")}</span><span className="status" aria-live="polite">{message}</span></div><ManuscriptEditor content={content} baseVersionId={baseVersionId} onContentChange={setContent} onAction={createProposal} />{proposal && <section className="proposal-panel"><ProposalDiffView hunks={proposal.hunks.map((hunk, index) => ({ id: String(index), before: content.slice(hunk.start, hunk.end), after: hunk.replacement }))} selectedHunkIds={acceptedHunks.map(String)} onSelectionChange={(id, selected) => setAcceptedHunks(current => selected ? [...new Set([...current, Number(id)])] : current.filter(index => index !== Number(id)))} /><ProposalActions guardStatus={proposal.guard_status ?? "clear"} onAction={decision => void decideProposal(decision)} /></section>}<button className="primary" onClick={save} disabled={!chapter}>Save version</button><button onClick={downloadMarkdown}>Download Markdown</button><button onClick={() => setExportOpen(true)}>Export snapshot</button>{exportOpen && <div role="dialog" aria-modal="true" aria-label="Export snapshot"><ExportDialog projectId={projectId} versionIds={versions.map(item => item.id)} onExport={exportSnapshot} /><button onClick={() => setExportOpen(false)}>Cancel</button></div>}</div></section>{project && <ProjectVersionHistory project={project} />}</>;
 }

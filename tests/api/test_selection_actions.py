@@ -66,6 +66,16 @@ def test_continue_creates_one_proposal_per_requested_candidate(auth_client, chap
     assert len(proposals) == 3
 
 
+def test_review_selection_creates_a_report_not_a_proposal(auth_client, chapter_with_active_version):
+    chapter, version, content = chapter_with_active_version
+    response = auth_client.post_json(
+        f"/api/v2/chapters/{chapter['id']}/selection-actions", _payload(version, content, action="review")
+    )
+    assert response.status_code == 201
+    assert response.json()["review_id"]
+    assert auth_client.get(f"/api/v2/chapters/{chapter['id']}/proposals").json() == []
+
+
 @pytest.mark.parametrize("conflict", ["hash", "base"])
 def test_selection_action_rejects_stale_hash_or_base_version(auth_client, chapter_with_active_version, conflict):
     chapter, version, content = chapter_with_active_version
