@@ -1,5 +1,5 @@
 import { createRootRoute, createRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Sidebar } from "../components/layout/Sidebar";
 import { TopBar } from "../components/layout/TopBar";
@@ -9,7 +9,7 @@ import { branchKeys, branchTreeKeys, messageKeys, useBranches, useBranchTree, us
 import { toChatMessage, type ChatMessage } from "../features/chat/chatTypes";
 import { UsagePage } from "../features/usage/UsagePage";
 import { SettingsModelsPage } from "../features/models/SettingsModelsPage";
-import { ApiError, type BranchCompareResult, type BranchTreeMessage } from "../lib/api/client";
+import { ApiError, getContextSnapshot, type BranchCompareResult, type BranchTreeMessage } from "../lib/api/client";
 import { AgentsPage } from "./pages/AgentsPage";
 import { ContextPage } from "./pages/ContextPage";
 import { OutlinePage } from "./pages/OutlinePage";
@@ -18,6 +18,7 @@ import { ReviewPage } from "./pages/ReviewPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { StudioPage } from "./pages/StudioPage";
 import { WorkflowPage } from "./pages/WorkflowPage";
+import { StoryBiblePage } from "../features/story-bible/StoryBiblePage";
 
 function WorkspaceShell() {
   return <div className="workspace-shell"><Sidebar /><TopBar /><Outlet /></div>;
@@ -79,6 +80,16 @@ const contextRoute = createRoute({
 function ContextRouteComponent() {
   const { projectId } = contextRoute.useParams();
   return page(<ContextPage projectId={projectId} />);
+}
+
+const storyBibleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/projects/$projectId/story-bible",
+  component: StoryBibleRouteComponent,
+});
+function StoryBibleRouteComponent() {
+  const { projectId } = storyBibleRoute.useParams();
+  return page(<StoryBiblePage projectId={projectId} />);
 }
 
 const workflowRoute = createRoute({
@@ -185,6 +196,8 @@ function ChatRouteComponent() {
     }
   };
   const messages = (messagesQuery.data ?? []).map(toChatMessage);
+  const contextSnapshotId = [...(messagesQuery.data ?? [])].reverse().find(message => message.context_snapshot_id)?.context_snapshot_id;
+  const contextSnapshotQuery = useQuery({ queryKey: ["context", "snapshot", contextSnapshotId], queryFn: () => getContextSnapshot(contextSnapshotId as string), enabled: Boolean(contextSnapshotId), retry: false });
   const branches = branchesQuery.data;
   const compare = buildCompareView(branches, branchId, compareWith, compareQuery.data, treeQuery.data);
   const error = messagesQuery.error instanceof ApiError ? `HTTP ${messagesQuery.error.status}` : (messagesQuery.isError ? "CHAT_LOAD_FAILED" : undefined);
@@ -197,6 +210,7 @@ function ChatRouteComponent() {
     branches={branches}
     treeMessages={treeQuery.data}
     compare={compare}
+    contextSnapshot={contextSnapshotQuery.data}
     showArchived={showArchived}
     onToggleArchived={() => setShowArchived(value => !value)}
     onSend={(text, options) => void send(text, options)}
@@ -231,6 +245,7 @@ export const routeTree = rootRoute.addChildren([
   manuscriptRoute,
   outlineRoute,
   contextRoute,
+  storyBibleRoute,
   workflowRoute,
   workflowDetailRoute,
   agentsRoute,

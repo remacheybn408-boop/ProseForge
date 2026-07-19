@@ -7,14 +7,19 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from proseforge.api.dependencies import current_user, unit_of_work
+from proseforge.application.context.build_snapshot import BuildContextSnapshot
 from proseforge.application.auth.service import AuthUser
 from proseforge.application.models.context_window import catalog_model_snapshot, default_catalog_snapshot, resolve_context_window
+from proseforge.context_engine.budgeting import calculate_budget
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 from proseforge.context_engine.tokenizer import ConservativeTokenizer
+from proseforge.infrastructure.database.models.story_bible import StoryBibleEntryModel
 
 router = APIRouter(prefix="/api/v1", tags=["context"])
+preview_router = APIRouter(prefix="/api/v2", tags=["context"])
 
 
 class ContextCreateRequest(BaseModel):
@@ -28,6 +33,12 @@ class ContextUpdateRequest(BaseModel):
     pinned: bool | None = None
     priority: int | None = Field(default=None, ge=0, le=100)
     excluded: bool | None = None
+
+
+class ContextPreviewRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=100000)
+    provider: str | None = None
+    model: str | None = None
 
 
 def _response(item) -> dict[str, object]:
@@ -136,3 +147,30 @@ async def download_context_snapshot(snapshot_id: str, user: Annotated[AuthUser, 
             raise HTTPException(status_code=404, detail="context snapshot not found")
         body = json.dumps(_snapshot_response(snapshot), ensure_ascii=False, indent=2)
     return Response(content=body, media_type="application/json", headers={"content-disposition": f'attachment; filename="context-{snapshot_id}.json"'})
+
+
+@preview_router.post("/projects/{project_id}/context/preview")
+async def preview_context(project_id: str, payload: ContextPreviewRequest, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)]) -> dict[str, object]:
+    if (payload.provider is None) != (payload.model is None):
+        raise HTTPException(status_code=422, detail="provider and model must be provided together")
+    async with uow:
+        if await uow.projects.get_by_id(user.id, project_id) is None:
+            raise HTTPException(status_code=404, detail="project not found")
+        model_snapshot = await catalog_model_snapshot(uow, payload.provider, payload.model) if payload.provider and payload.model else await default_catalog_snapshot(uow)
+        window = resolve_context_window(model_snapshot)
+        context_window = int(window["context_window"])
+        output_reserve = int((model_snapshot or {}).get("max_output_tokens") or 1024)
+        budget = calculate_budget(context_window, output_reserve)
+        rows = (await uow.session.scalars(select(StoryBibleEntryModel).where(StoryBibleEntryModel.project_id == project_id).order_by(StoryBibleEntryModel.kind, StoryBibleEntryModel.key))).all()
+        builder = BuildContextSnapshot()
+        selection = builder.select_story_facts(rows, payload.text, budget.input_tokens)
+        blocks = [builder.describe_block(block_type="persona", source_id="default", text="Story Bible preview", priority=100), *selection.blocks]
+        response_payload = {
+            "blocks": blocks,
+            "omitted": list(selection.omitted),
+            "injected_fact_ids": list(selection.injected_fact_ids),
+            "injected_fact_reasons": {str(block["source_id"]): str(block.get("reason", "")) for block in selection.blocks},
+            "budget": {"context_window": budget.context_window, "input_tokens": budget.input_tokens, "output_reserve": budget.output_reserve},
+        }
+        encoded = json.dumps(response_payload, ensure_ascii=False, sort_keys=True)
+        return {"id": "preview", "project_id": project_id, "snapshot_hash": hashlib.sha256(encoded.encode()).hexdigest(), "payload": response_payload}

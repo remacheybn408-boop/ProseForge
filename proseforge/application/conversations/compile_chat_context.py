@@ -11,17 +11,15 @@ V2-005 会在此之上加 trigger 注入：`collect_fact_blocks` 是预留的 se
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import select
 
+from proseforge.application.context.build_snapshot import BuildContextSnapshot
 from proseforge.context_engine.budgeting import calculate_budget
 from proseforge.context_engine.tokenizer import ConservativeTokenizer
-from proseforge.domain.common.ids import new_id
-from proseforge.infrastructure.database.models.remaining import ContextSnapshotModel
 from proseforge.infrastructure.database.models.story_bible import StoryBibleEntryModel
 
 DEFAULT_PERSONA = (
@@ -47,21 +45,25 @@ class CompileChatContext:
     def __init__(self, uow, tokenizer=None):
         self.uow = uow
         self.tokenizer = tokenizer or ConservativeTokenizer()
+        self.snapshot_builder = BuildContextSnapshot(self.tokenizer)
 
     async def execute(self, *, project_id: str, history, capabilities, provider: str, model: str, reasoning: dict, user_id: str = "") -> ChatContext:
         budget = calculate_budget(capabilities.context_window, capabilities.max_output_tokens)
-        system_blocks: list[dict[str, Any]] = [{"type": "persona", "text": DEFAULT_PERSONA}]
+        system_blocks: list[dict[str, Any]] = [self.snapshot_builder.describe_block(block_type="persona", source_id="default", text=DEFAULT_PERSONA, priority=100)]
         outline_summary = await self._outline_summary(project_id, user_id)
         if outline_summary:
-            system_blocks.append({"type": "outline", "text": outline_summary})
-        fact_blocks, injected_fact_ids = await self.collect_fact_blocks(project_id)
+            system_blocks.append(self.snapshot_builder.describe_block(block_type="outline", source_id="latest", text=outline_summary, priority=80))
+        base_tokens = sum(int(block["token_estimate"]) for block in system_blocks)
+        matching_text = "\n".join(message.content for message in history[-8:] if message.content)
+        fact_blocks, injected_fact_ids, fact_omitted = await self.collect_fact_blocks(project_id, matching_text, max(0, budget.input_tokens - base_tokens))
         system_blocks.extend(fact_blocks)
         system_tokens = sum(self.tokenizer.count(str(block["text"])) for block in system_blocks)
         allowance = max(0, budget.input_tokens - system_tokens)
         kept, omitted = self._trim(history, allowance)
         if omitted:
-            system_blocks.append({"type": "omitted", "text": f"{len(omitted)} earlier message(s) were omitted to fit the model context budget."})
-        snapshot_id = await self._persist_snapshot(project_id, system_blocks, kept, injected_fact_ids, omitted, budget)
+            summary = f"{len(omitted)} earlier message(s) were omitted to fit the model context budget."
+            system_blocks.append(self.snapshot_builder.describe_block(block_type="omitted", source_id="history", text=summary))
+        snapshot_id = await self._persist_snapshot(project_id, system_blocks, kept, injected_fact_ids, [*fact_omitted, *omitted], budget)
         model_snapshot = {
             "provider": provider,
             "model": model,
@@ -79,22 +81,18 @@ class CompileChatContext:
             reasoning_snapshot=dict(reasoning),
         )
 
-    async def collect_fact_blocks(self, project_id: str) -> tuple[list[dict[str, Any]], list[str]]:
+    async def collect_fact_blocks(self, project_id: str, matching_text: str, token_budget: int) -> tuple[list[dict[str, Any]], list[str], list[dict[str, str]]]:
         """常驻注入：pinned 且 active 的 story-bible 条目。
 
         V2-005 seam：trigger-word 注入将在此并入（pinned ∪ triggered）。
         """
         rows = (await self.uow.session.scalars(
             select(StoryBibleEntryModel)
-            .where(
-                StoryBibleEntryModel.project_id == project_id,
-                StoryBibleEntryModel.status == "active",
-                StoryBibleEntryModel.pinned.is_(True),
-            )
+            .where(StoryBibleEntryModel.project_id == project_id)
             .order_by(StoryBibleEntryModel.kind, StoryBibleEntryModel.key)
         )).all()
-        blocks = [{"type": "story_fact", "fact_id": row.id, "text": f"[{row.kind}] {row.key}: {row.value_json}"} for row in rows]
-        return blocks, [row.id for row in rows]
+        selection = self.snapshot_builder.select_story_facts(rows, matching_text, token_budget)
+        return list(selection.blocks), list(selection.injected_fact_ids), list(selection.omitted)
 
     async def _outline_summary(self, project_id: str, user_id: str) -> str:
         outlines = await self.uow.outlines.list_owned(project_id, user_id)
@@ -120,7 +118,7 @@ class CompileChatContext:
                 continue
             tokens = self.tokenizer.count(message.content)
             if kept and used + tokens > allowance:
-                omitted.append({"message_id": message.id, "reason": "budget_trim"})
+                omitted.append({"source_type": "message", "source_id": message.id, "message_id": message.id, "reason": "budget_trim"})
                 continue
             kept.append(message)
             used += tokens
@@ -129,24 +127,9 @@ class CompileChatContext:
         return kept, omitted
 
     async def _persist_snapshot(self, project_id: str, system_blocks, kept, injected_fact_ids, omitted, budget) -> str:
-        payload = {
-            "blocks": list(system_blocks),
-            "message_ids": [message.id for message in kept],
-            "injected_fact_ids": list(injected_fact_ids),
-            "omitted": list(omitted),
-            "budget": {
-                "context_window": budget.context_window,
-                "input_tokens": budget.input_tokens,
-                "output_reserve": budget.output_reserve,
-            },
-        }
-        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
-        snapshot = ContextSnapshotModel(
-            id=new_id(),
-            project_id=project_id,
-            snapshot_hash=hashlib.sha256(encoded.encode()).hexdigest(),
-            payload=encoded,
+        snapshot = self.snapshot_builder.persist(
+            self.uow.session, project_id=project_id, blocks=list(system_blocks), messages=kept,
+            injected_fact_ids=injected_fact_ids, omitted=omitted, budget=budget,
         )
-        self.uow.session.add(snapshot)
         await self.uow.session.flush()
         return snapshot.id

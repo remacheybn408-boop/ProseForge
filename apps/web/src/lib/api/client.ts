@@ -5,7 +5,11 @@ export type ContextItem = { id: string; project_id: string; source_type: string;
 export type Chapter = { id: string; project_id: string; chapter_no: number; title: string; status: string; active_version_id?: string | null };
 export type ChapterVersion = { id: string; chapter_id: string; version_no: number; content: string; word_count: number };
 export type Workflow = { id: string; project_id: string; workflow_type: string; status: string };
-export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; status: string };
+export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; status: string; context_snapshot_id?: string | null };
+export type StoryBibleFact = { id: string; project_id: string; kind: string; key: string; value: Record<string, unknown>; status: string; confidence: number; source: string; pinned: boolean; version: number };
+export type ContextBlock = { type?: string; source_type: string; source_id: string; text: string; token_estimate: number; priority?: number; pinned: boolean; redaction?: boolean; reason?: string };
+export type ContextOmission = { source_type?: string; source_id: string; message_id?: string; reason: string };
+export type ContextSnapshot = { id: string; project_id?: string; snapshot_hash: string; payload: { blocks: ContextBlock[]; omitted: ContextOmission[]; budget: { context_window: number; input_tokens: number; output_reserve: number }; injected_fact_ids?: string[]; injected_fact_reasons?: Record<string, string> } };
 export type ModelProfile = { id: string; name: string; config: Record<string, unknown> };
 export type UsageBucket = { input_tokens: number; output_tokens: number; cached_input_tokens: number; reasoning_tokens: number; total_tokens: number; cost_usd: number | null };
 export type UsageSummary = { scope: string; project_id?: string | null; conversation_id?: string | null; workflow_id?: string | null; actual: UsageBucket; estimated: UsageBucket };
@@ -58,6 +62,12 @@ export function importOutline(projectId: string, payload: { title: string; conte
 export function answerOutline(outlineId: string, answers: Record<string, unknown>) { return request<Outline>(`/api/v1/outlines/${outlineId}/parse`, { method: "POST", body: JSON.stringify({ answers }) }); }
 export function confirmOutline(outlineId: string) { return request<Outline>(`/api/v1/outlines/${outlineId}/confirm`, { method: "POST" }); }
 export function listContext(projectId: string) { return request<{ items: ContextItem[]; used_tokens: number; context_window: number; context_window_source: string; available_tokens: number }>(`/api/v1/projects/${projectId}/context`); }
+export function getContextSnapshot(snapshotId: string) { return request<ContextSnapshot>(`/api/v1/context/snapshots/${snapshotId}`); }
+export function previewContext(projectId: string, payload: { text: string; provider?: string; model?: string }) { return request<ContextSnapshot>(`/api/v2/projects/${projectId}/context/preview`, { method: "POST", body: JSON.stringify(payload) }); }
+export function listStoryBible(projectId: string) { return request<StoryBibleFact[]>(`/api/v2/projects/${projectId}/story-bible`); }
+export function createStoryFact(projectId: string, payload: { kind: string; key: string; value: Record<string, unknown>; pinned?: boolean; confidence?: number; source?: string }) { return request<StoryBibleFact>(`/api/v2/projects/${projectId}/story-bible/entries`, { method: "POST", body: JSON.stringify(payload) }); }
+export function updateStoryFact(factId: string, payload: { expected_version: number; key?: string; value?: Record<string, unknown>; pinned?: boolean; confidence?: number; source?: string }) { return request<StoryBibleFact>(`/api/v2/story-bible/${factId}`, { method: "PATCH", body: JSON.stringify(payload) }); }
+export function setStoryFactStatus(factId: string, status: string) { return request<StoryBibleFact>(`/api/v2/story-bible/${factId}/status`, { method: "POST", body: JSON.stringify({ status }) }); }
 export function addContext(projectId: string, content: string, sourceType = "manual") { return request<ContextItem>(`/api/v1/projects/${projectId}/context/items`, { method: "POST", body: JSON.stringify({ content, source_type: sourceType }) }); }
 export function updateContext(itemId: string, payload: Partial<Pick<ContextItem, "content" | "pinned" | "priority" | "excluded">>) { return request<ContextItem>(`/api/v1/context/items/${itemId}`, { method: "PATCH", body: JSON.stringify(payload) }); }
 export function createWorkflow(projectId: string, chapterNumbers: number[]) { return request<Workflow>(`/api/v1/projects/${projectId}/workflows/novel`, { method: "POST", body: JSON.stringify({ chapter_numbers: chapterNumbers }) }); }

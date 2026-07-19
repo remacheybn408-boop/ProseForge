@@ -4,16 +4,16 @@ import json
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import AliasChoices, BaseModel, Field
+from sqlalchemy import select, update
 
 from proseforge.api.dependencies import current_user, unit_of_work
 from proseforge.application.auth.service import AuthUser
+from proseforge.application.story_bible.service import StoryBibleService, StoryBibleStatusTransitionError
+from proseforge.domain.story_bible.entities import StoryFact, StoryFactValidationError
 from proseforge.infrastructure.database.models.project import ProjectModel
 from proseforge.infrastructure.database.models.story_bible import StoryBibleEntryModel
-from proseforge.domain.story_bible.entities import VALID_KINDS
-from proseforge.domain.common.ids import new_id
 
 router = APIRouter(prefix="/api/v2", tags=["story-bible"])
 
@@ -25,34 +25,162 @@ class FactRequest(BaseModel):
     pinned: bool = False
 
 
+class FactPatchRequest(BaseModel):
+    expected_version: int = Field(ge=1, validation_alias=AliasChoices("expected_version", "version"))
+    kind: str | None = None
+    key: str | None = Field(default=None, min_length=1, max_length=200)
+    value: dict[str, object] | None = None
+    pinned: bool | None = None
+
+
+class PromiseStatusRequest(BaseModel):
+    status: str = Field(min_length=1, max_length=32)
+    version: int | None = Field(default=None, ge=1)
+
+
 async def _owns(uow, project_id: str, user_id: str) -> bool:
     return await uow.session.scalar(select(ProjectModel.id).where(ProjectModel.id == project_id, ProjectModel.owner_id == user_id)) is not None
+
+
+async def _owned_fact(uow, entry_id: str, user_id: str) -> StoryBibleEntryModel:
+    row = await uow.session.scalar(
+        select(StoryBibleEntryModel)
+        .join(ProjectModel, ProjectModel.id == StoryBibleEntryModel.project_id)
+        .where(StoryBibleEntryModel.id == entry_id, ProjectModel.owner_id == user_id)
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="fact not found")
+    return row
+
+
+def _invalid_fact(error: StoryFactValidationError) -> HTTPException:
+    return HTTPException(status_code=422, detail={"code": "INVALID_STORY_FACT", "message": str(error)})
+
+
+def _invalid_transition(error: StoryBibleStatusTransitionError) -> HTTPException:
+    return HTTPException(
+        status_code=422,
+        detail={
+            "code": "INVALID_PROMISE_STATE_TRANSITION",
+            "details": {"allowed": list(error.allowed)},
+        },
+    )
 
 
 @router.get("/projects/{project_id}/story-bible")
 async def list_facts(project_id: str, user: Annotated[AuthUser, Depends(current_user)], uow=Depends(unit_of_work)):
     async with uow:
         if not await _owns(uow, project_id, user.id): raise HTTPException(status_code=404, detail="project not found")
-        rows = (await uow.session.scalars(select(StoryBibleEntryModel).where(StoryBibleEntryModel.project_id == project_id, StoryBibleEntryModel.status == "active").order_by(StoryBibleEntryModel.kind, StoryBibleEntryModel.key))).all()
+        rows = (await uow.session.scalars(select(StoryBibleEntryModel).where(StoryBibleEntryModel.project_id == project_id).order_by(StoryBibleEntryModel.kind, StoryBibleEntryModel.key))).all()
         return [_response(row) for row in rows]
 
 
-@router.post("/projects/{project_id}/story-bible/entries", status_code=201)
+@router.post("/projects/{project_id}/story-bible/entries", status_code=status.HTTP_201_CREATED)
 async def create_fact(project_id: str, payload: FactRequest, user: Annotated[AuthUser, Depends(current_user)], uow=Depends(unit_of_work)):
-    if payload.kind not in VALID_KINDS: raise HTTPException(status_code=422, detail="unsupported story bible kind")
     async with uow:
         if not await _owns(uow, project_id, user.id): raise HTTPException(status_code=404, detail="project not found")
+        try:
+            fact = StoryFact.create(project_id, payload.kind, payload.key, payload.value, pinned=payload.pinned)
+        except StoryFactValidationError as error:
+            raise _invalid_fact(error) from error
         now = datetime.now(UTC)
-        row = StoryBibleEntryModel(id=new_id(), project_id=project_id, kind=payload.kind, key=payload.key, value_json=json.dumps(payload.value, ensure_ascii=False), pinned=payload.pinned, created_at=now, updated_at=now)
+        row = StoryBibleEntryModel(id=fact.id, project_id=project_id, kind=fact.kind, key=fact.key, value_json=json.dumps(fact.value, ensure_ascii=False), status=fact.status, pinned=fact.pinned, created_at=now, updated_at=now)
         uow.session.add(row); await uow.commit(); return _response(row)
 
 
 @router.post("/story-bible/{entry_id}/pin")
 async def pin_fact(entry_id: str, user: Annotated[AuthUser, Depends(current_user)], uow=Depends(unit_of_work)):
     async with uow:
-        row = await uow.session.get(StoryBibleEntryModel, entry_id)
-        if row is None or not await _owns(uow, row.project_id, user.id): raise HTTPException(status_code=404, detail="fact not found")
+        row = await _owned_fact(uow, entry_id, user.id)
         row.pinned = not row.pinned; row.updated_at = datetime.now(UTC); await uow.commit(); return _response(row)
+
+
+@router.patch("/story-bible/{entry_id}")
+async def update_fact(
+    entry_id: str,
+    payload: FactPatchRequest,
+    user: Annotated[AuthUser, Depends(current_user)],
+    uow=Depends(unit_of_work),
+) -> dict[str, object]:
+    changes = payload.model_dump(exclude_unset=True, exclude={"expected_version"})
+    async with uow:
+        row = await _owned_fact(uow, entry_id, user.id)
+        if row.version != payload.expected_version:
+            raise HTTPException(status_code=409, detail={"code": "VERSION_CONFLICT", "current_version": row.version})
+        try:
+            updated = StoryBibleService.update_fact(StoryBibleService.from_record(row), changes)
+        except StoryFactValidationError as error:
+            raise _invalid_fact(error) from error
+
+        result = await uow.session.execute(
+            update(StoryBibleEntryModel)
+            .where(StoryBibleEntryModel.id == row.id, StoryBibleEntryModel.version == payload.expected_version)
+            .values(
+                kind=updated.kind,
+                key=updated.key,
+                value_json=json.dumps(updated.value, ensure_ascii=False),
+                status=updated.status,
+                pinned=updated.pinned,
+                version=payload.expected_version + 1,
+                updated_at=datetime.now(UTC),
+            )
+        )
+        if result.rowcount != 1:
+            current_version = await uow.session.scalar(select(StoryBibleEntryModel.version).where(StoryBibleEntryModel.id == entry_id))
+            raise HTTPException(status_code=409, detail={"code": "VERSION_CONFLICT", "current_version": current_version})
+        await uow.commit()
+        return {
+            "id": row.id,
+            "project_id": updated.project_id,
+            "kind": updated.kind,
+            "key": updated.key,
+            "value": updated.value,
+            "status": updated.status,
+            "confidence": row.confidence,
+            "source": row.source,
+            "pinned": updated.pinned,
+            "version": payload.expected_version + 1,
+        }
+
+
+@router.post("/story-bible/{entry_id}/status")
+async def transition_promise_status(
+    entry_id: str,
+    payload: PromiseStatusRequest,
+    user: Annotated[AuthUser, Depends(current_user)],
+    uow=Depends(unit_of_work),
+) -> dict[str, object]:
+    async with uow:
+        row = await _owned_fact(uow, entry_id, user.id)
+        expected_version = payload.version if payload.version is not None else row.version
+        if row.version != expected_version:
+            raise HTTPException(status_code=409, detail={"code": "VERSION_CONFLICT", "current_version": row.version})
+        try:
+            updated = StoryBibleService.validate_status_transition(StoryBibleService.from_record(row), payload.status)
+        except StoryBibleStatusTransitionError as error:
+            raise _invalid_transition(error) from error
+
+        result = await uow.session.execute(
+            update(StoryBibleEntryModel)
+            .where(StoryBibleEntryModel.id == row.id, StoryBibleEntryModel.version == expected_version)
+            .values(status=updated.status, version=expected_version + 1, updated_at=datetime.now(UTC))
+        )
+        if result.rowcount != 1:
+            current_version = await uow.session.scalar(select(StoryBibleEntryModel.version).where(StoryBibleEntryModel.id == entry_id))
+            raise HTTPException(status_code=409, detail={"code": "VERSION_CONFLICT", "current_version": current_version})
+        await uow.commit()
+        return {
+            "id": row.id,
+            "project_id": updated.project_id,
+            "kind": updated.kind,
+            "key": updated.key,
+            "value": updated.value,
+            "status": updated.status,
+            "confidence": row.confidence,
+            "source": row.source,
+            "pinned": updated.pinned,
+            "version": expected_version + 1,
+        }
 
 
 def _response(row: StoryBibleEntryModel) -> dict[str, object]:

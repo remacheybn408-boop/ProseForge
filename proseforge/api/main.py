@@ -10,7 +10,7 @@ from proseforge.api.routes.auth import router as auth_router
 from proseforge.api.routes.branches import router as branches_router
 from proseforge.api.routes.chapters import router as chapters_router
 from proseforge.api.routes.conversations import router as conversations_router
-from proseforge.api.routes.context import router as context_router
+from proseforge.api.routes.context import preview_router as context_preview_router, router as context_router
 from proseforge.api.routes.credentials import router as credentials_router
 from proseforge.api.routes.exports import router as exports_router
 from proseforge.api.routes.files import router as files_router
@@ -144,6 +144,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(credentials_router)
     application.include_router(outlines_router)
     application.include_router(context_router)
+    application.include_router(context_preview_router)
     application.include_router(model_profiles_router)
     application.include_router(maintenance_router)
     application.include_router(usage_router)

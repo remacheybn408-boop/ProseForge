@@ -179,3 +179,23 @@
 .reasoning-level.selected{border-color:var(--ink);color:var(--ink);background:var(--wash)}
 .reasoning-level:disabled{opacity:.45;cursor:not-allowed}
 .reasoning-warning{flex-basis:100%;font-size:11px;color:var(--ink-strong)}
+
+/* Story Bible + Context Inspector */
+.story-bible-page{width:min(100%,860px);margin:0 auto;padding:32px 0 48px;display:grid;gap:20px}
+.story-bible-heading{display:flex;align-items:start;justify-content:space-between;gap:24px;border-bottom:1px solid var(--ink-faint);padding-bottom:20px}
+.story-bible-heading h2{margin:4px 0 8px;font:28px var(--font-seal);color:var(--ink-strong)}
+.story-bible-heading p:last-child,.story-bible-notice,.fact-editor small{margin:0;color:var(--ink-mid);font-size:13px;line-height:1.5}
+.story-bible-notice{min-height:1.5em}.story-bible-list{display:grid;gap:12px}
+.story-fact-card{display:grid;gap:12px;border:1px solid var(--ink-faint);background:var(--paper-raised);padding:18px 20px;border-radius:var(--radius-md)}
+.story-fact-title,.story-fact-meta,.story-fact-actions{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.story-fact-title h3{margin:3px 0 0;font:20px var(--font-seal);color:var(--ink-strong)}.story-fact-card>p{margin:0;color:var(--ink);font:14px/1.6 var(--font-prose)}
+.story-fact-meta{justify-content:start;font:12px var(--font-mono);color:var(--ink-mid)}.story-fact-actions{justify-content:start}
+.story-bible-editor{margin:0}.fact-editor{display:grid;gap:14px}.fact-editor label{display:grid;gap:6px;color:var(--ink-mid);font-size:13px}
+.fact-editor input,.fact-editor select,.fact-editor textarea{width:100%;border:1px solid var(--ink-faint);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink);padding:8px 10px;outline:0}
+.fact-editor textarea{min-height:80px;resize:vertical;font:14px/1.6 var(--font-ui)}.fact-editor input:focus,.fact-editor select:focus,.fact-editor textarea:focus{border-color:var(--ink-mid);box-shadow:0 0 0 2px var(--wash)}
+.fact-editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.fact-editor-pin{align-content:end;grid-template-columns:auto 1fr;align-items:center;cursor:pointer}.fact-editor-pin input{width:auto}
+.fact-voice{display:grid;gap:12px;margin:0;padding:14px;border:1px dashed var(--ink-faint)}.fact-voice legend{padding:0 5px;font:13px var(--font-seal);color:var(--ink-strong)}.fact-editor-actions{display:flex;justify-content:end;gap:8px}
+.context-inspector{display:grid;gap:18px;color:var(--ink)}.context-inspector header{display:grid;gap:4px}.context-inspector header h3{margin:0;font:20px var(--font-seal);color:var(--ink-strong)}.context-inspector header code{font:11px var(--font-mono);color:var(--ink-mid);overflow:hidden;text-overflow:ellipsis}
+.context-budget-summary{gap:12px}.context-budget-summary dl{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0}.context-budget-summary dl div{display:grid;gap:3px}.context-budget-summary dt{font-size:11px;color:var(--ink-mid)}.context-budget-summary dd{margin:0;font:14px var(--font-mono);color:var(--ink-strong)}
+.context-section{display:grid;gap:8px;border-top:1px solid var(--ink-faint);padding-top:14px}.context-section h4{margin:0;font:14px var(--font-seal);color:var(--ink-strong)}.context-section ul{display:grid;gap:8px;list-style:none;margin:0;padding:0}.context-section li{display:flex;justify-content:space-between;gap:10px;border:1px solid var(--ink-faint);background:var(--paper-raised);padding:9px 10px}.context-section li>div{display:grid;gap:3px;min-width:0}.context-section strong{font-size:12px;overflow-wrap:anywhere}.context-section span{font-size:11px;color:var(--ink-mid)}.context-section li>div:last-child{display:flex;align-items:start;justify-content:end;gap:4px}.context-empty{margin:0;font-size:12px;color:var(--ink-mid)}.context-omit-reason{align-self:center;text-transform:capitalize;text-align:right}
+@media(max-width:600px){.story-bible-heading{display:grid}.fact-editor-grid{grid-template-columns:1fr}.context-budget-summary dl{grid-template-columns:1fr}.context-section li{display:grid}.context-omit-reason{text-align:left}}

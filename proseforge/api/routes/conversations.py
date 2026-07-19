@@ -93,7 +93,10 @@ async def list_messages(
         if not await uow.conversations.branch_belongs_to_conversation(branch_id, conversation_id, user.id):
             raise HTTPException(status_code=404, detail="conversation or branch not found")
         messages = await uow.conversations.list_visible_messages(branch_id)
-        return [{"id": item.id, "role": item.role, "content": item.content, "status": item.status} for item in messages]
+        return [{
+            "id": item.id, "role": item.role, "content": item.content, "status": item.status,
+            "context_snapshot_id": (item.model_snapshot or {}).get("context_snapshot_id"),
+        } for item in messages]
 
 
 @router.post("/conversations/{conversation_id}/branches")

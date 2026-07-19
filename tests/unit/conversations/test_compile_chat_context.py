@@ -52,7 +52,7 @@ class FakeUow:
 def _fact(fact_id: str, key: str, *, pinned: bool = True, kind: str = "character") -> StoryBibleEntryModel:
     now = datetime.now(UTC)
     return StoryBibleEntryModel(
-        id=fact_id, project_id="p1", kind=kind, key=key, value_json=json.dumps({"note": f"note-{key}"}),
+        id=fact_id, project_id="p1", kind=kind, key=key, value_json=json.dumps({"note": f"note-{key}", "triggers": [key], "budget_tokens": 24}),
         status="active", confidence=1.0, source="user", pinned=pinned, version=1, created_at=now, updated_at=now,
     )
 
@@ -142,3 +142,32 @@ async def test_unsupported_reasoning_snapshot_is_carried_through():
         reasoning={"level": "deep", "supported": False, "reason": "unsupported"}, user_id="u1",
     )
     assert context.reasoning_snapshot == {"level": "deep", "supported": False, "reason": "unsupported"}
+
+
+@pytest.mark.asyncio
+async def test_triggered_facts_are_injected_but_unmatched_facts_do_not_consume_budget():
+    uow = FakeUow(facts=[_fact("hit", "Mira", pinned=False), _fact("miss", "unrelated", pinned=False)])
+    context = await CompileChatContext(uow).execute(
+        project_id="p1", history=[_message("m1", "user", "Continue Mira's scene")], capabilities=_capabilities(),
+        provider="openai", model="gpt-test", reasoning={"level": "auto", "parameter": None}, user_id="u1",
+    )
+    fact_blocks = [block for block in context.system_blocks if block["type"] == "story_fact"]
+    assert [block["fact_id"] for block in fact_blocks] == ["hit"]
+    snapshot = next(row for row in uow.session.added if isinstance(row, ContextSnapshotModel))
+    payload = json.loads(snapshot.payload)
+    assert payload["injected_fact_ids"] == ["hit"]
+    assert any(item["source_id"] == "miss" and item["reason"] == "not_triggered" for item in payload["omitted"])
+
+
+@pytest.mark.asyncio
+async def test_pinned_fact_survives_budget_pressure_before_triggered_fact():
+    pinned = _fact("pinned", "canon", pinned=True)
+    pinned.value_json = json.dumps({"note": "pinned canon", "triggers": [], "budget_tokens": 900})
+    triggered = _fact("triggered", "Mira", pinned=False)
+    triggered.value_json = json.dumps({"note": "triggered", "triggers": ["Mira"], "budget_tokens": 50})
+    uow = FakeUow(facts=[pinned, triggered])
+    context = await CompileChatContext(uow).execute(
+        project_id="p1", history=[_message("m1", "user", "Mira arrives")], capabilities=_capabilities(context_window=700, max_output_tokens=100),
+        provider="openai", model="gpt-test", reasoning={"level": "auto", "parameter": None}, user_id="u1",
+    )
+    assert context.injected_fact_ids == ("pinned",)

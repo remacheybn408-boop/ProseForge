@@ -1,7 +1,21 @@
-> **⚠ 证据不可信（2026-07-18 撤销）**：本批次文档缺少逐条命令、退出码、镜像 digest 与 `down -v` 证据，按蓝图 `TEST_EXECUTION_POLICY.md` §五 不构成有效验证。真实状态以 `artifacts/VALIDATION_STATUS.md` 为准。
+# V2 Batch B2 Validation
 
-# V2 B2 Podman Batch
+Date: 2026-07-19
 
-Tasks: V2-004/005. Model capability catalog, context and Story Bible.
+Scope: V2-004 model/reasoning and V2-005 structured Story Bible, trigger injection, Context Inspector.
 
-Evidence: full Podman Python matrix **645 passed, 1 skipped, 3 warnings**; frontend **18 files / 27 tests passed**.
+## Podman environment
+
+- Podman client: 6.0.1
+- Compose services: postgres, redis, provider-mock
+
+## Results
+
+| Command | Result |
+| --- | --- |
+| `podman compose -f compose.yaml -f compose.test.yaml run --rm api-test pytest -q tests/api` | 53 passed |
+| `podman compose -f compose.yaml -f compose.test.yaml run --rm api-test pytest -q tests/api/test_story_bible.py tests/integration/context/test_snapshot_pins_facts.py tests/unit/conversations/test_compile_chat_context.py tests/unit/story_bible/test_service.py` | 14 passed |
+| `podman compose -f compose.yaml -f compose.test.yaml run --rm api-test ruff check proseforge tests` | passed |
+| `podman compose -f compose.yaml -f compose.test.yaml run --rm web-test` | 25 files / 79 tests passed; TypeScript and production build passed |
+
+Notes: test output includes existing Python deprecation and JWT key-length warnings. No test failures remained. Full Playwright is intentionally deferred to V2-010 per the V2 test policy.

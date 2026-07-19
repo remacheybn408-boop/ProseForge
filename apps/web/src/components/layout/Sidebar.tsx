@@ -2,7 +2,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { createConversation } from "../../lib/api/client";
 
-type ProjectView = "studio" | "outline" | "context" | "workflow" | "agents" | "usage";
+type ProjectView = "studio" | "outline" | "context" | "story-bible" | "workflow" | "agents" | "usage";
 
 function projectFromPath(pathname: string): string | undefined {
   return pathname.match(/^\/projects\/([^/]+)/)?.[1];
@@ -40,6 +40,7 @@ export function Sidebar() {
       {projectId && <button type="button" className={pathname.includes("/chat/") ? "active" : ""} onClick={() => void openChat()} disabled={openingChat}>{openingChat ? "Opening…" : "Companion chat"}</button>}
       {projectId && projectItem("Outline intake", "outline")}
       {projectId && projectItem("Context", "context")}
+      {projectId && projectItem("Story Bible", "story-bible")}
       {projectId && projectItem("Workflow", "workflow")}
       {projectId && projectItem("Agent Swarm", "agents")}
       {projectId && projectItem("Usage", "usage")}

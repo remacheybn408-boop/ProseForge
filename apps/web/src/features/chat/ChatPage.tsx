@@ -4,6 +4,7 @@ import { WorkspaceSplit } from "../../components/layout/WorkspaceSplit";
 import type { BranchCompareResult, BranchInfo, BranchTreeMessage } from "../../lib/api/client";
 import { BranchCompareView, type ComparePrefixMessage } from "../branches/BranchCompareView";
 import { BranchTreeView } from "../branches/BranchTreeView";
+import { ContextInspector, type ContextSnapshot as InspectorSnapshot } from "../context/ContextInspector";
 import { ChatComposer } from "./ChatComposer";
 import { MessageActions } from "./MessageActions";
 import { MessageList } from "./MessageList";
@@ -18,7 +19,7 @@ export type CompareViewData = {
   prefix: ComparePrefixMessage[];
 };
 
-export function ChatPage({ conversationId, branchId, messages = [], error, notice, branches, treeMessages, compare, showArchived, onSend = () => undefined, onStop, onRetry, onFork, onReload, onSelectBranch, onCompareBranch, onEditMessage, onRegenerateMessage, onToggleArchived }: {
+export function ChatPage({ conversationId, branchId, messages = [], error, notice, branches, treeMessages, compare, contextSnapshot, showArchived, onSend = () => undefined, onStop, onRetry, onFork, onReload, onSelectBranch, onCompareBranch, onEditMessage, onRegenerateMessage, onToggleArchived }: {
   conversationId: string;
   branchId: string;
   messages?: ChatMessage[];
@@ -27,6 +28,7 @@ export function ChatPage({ conversationId, branchId, messages = [], error, notic
   branches?: BranchInfo[];
   treeMessages?: BranchTreeMessage[];
   compare?: CompareViewData;
+  contextSnapshot?: InspectorSnapshot | null;
   showArchived?: boolean;
   onSend?: (text: string, options?: SendOptions) => void;
   onStop?: () => void;
@@ -70,6 +72,7 @@ export function ChatPage({ conversationId, branchId, messages = [], error, notic
     <p>{visible.length} messages</p>
     {branches && <BranchTreeView branches={branches} activeBranchId={branchId} showArchived={showArchived} onSelect={onSelectBranch} onCompare={onCompareBranch} onToggleArchived={onToggleArchived} />}
     {compare && <BranchCompareView result={compare.result} leftLabel={compare.leftLabel} rightLabel={compare.rightLabel} prefix={compare.prefix} />}
+    <ContextInspector snapshot={contextSnapshot} />
   </PaperPanel>;
 
   return <WorkspaceSplit inspector={inspector}>
