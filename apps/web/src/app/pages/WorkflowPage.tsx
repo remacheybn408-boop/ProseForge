@@ -59,7 +59,7 @@ export function WorkflowPage({ projectId, workflowId }: { projectId: string; wor
 
   // Load the latest saved definition onto the canvas once per definition id;
   // later canvas edits stay local until the user saves a new revision.
-  const loadedDefinitionRef = useRef<string>();
+  const loadedDefinitionRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!selectedDefinition || loadedDefinitionRef.current === selectedDefinition.id) return;
     loadedDefinitionRef.current = selectedDefinition.id;
