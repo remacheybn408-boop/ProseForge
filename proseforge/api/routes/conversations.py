@@ -8,9 +8,12 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from proseforge.api.dependencies import current_user, unit_of_work
+from proseforge.api.routes.branches import _validate_reasoning_level
 from proseforge.api.sse.encoder import encode_sse
 from proseforge.application.auth.service import AuthUser
 from proseforge.application.conversations.send_message import SendMessage
+from proseforge.application.models.resolve_model import FALLBACK_CAPABILITIES
+from proseforge.domain.model.capabilities import capabilities_from_model
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
 router = APIRouter(prefix="/api/v1", tags=["conversations"])
@@ -38,8 +41,8 @@ class BranchRequest(BaseModel):
 
 
 class MessageControlRequest(BaseModel):
-    provider: str = "openai"
-    model: str = "gpt-4.1-mini"
+    provider: str | None = None  # 缺省 → 复用消息落库 model_snapshot
+    model: str | None = None
     reasoning_level: str | None = None
 
 
@@ -51,6 +54,15 @@ def _resolve_retry_reasoning_level(explicit: str | None, snapshot: dict | None) 
     if snapshot and snapshot.get("level"):
         return str(snapshot["level"])
     return "auto"
+
+
+def _resolve_retry_target_model(payload: MessageControlRequest, message) -> tuple[str, str]:
+    """retry/continue 的目标模型：显式指定优先；否则复用消息落库 model_snapshot
+    （非默认模型的消息不被重试到错误模型）；无快照才回落默认模型。"""
+    snapshot = message.model_snapshot or {}
+    provider = payload.provider or snapshot.get("provider") or "openai"
+    model = payload.model or snapshot.get("model") or "gpt-4.1-mini"
+    return str(provider), str(model)
 
 
 @router.post("/conversations")
@@ -144,11 +156,17 @@ async def _requeue_message(message_id: str, payload: MessageControlRequest, requ
     message = await _owned_message(message_id, user, request)
     if message.status not in allowed:
         raise HTTPException(status_code=409, detail="message is not recoverable in its current state")
+    provider, model = _resolve_retry_target_model(payload, message)
     async with unit_of_work(request) as uow:
+        if payload.reasoning_level:
+            # 显式级别与 send 同规则：入队前按目标模型 catalog 校验，不支持 → 422。
+            catalog = await uow.model_catalog.get(provider, model)
+            capabilities = capabilities_from_model(catalog) if catalog is not None else FALLBACK_CAPABILITIES
+            _validate_reasoning_level(payload.reasoning_level, capabilities)
         await uow.conversations.set_message_status(message_id, "PENDING")
         await uow.commit()
     reasoning_level = _resolve_retry_reasoning_level(payload.reasoning_level, message.reasoning_snapshot)
-    task_id = await request.app.state.queue.enqueue("proseforge.chat.generate", {"message_id": message_id, "user_id": user.id, "provider": payload.provider, "model": payload.model, "reasoning_level": reasoning_level})
+    task_id = await request.app.state.queue.enqueue("proseforge.chat.generate", {"message_id": message_id, "user_id": user.id, "provider": provider, "model": model, "reasoning_level": reasoning_level})
     return {"id": message_id, "status": "PENDING", "task_id": task_id}
 
 

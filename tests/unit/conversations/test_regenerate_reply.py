@@ -39,7 +39,7 @@ class Queue:
 async def test_regenerate_appends_sibling_with_incremented_attempt():
     repo = Repo(siblings=1)  # original assistant candidate already exists
     queue = Queue()
-    message, task_id = await RegenerateReply(lambda: Uow(repo), queue).execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m")
+    message, task_id = await RegenerateReply(lambda: Uow(repo), queue).execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m", reasoning_level="auto")
     assert message.generation_attempt == 2
     assert message.parent_message_id == "u1"  # 同分支候选，不 fork
     assert message.branch_id == "b"
@@ -49,9 +49,18 @@ async def test_regenerate_appends_sibling_with_incremented_attempt():
 
 
 @pytest.mark.asyncio
+async def test_regenerate_enqueues_the_resolved_reasoning_level():
+    # worker 端不再靠 payload.get("reasoning_level", "auto") 兜底——键总是显式带上。
+    repo = Repo(siblings=1)
+    queue = Queue()
+    await RegenerateReply(lambda: Uow(repo), queue).execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m", reasoning_level="deep")
+    assert queue.enqueued[0][1]["reasoning_level"] == "deep"
+
+
+@pytest.mark.asyncio
 async def test_regenerate_third_candidate_gets_attempt_three():
     repo = Repo(siblings=2)
-    message, _ = await RegenerateReply(lambda: Uow(repo), Queue()).execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m")
+    message, _ = await RegenerateReply(lambda: Uow(repo), Queue()).execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m", reasoning_level="auto")
     assert message.generation_attempt == 3
 
 
@@ -75,7 +84,7 @@ class LockingRepo(Repo):
 @pytest.mark.asyncio
 async def test_regenerate_locks_parent_before_counting():
     repo = LockingRepo(siblings=1)
-    message, _ = await RegenerateReply(lambda: Uow(repo), Queue()).execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m")
+    message, _ = await RegenerateReply(lambda: Uow(repo), Queue()).execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m", reasoning_level="auto")
     assert repo.locks == ["u1"]
     assert repo.events[:2] == ["lock", "count"]  # 锁先于计数，串行化并发 regenerate
     assert message.generation_attempt == 2
@@ -93,7 +102,7 @@ class SequentialRepo(LockingRepo):
 async def test_sequential_regenerates_increment_attempts_under_lock():
     repo = SequentialRepo(siblings=0)
     service = RegenerateReply(lambda: Uow(repo), Queue())
-    first, _ = await service.execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m")
-    second, _ = await service.execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m")
+    first, _ = await service.execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m", reasoning_level="auto")
+    second, _ = await service.execute(branch_id="b", parent_message_id="u1", user_id="u", provider="openai", model="m", reasoning_level="auto")
     assert [first.generation_attempt, second.generation_attempt] == [1, 2]
     assert repo.locks == ["u1", "u1"]

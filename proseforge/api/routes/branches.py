@@ -59,6 +59,18 @@ class EditRequest(BaseModel):
 class RegenerateRequest(BaseModel):
     provider: str = "openai"
     model: str = "gpt-4.1-mini"
+    reasoning_level: str | None = None  # 缺省 → 复用源消息落库的原级别
+
+
+def _resolve_regenerate_reasoning_level(explicit: str | None, snapshot: dict | None) -> str:
+    """regenerate 的思考强度：显式指定优先（入队前已过 catalog 校验）；否则复用
+    源消息落库的原级别（含现已不支持的级别也原样复用，绝不静默降级为 auto）；
+    无快照才回落 auto。"""
+    if explicit:
+        return explicit
+    if snapshot and snapshot.get("level"):
+        return str(snapshot["level"])
+    return "auto"
 
 
 @router.post("/conversations/{conversation_id}/messages")
@@ -89,10 +101,16 @@ async def regenerate_reply(conversation_id: str, message_id: str, payload: Regen
         source = await uow.conversations.get_message(message_id)
         if source is None or not await uow.conversations.belongs_to_owner(conversation_id, user.id):
             raise HTTPException(status_code=404, detail="message not found")
+        if payload.reasoning_level:
+            # 显式级别与 send 同规则：入队前按目标模型 catalog 校验，不支持 → 422。
+            catalog = await uow.model_catalog.get(payload.provider, payload.model)
+            capabilities = capabilities_from_model(catalog) if catalog is not None else FALLBACK_CAPABILITIES
+            _validate_reasoning_level(payload.reasoning_level, capabilities)
+        reasoning_level = _resolve_regenerate_reasoning_level(payload.reasoning_level, source.reasoning_snapshot)
         branch_id = source.branch_id
         # 候选与源消息共享 parent 边（用户消息）；无 parent 的历史消息退化为挂在自身。
         parent_message_id = source.parent_message_id or message_id
-    result = await RegenerateReply(lambda: unit_of_work(request), request.app.state.queue).execute(branch_id=branch_id, parent_message_id=parent_message_id, user_id=user.id, provider=payload.provider, model=payload.model)
+    result = await RegenerateReply(lambda: unit_of_work(request), request.app.state.queue).execute(branch_id=branch_id, parent_message_id=parent_message_id, user_id=user.id, provider=payload.provider, model=payload.model, reasoning_level=reasoning_level)
     return {"message_id": result[0].id, "task_id": result[1]}
 
 

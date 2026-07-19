@@ -61,7 +61,7 @@ export function useEditMessage() {
 
 export function useRegenerate() {
   return useMutation({
-    mutationFn: ({ conversationId, messageId, options }: { conversationId: string; messageId: string; options?: SendOptions }) => regenerateReply(conversationId, messageId, { provider: options?.provider, model: options?.model }),
+    mutationFn: ({ conversationId, messageId, options }: { conversationId: string; messageId: string; options?: SendOptions }) => regenerateReply(conversationId, messageId, { provider: options?.provider, model: options?.model, reasoning_level: options?.reasoning }),
   });
 }
 

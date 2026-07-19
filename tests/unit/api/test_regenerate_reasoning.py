@@ -1,0 +1,151 @@
+"""regenerate 复用源消息落库的思考强度（V2-004 fix round 3）。
+
+此前 ``RegenerateRequest`` 没有 ``reasoning_level``，路由不读源消息
+``reasoning_snapshot["level"]``，``RegenerateReply`` 入队也不带该键，worker 端
+``payload.get("reasoning_level", "auto")`` 静默回落 auto——用户选的 deep/max
+在 regenerate 时丢失。现与 retry 同规则：显式指定优先（入队前过 catalog
+校验，不支持 → 422）；缺省复用落库级别（含现已不支持的级别也原样复用，
+不悄悄改级）；无快照才回落 auto。
+"""
+
+from __future__ import annotations
+
+import types
+
+import pytest
+from fastapi import HTTPException
+
+from proseforge.api.routes import branches
+
+
+class _FakeConversations:
+    def __init__(self, source):
+        self.source = source
+
+    async def get_message(self, message_id):
+        return self.source
+
+    async def belongs_to_owner(self, conversation_id, user_id):
+        return True
+
+
+class _FakeModelCatalog:
+    def __init__(self, entry):
+        self.entry = entry
+
+    async def get(self, provider, model):
+        return self.entry
+
+
+class _FakeUow:
+    def __init__(self, source, catalog_entry=None):
+        self.conversations = _FakeConversations(source)
+        self.model_catalog = _FakeModelCatalog(catalog_entry)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def commit(self):
+        return None
+
+
+class _FakeRegenerateReply:
+    calls: list[dict] = []
+
+    def __init__(self, uow_factory, queue):
+        pass
+
+    async def execute(self, **kwargs):
+        self.calls.append(kwargs)
+        return types.SimpleNamespace(id="m-new"), "task-1"
+
+
+def _catalog_with_reasoning():
+    return types.SimpleNamespace(
+        capabilities={"reasoning": True, "reasoning_parameter": "reasoning_effort"},
+        context_window=128000,
+        max_output_tokens=4096,
+    )
+
+
+def _patch_dependencies(monkeypatch: pytest.MonkeyPatch, snapshot: dict | None, catalog_entry=None):
+    _FakeRegenerateReply.calls = []
+    source = types.SimpleNamespace(branch_id="b1", parent_message_id="u1", reasoning_snapshot=snapshot)
+    monkeypatch.setattr(branches, "unit_of_work", lambda request: _FakeUow(source, catalog_entry))
+    monkeypatch.setattr(branches, "RegenerateReply", _FakeRegenerateReply)
+    return types.SimpleNamespace(app=types.SimpleNamespace(state=types.SimpleNamespace(queue=None)))
+
+
+@pytest.mark.asyncio
+async def test_regenerate_explicit_reasoning_level_is_honored(monkeypatch: pytest.MonkeyPatch):
+    request = _patch_dependencies(monkeypatch, {"level": "fast"}, _catalog_with_reasoning())
+    payload = branches.RegenerateRequest(provider="openai", model="gpt-4.1", reasoning_level="deep")
+
+    result = await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
+
+    assert _FakeRegenerateReply.calls[0]["reasoning_level"] == "deep"
+    assert result == {"message_id": "m-new", "task_id": "task-1"}
+
+
+@pytest.mark.asyncio
+async def test_regenerate_reuses_the_source_messages_stored_level(monkeypatch: pytest.MonkeyPatch):
+    request = _patch_dependencies(monkeypatch, {"level": "deep", "parameter": "reasoning_effort"})
+    payload = branches.RegenerateRequest(provider="openai", model="gpt-4.1")
+
+    await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
+
+    assert _FakeRegenerateReply.calls[0]["reasoning_level"] == "deep"  # 不再静默降级为 auto
+
+
+@pytest.mark.asyncio
+async def test_regenerate_without_snapshot_falls_back_to_auto(monkeypatch: pytest.MonkeyPatch):
+    request = _patch_dependencies(monkeypatch, None)
+    payload = branches.RegenerateRequest()
+
+    await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
+
+    assert _FakeRegenerateReply.calls[0]["reasoning_level"] == "auto"
+
+
+@pytest.mark.asyncio
+async def test_regenerate_reuses_unsupported_stored_level_verbatim(monkeypatch: pytest.MonkeyPatch):
+    # 落库快照里的级别现已不被 catalog 支持（未知模型 → fallback）也原样复用——
+    # 复用路径不做 422、不悄悄改级，与 retry 的钉住行为一致。
+    request = _patch_dependencies(monkeypatch, {"level": "max", "supported": False, "reason": "unsupported"}, catalog_entry=None)
+    payload = branches.RegenerateRequest(provider="local", model="writer")
+
+    await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
+
+    assert _FakeRegenerateReply.calls[0]["reasoning_level"] == "max"
+
+
+@pytest.mark.asyncio
+async def test_regenerate_explicit_unsupported_level_returns_422(monkeypatch: pytest.MonkeyPatch):
+    # 显式指定与 send 同规则：未知模型（fallback 不支持 reasoning）→ 入队前 422。
+    request = _patch_dependencies(monkeypatch, {"level": "auto"}, catalog_entry=None)
+    payload = branches.RegenerateRequest(provider="local", model="writer", reasoning_level="deep")
+
+    with pytest.raises(HTTPException) as excinfo:
+        await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
+
+    assert excinfo.value.status_code == 422
+    detail = excinfo.value.detail
+    assert detail["code"] == "UNSUPPORTED_REASONING_LEVEL"
+    assert detail["details"]["supported_levels"] == ["auto"]
+    assert _FakeRegenerateReply.calls == []  # 未创建候选、未入队
+
+
+@pytest.mark.asyncio
+async def test_regenerate_explicit_unknown_level_returns_422(monkeypatch: pytest.MonkeyPatch):
+    request = _patch_dependencies(monkeypatch, None, _catalog_with_reasoning())
+    payload = branches.RegenerateRequest(reasoning_level="bogus")
+
+    with pytest.raises(HTTPException) as excinfo:
+        await branches.regenerate_reply("c1", "m1", payload, request, types.SimpleNamespace(id="u1"))
+
+    assert excinfo.value.status_code == 422
+    assert excinfo.value.detail["details"]["supported_levels"] == ["auto", "fast", "standard", "deep", "max"]
+    assert _FakeRegenerateReply.calls == []

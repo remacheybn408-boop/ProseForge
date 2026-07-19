@@ -73,8 +73,8 @@ async def test_send_links_assistant_to_user_message_and_regenerate_increments_at
         assert assistant.generation_attempt == 1
 
         use_case = RegenerateReply(lambda: SqlAlchemyUnitOfWork(factory), queue)
-        first, _ = await use_case.execute(branch_id=ids["branch_id"], parent_message_id=assistant.parent_message_id, user_id=ids["user_id"], provider="openai", model="m")
-        second, _ = await use_case.execute(branch_id=ids["branch_id"], parent_message_id=assistant.parent_message_id, user_id=ids["user_id"], provider="openai", model="m")
+        first, _ = await use_case.execute(branch_id=ids["branch_id"], parent_message_id=assistant.parent_message_id, user_id=ids["user_id"], provider="openai", model="m", reasoning_level="auto")
+        second, _ = await use_case.execute(branch_id=ids["branch_id"], parent_message_id=assistant.parent_message_id, user_id=ids["user_id"], provider="openai", model="m", reasoning_level="auto")
 
         async with SqlAlchemyUnitOfWork(factory) as uow:
             tree = await uow.conversations.list_visible_messages(ids["branch_id"])
