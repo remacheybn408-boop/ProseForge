@@ -1,13 +1,15 @@
 # ProseForge 验证状态事实源
 
 > 本文件是三个版本验证状态的唯一事实源（2026-07-18 全量排查后建立）。任何与本文件冲突的历史验证文档，以本文件为准。蓝图：`D:\引擎备份\PROSEFORGE_ENGINEERING_EXECUTION_BLUEPRINT`。
+>
+> 最近状态更新：2026-07-20。V2-010 的测试与证据模板已准备，但完整 L2 尚未执行，因此 V2 不得标记为完成或 PASS。
 
 ## 版本真实状态
 
 | 版本 | 真实状态 | 说明 |
 |---|---|---|
 | V1.5 Native Runtime | **Windows/Linux 达成；macOS BLOCKED**（2026-07-18） | V15-008/009/010 已按蓝图实现并实测：PyInstaller onedir（钉版 3.12）、Inno 安装器（安装/卸载留数据实测）、deb/rpm/pkg 脚本、CLI `web`/真实 `upgrade`、L2 全矩阵绿。macOS 安装验证待 macOS runner |
-| V2 Chat Workspace | **未完成（此前 PASS 已撤销）** | 分支 API/基础 proposal/export 有部分实现；聊天无上下文注入、编辑器是 textarea、Workflow Studio 是按钮列表、E2E 证据不合格 |
+| V2 Chat Workspace | **实施中；发布门禁未运行** | V2-005～007 已进入 `master`；V2-008/V2-009 仍在并行收尾。V2-010 已准备真实 10 步 E2E、OpenAPI 导出脚本和 schema 检查表，但完整 Podman L2、OpenAPI 产物与最终证据均未执行/生成 |
 | V3 Agent Swarm | **实现未完成** | 有表、基础路由和 UI 壳；执行器是占位（串行、不调模型、固定 JSON）、权限 fail-open、无评审集群/记忆/扩图/评测/安全边界 |
 | 主分支 | **CI 已修复，待推送验证** | ruff 0 错；trivy 弃用遭攻陷 action 改钉 digest 容器扫描；pnpm audit corepack 修复；Playwright e2e 已接入 workflow |
 
@@ -56,7 +58,7 @@
 1. ✅ 状态纠正（本文档）+ 环境清理（`down -v` + 删 `.pnpm-web-*`）
 2. ✅ CI 修复（ruff / trivy 弃用遭攻陷 action 改直跑镜像 / pnpm audit corepack / 接入 e2e；另修复 nginx resolver Podman 不兼容、pnpm store 卷、exports tmpfs）
 3. ✅ V15-008 / V15-009 / V15-010（蓝图 V1.5_NATIVE_RUNTIME）——Windows/Linux 绿，macOS BLOCKED 待 runner；证据见 `V1_5_NATIVE_VALIDATION.md` 与 `BATCH_VALIDATION_V1.5_B4.md`
-4. ⬜ V2-001～010 补齐（另立计划）——注意恢复 e2e skip：`ordinary-user-smoke.spec.ts`
+4. 🔄 V2-001～010 补齐中——V2-010 非重叠测试/文档已准备，仍须等待 V2-008/V2-009 收尾后执行完整 Podman L2
 5. ⬜ V3-001～010 重实现（另立计划）——注意恢复 e2e skip：`v3-agent-swarm.spec.ts`、`v3-execution-proposal.spec.ts`；修共享账号 fixture 隔离
 
 ## 证据标准（蓝图 `TEST_EXECUTION_POLICY.md` §五）

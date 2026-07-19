@@ -114,7 +114,7 @@ def main() -> int:
         return 0
 
     # 真改
-    print(f"\n=== 开始迁移 ===")
+    print("\n=== 开始迁移 ===")
     renamed = 0
     for old, new, _ in plan:
         if new is None:

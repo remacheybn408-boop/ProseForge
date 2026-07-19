@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- V2 professional workspace work in progress: structured Story Bible context, Tiptap selection actions, immutable review/revision proposals, and attributable model usage are implemented on `master`.
+- Prepared the V2 release gate with a real authenticated ten-step UI-first Playwright flow, deterministic OpenAPI export script, and endpoint contract review worksheet. The complete Podman L2 matrix is still pending; this is not a release PASS.
+
 ## 1.5.0
 
 - Added native runtime: `proseforge web` CLI entry (native profile, per-user data dirs, SQLite WAL, persisted master/jwt keys, same-origin SPA hosting).
