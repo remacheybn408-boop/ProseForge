@@ -5,7 +5,7 @@ from sqlalchemy import Column, DateTime, String, Text, inspect
 
 
 revision = "0015_review_reports"
-down_revision = "0013_workflow_definitions"
+down_revision = "0014_export_manifests"
 branch_labels = None
 depends_on = None
 

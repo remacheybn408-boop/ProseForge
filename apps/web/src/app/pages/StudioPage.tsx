@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { approveProposal, createSelectionAction, getProposalDiff, listChapters, listChapterVersions, rejectProposal, requestExport, saveChapterVersion, type Chapter, type ChapterVersion, type ProposalDiff } from "../../lib/api/client";
+import { approveProposal, createSelectionAction, getProposalDiff, listChapters, listChapterVersions, rejectProposal, requestExport, saveChapterVersion, type Chapter, type ChapterVersion, type ExportManifest, type ProposalDiff } from "../../lib/api/client";
 import { loadDraft, saveDraft } from "../../lib/drafts";
 import { ChapterTree } from "../../features/editor/ChapterTree";
 import { ManuscriptEditor } from "../../features/editor/ManuscriptEditor";
@@ -7,6 +7,7 @@ import { toSelectionActionRequest, type EditorAction } from "../../features/edit
 import { ProposalActions } from "../../features/revision/ProposalActions";
 import { ProposalDiff as ProposalDiffView } from "../../features/revision/ProposalDiff";
 import { ExportDialog } from "../../features/export/ExportDialog";
+import type { ExportRequest } from "../../features/export/exportTypes";
 import { ProjectVersionHistory } from "../../features/VersionHistory";
 import { useProjectsQuery } from "../query";
 
@@ -21,6 +22,7 @@ export function StudioPage({ projectId, chapterId }: { projectId: string; chapte
   const [baseVersionId, setBaseVersionId] = useState<string | null>(null);
   const [message, setMessage] = useState("Loading chapters…");
   const [exportOpen, setExportOpen] = useState(false);
+  const [exportManifest, setExportManifest] = useState<ExportManifest | null>(null);
   const [proposal, setProposal] = useState<ProposalDiff | null>(null);
   const [acceptedHunks, setAcceptedHunks] = useState<number[]>([]);
 
@@ -96,8 +98,8 @@ export function StudioPage({ projectId, chapterId }: { projectId: string; chapte
     } catch { setMessage("Proposal changed elsewhere. Reload and try again."); }
   };
 
-  const downloadMarkdown = async () => { try { const result = await requestExport(projectId, "md", versions.map(item => item.id)); window.open(result.download_url, "_blank", "noopener,noreferrer"); } catch { setMessage("Export could not be prepared."); } };
-  const exportSnapshot = async (payload: { format: "txt" | "md" | "docx" | "epub"; version_ids: string[] }) => { try { const result = await requestExport(projectId, payload.format, payload.version_ids); window.open(result.download_url, "_blank", "noopener,noreferrer"); setExportOpen(false); } catch { setMessage("Export could not be prepared."); } };
+  const downloadMarkdown = async () => { try { const result = await requestExport(projectId, { format: "md", version_ids: baseVersionId ? [baseVersionId] : [], template: "archive", locale: project?.language || navigator.language }); window.open(result.download_url, "_blank", "noopener,noreferrer"); } catch { setMessage("Export could not be prepared."); } };
+  const exportSnapshot = async (payload: ExportRequest) => { try { const result = await requestExport(projectId, payload); setExportManifest(result); window.open(result.download_url, "_blank", "noopener,noreferrer"); setMessage(`Export ready · SHA-256 ${result.file_sha256.slice(0, 12)}…`); } catch { setMessage("Export could not be prepared."); } };
 
-  return <><section className="studio-layout"><ChapterTree chapters={chapters} currentChapterId={chapter?.id} onSelect={setChapter} /><div className="editor-pane"><div className="chapter-head"><span>{chapter ? `Chapter ${String(chapter.chapter_no).padStart(2, "0")}` : (project?.title ?? "Writing Studio")}</span><span className="status" aria-live="polite">{message}</span></div><ManuscriptEditor content={content} baseVersionId={baseVersionId} onContentChange={setContent} onAction={createProposal} />{proposal && <section className="proposal-panel"><ProposalDiffView hunks={proposal.hunks.map((hunk, index) => ({ id: String(index), before: content.slice(hunk.start, hunk.end), after: hunk.replacement }))} selectedHunkIds={acceptedHunks.map(String)} onSelectionChange={(id, selected) => setAcceptedHunks(current => selected ? [...new Set([...current, Number(id)])] : current.filter(index => index !== Number(id)))} /><ProposalActions guardStatus={proposal.guard_status ?? "clear"} onAction={decision => void decideProposal(decision)} /></section>}<button className="primary" onClick={save} disabled={!chapter}>Save version</button><button onClick={downloadMarkdown}>Download Markdown</button><button onClick={() => setExportOpen(true)}>Export snapshot</button>{exportOpen && <div role="dialog" aria-modal="true" aria-label="Export snapshot"><ExportDialog projectId={projectId} versionIds={versions.map(item => item.id)} onExport={exportSnapshot} /><button onClick={() => setExportOpen(false)}>Cancel</button></div>}</div></section>{project && <ProjectVersionHistory project={project} />}</>;
+  return <><section className="studio-layout"><ChapterTree chapters={chapters} currentChapterId={chapter?.id} onSelect={setChapter} /><div className="editor-pane"><div className="chapter-head"><span>{chapter ? `Chapter ${String(chapter.chapter_no).padStart(2, "0")}` : (project?.title ?? "Writing Studio")}</span><span className="status" aria-live="polite">{message}</span></div><ManuscriptEditor content={content} baseVersionId={baseVersionId} onContentChange={setContent} onAction={createProposal} />{proposal && <section className="proposal-panel"><ProposalDiffView hunks={proposal.hunks.map((hunk, index) => ({ id: String(index), before: content.slice(hunk.start, hunk.end), after: hunk.replacement }))} selectedHunkIds={acceptedHunks.map(String)} onSelectionChange={(id, selected) => setAcceptedHunks(current => selected ? [...new Set([...current, Number(id)])] : current.filter(index => index !== Number(id)))} /><ProposalActions guardStatus={proposal.guard_status ?? "clear"} onAction={decision => void decideProposal(decision)} /></section>}<button className="primary" onClick={save} disabled={!chapter}>Save version</button><button onClick={() => void downloadMarkdown()}>Download Markdown</button><button onClick={() => { setExportManifest(null); setExportOpen(true); }}>Export snapshot</button>{exportOpen ? <ExportDialog projectId={projectId} versionIds={versions.map(item => item.id)} manifest={exportManifest} onExport={exportSnapshot} onClose={() => setExportOpen(false)} /> : null}</div></section>{project && <ProjectVersionHistory project={project} />}</>;
 }

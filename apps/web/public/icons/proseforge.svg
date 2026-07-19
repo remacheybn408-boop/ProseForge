@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ProseForge">
+  <rect width="512" height="512" rx="96" fill="#f7f3ea"/>
+  <path d="M128 104h256v304H128z" fill="#1c1a17"/>
+  <path d="M176 164h160v24H176zm0 64h160v24H176zm0 64h112v24H176z" fill="#f7f3ea"/>
+  <circle cx="336" cy="336" r="48" fill="#b03a2e"/>
+</svg>

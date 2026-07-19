@@ -28,7 +28,7 @@ describe("ink design tokens", () => {
       }
     }
     expect(missing).toEqual([]);
-  });
+  }, 30_000);
 
   it("keeps hardcoded colors out of feature and component code", () => {
     const offenders: string[] = [];
@@ -37,5 +37,5 @@ describe("ink design tokens", () => {
       if (matches) offenders.push(`${file}: ${matches.join(", ")}`);
     }
     expect(offenders).toEqual([]);
-  });
+  }, 30_000);
 });

@@ -21,5 +21,5 @@ export function EmptyScroll({ children }: { children: ReactNode }) {
 }
 
 export function StatusStamp({ children, status = "default" }: { children: ReactNode; status?: "default" | "success" | "error" }) {
-  return <span className={`status-stamp status-stamp-${status}`}>{children}</span>;
+  return <span className={`status-stamp status-stamp-${status}`} data-status={status}>{children}</span>;
 }

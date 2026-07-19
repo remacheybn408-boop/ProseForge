@@ -21,3 +21,17 @@ def test_epub_has_uncompressed_mimetype_first():
     assert archive.namelist()[0] == "mimetype"
     assert archive.getinfo("mimetype").compress_type == zipfile.ZIP_STORED
     assert "OEBPS/content.opf" in archive.namelist()
+
+
+def test_docx_and_epub_include_export_metadata():
+    chapters = [(Chapter("Opening"), "Rain fell.")]
+    docx = zipfile.ZipFile(BytesIO(render_docx(chapters, title="Novel", author="A. Writer", locale="en-GB")))
+    core = docx.read("docProps/core.xml").decode()
+    assert "Novel" in core
+    assert "A. Writer" in core
+    assert "en-GB" in core
+
+    epub = zipfile.ZipFile(BytesIO(render_epub("Novel", chapters, author="A. Writer", locale="en-GB")))
+    package = epub.read("OEBPS/content.opf").decode()
+    assert "A. Writer" in package
+    assert "en-GB" in package

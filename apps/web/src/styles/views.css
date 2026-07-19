@@ -4,6 +4,24 @@
 .settings-form label { display: grid; gap: 6px; color: var(--text-secondary); font-size: 13px; }
 .settings-form input, .settings-form select { border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; background: var(--surface); color: var(--text-primary); font: inherit; }
 .form-message { color: var(--text-muted); font-size: 13px; }
+.export-dialog { position: fixed; z-index: 80; top: 50%; left: 50%; translate: -50% -50%; width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 24px; border: 1px solid var(--ink-faint); border-radius: var(--radius-md); background: var(--paper-raised); color: var(--ink); box-shadow: var(--shadow-raise); }
+.export-dialog h2 { margin: 0 0 18px; font: 24px var(--font-seal); color: var(--ink-strong); }
+.export-dialog form { display: grid; gap: 14px; }
+.export-dialog header { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.export-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.export-dialog label { display: grid; gap: 6px; color: var(--ink-mid); font-size: 13px; }
+.export-dialog input, .export-dialog select { min-height: 38px; border: 1px solid var(--ink-faint); border-radius: var(--radius-sm); padding: 7px 9px; background: var(--paper); color: var(--ink); }
+.export-dialog fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; border: 1px solid var(--ink-faint); padding: 12px; }
+.export-dialog legend { padding: 0 5px; font: 14px var(--font-seal); color: var(--ink-strong); }
+.export-dialog .inline-choice { display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; }
+.export-dialog .inline-choice input { min-height: auto; }
+.export-dialog code, .export-hashes code { overflow-wrap: anywhere; font: 11px/1.5 var(--font-mono); color: var(--ink-mid); }
+.dialog-actions { display: flex; justify-content: end; gap: 8px; }
+.dialog-actions button { border: 1px solid var(--ink-mid); border-radius: var(--radius-sm); padding: 8px 14px; background: transparent; color: var(--ink); cursor: pointer; }
+.export-hashes { display: grid; gap: 8px; margin-top: 18px; border-top: 1px solid var(--ink-faint); padding-top: 14px; }
+.export-hashes details { display: grid; gap: 5px; }
+.export-hashes details code { display: block; }
+@media(max-width: 600px) { .export-dialog fieldset, .export-grid { grid-template-columns: 1fr; } }
 .auth-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); }
 .auth-card { width: min(100%, 440px); padding: 38px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 20px 60px rgba(91, 55, 31, .08); }
 .auth-card h1 { font: 500 32px Georgia, serif; margin: 0 0 12px; }

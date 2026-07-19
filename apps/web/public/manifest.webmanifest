@@ -1,1 +1,14 @@
-{"name":"ProseForge","short_name":"ProseForge","start_url":"/","display":"standalone","background_color":"#f7f3ea","theme_color":"#f7f3ea","icons":[]}
+{
+  "name": "ProseForge Writing Space",
+  "short_name": "ProseForge",
+  "description": "A local-first professional writing workspace.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f3ea",
+  "theme_color": "#1c1a17",
+  "icons": [
+    { "src": "/icons/proseforge.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/proseforge-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
