@@ -231,7 +231,7 @@ test("v2 professional flow completes the real ten-step workspace journey", async
 
     await page.goBack();
     await expect(page).toHaveURL(new RegExp(`/chat/${conversation.id}/${editedBranchId}$`));
-    await page.getByLabel("Message").fill("Mira reaches the flooded harbor. Continue with the brass map fact intact.");
+    await page.getByRole("textbox", { name: "Message" }).fill("Mira reaches the flooded harbor. Continue with the brass map fact intact.");
     const sendResponsePromise = page.waitForResponse(response => response.url().endsWith(`/api/v2/conversations/${conversation.id}/messages`) && response.request().method() === "POST");
     await page.getByRole("button", { name: "Send" }).click();
     const sendResponse = await sendResponsePromise;
@@ -252,7 +252,7 @@ test("v2 professional flow completes the real ten-step workspace journey", async
     const versionsBefore = await json<ChapterVersion[]>(await request.get(`/api/v1/chapters/${chapter.id}/versions`));
 
     await page.getByRole("button", { name: "Writing Studio" }).click();
-    await expect(page.getByRole("button", { name: /Chapter 1/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /The Map Home/ })).toBeVisible();
     await expect(page.getByTestId("tiptap-manuscript")).toContainText("Mira unfolded the brass map");
 
     await selectAllManuscript(page);
@@ -315,7 +315,7 @@ test("v2 professional flow completes the real ten-step workspace journey", async
     await waitForWorkflowStatus(request, workflow.id, "RUNNING");
 
     const pauseResponsePromise = page.waitForResponse(response => response.url().endsWith(`/api/v1/workflows/${workflow.id}/pause`) && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Pause" }).click();
+    await page.getByRole("button", { name: "暂停" }).click();
     const pauseResponse = await pauseResponsePromise;
     rememberRequestId(pauseResponse);
     expect((await json<Workflow>(pauseResponse)).status).toBe("PAUSED");
@@ -326,21 +326,21 @@ test("v2 professional flow completes the real ten-step workspace journey", async
     expect((await json<Workflow>(await request.get(`/api/v1/workflows/${workflow.id}`))).status).toBe("PAUSED");
 
     const resumeResponsePromise = page.waitForResponse(response => response.url().endsWith(`/api/v1/workflows/${workflow.id}/resume`) && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Resume" }).click();
+    await page.getByRole("button", { name: "继续" }).click();
     const resumeResponse = await resumeResponsePromise;
     rememberRequestId(resumeResponse);
     expect((await json<Workflow>(resumeResponse)).status).toBe("QUEUED");
     await waitForWorkflowStatus(request, workflow.id, "RUNNING");
 
     const retryResponsePromise = page.waitForResponse(response => response.url().endsWith(`/api/v1/workflows/${workflow.id}/retry`) && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Retry" }).click();
+    await page.getByRole("button", { name: "重试" }).click();
     const retryResponse = await retryResponsePromise;
     rememberRequestId(retryResponse);
     expect((await json<Workflow>(retryResponse)).status).toBe("RETRYING");
     await waitForWorkflowStatus(request, workflow.id, "RUNNING");
 
     const cancelResponsePromise = page.waitForResponse(response => response.url().endsWith(`/api/v1/workflows/${workflow.id}/cancel`) && response.request().method() === "POST");
-    await page.getByRole("button", { name: "Cancel" }).click();
+    await page.getByRole("button", { name: "取消" }).click();
     const cancelResponse = await cancelResponsePromise;
     rememberRequestId(cancelResponse);
     expect((await json<Workflow>(cancelResponse)).status).toBe("CANCELLED");
