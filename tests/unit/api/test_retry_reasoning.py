@@ -221,3 +221,13 @@ def test_reasoning_level_resolution_has_a_single_canonical_home():
     assert conversations._resolve_reasoning_level is branches._resolve_reasoning_level
     assert not hasattr(conversations, "_resolve_retry_reasoning_level")
     assert not hasattr(branches, "_resolve_regenerate_reasoning_level")
+
+
+def test_target_model_resolution_has_a_single_canonical_home():
+    # fix round 5：retry/continue 与 regenerate 曾各持一份逐字相同的目标模型解析
+    # （仅第二参数名不同）；与级别解析同法收敛为 branches.py 单一出处，conversations.py 复用。
+    from proseforge.api.routes import branches
+
+    assert conversations._resolve_target_model is branches._resolve_target_model
+    assert not hasattr(conversations, "_resolve_retry_target_model")
+    assert not hasattr(branches, "_resolve_regenerate_target_model")

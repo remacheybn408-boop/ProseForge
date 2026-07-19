@@ -80,9 +80,6 @@ export function retryMessage(messageId: string, payload: { provider?: string; mo
 export type V2CatalogModel = { provider: string; model_id: string; capabilities: Record<string, unknown>; context_window?: number | null; max_output_tokens?: number | null };
 export function listV2Models(filters: { provider?: string; capability?: string } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined) as [string, string][]).toString(); return request<V2CatalogModel[]>(`/api/v2/models${query ? `?${query}` : ""}`); }
 
-export type ModelCapabilitiesInfo = { provider: string; model_id: string; context_window: number; max_output_tokens: number; supports_reasoning: boolean; reasoning_parameter: string | null; supports_tools: boolean; supports_vision: boolean; source: string };
-export function getModelCapabilities(provider: string, modelId: string) { return request<ModelCapabilitiesInfo>(`/api/v2/models/${encodeURIComponent(provider)}/${encodeURIComponent(modelId)}/capabilities`); }
-
 export type ModelResolution = { provider: string; model_id: string; normalized_level: string; provider_parameter: Record<string, unknown> | null; context_window: number; warnings: string[] };
 export function validateModelResolution(payload: { provider: string; model_id: string; level: string }) { return request<ModelResolution>("/api/v2/model-resolutions/validate", { method: "POST", body: JSON.stringify(payload) }); }
 

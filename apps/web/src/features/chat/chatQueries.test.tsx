@@ -2,8 +2,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useRegenerate, useRetryMessage } from "./chatQueries";
+import { useRegenerate, useRetryMessage, useSendMessage } from "./chatQueries";
 import type { SendOptions } from "./chatTypes";
+
+function SendProbe({ options }: { options?: SendOptions }) {
+  const send = useSendMessage();
+  return <button onClick={() => send.mutate({ conversationId: "c1", branchId: "b1", content: "hello", options })}>send</button>;
+}
 
 function Probe({ options }: { options?: SendOptions }) {
   const retry = useRetryMessage();
@@ -82,5 +87,33 @@ describe("useRegenerate", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toEqual({});
+  });
+});
+
+describe("useSendMessage", () => {
+  it("forwards the reasoning level the same way retry and regenerate do", async () => {
+    const fetchMock = stubFetch();
+    renderWithQuery(<SendProbe options={{ provider: "anthropic", model: "claude-sonnet", reasoning: "deep" }} />);
+
+    fireEvent.click(screen.getByText("send"));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(path).toBe("/api/v2/conversations/c1/messages");
+    // 主发送路径同样不得悄悄丢掉思考强度。
+    expect(JSON.parse(String(init.body))).toEqual({ branch_id: "b1", content: "hello", client_request_id: expect.any(String), provider: "anthropic", model: "claude-sonnet", reasoning_level: "deep" });
+  });
+
+  it("omits the reasoning level when there is no override, letting the backend default apply", async () => {
+    const fetchMock = stubFetch();
+    renderWithQuery(<SendProbe />);
+
+    fireEvent.click(screen.getByText("send"));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+    expect(body).toEqual({ branch_id: "b1", content: "hello", client_request_id: expect.any(String) });
+    expect(body).not.toHaveProperty("reasoning_level");
   });
 });

@@ -63,6 +63,16 @@ def _resolve_reasoning_level(explicit: str | None, snapshot: dict | None) -> str
     return "auto"
 
 
+def _resolve_target_model(payload, snapshot_owner) -> tuple[str, str]:
+    """retry/continue/regenerate 共用的目标模型解析（单一出处，conversations.py 复用）：
+    显式指定优先；否则复用消息落库 model_snapshot（非默认模型的消息不被
+    retry/regenerate 到错误的 openai/gpt-4.1-mini）；无快照才回落默认模型。"""
+    snapshot = snapshot_owner.model_snapshot or {}
+    provider = payload.provider or snapshot.get("provider") or "openai"
+    model = payload.model or snapshot.get("model") or "gpt-4.1-mini"
+    return str(provider), str(model)
+
+
 class EditRequest(BaseModel):
     content: str = Field(min_length=1)
 
@@ -71,16 +81,6 @@ class RegenerateRequest(BaseModel):
     provider: str | None = None  # 缺省 → 复用源消息落库 model_snapshot
     model: str | None = None
     reasoning_level: str | None = None  # 缺省 → 复用源消息落库的原级别
-
-
-def _resolve_regenerate_target_model(payload: RegenerateRequest, source) -> tuple[str, str]:
-    """regenerate 的目标模型：显式指定优先；否则复用源消息落库 model_snapshot
-    （非默认模型的消息不被 regenerate 到错误的 openai/gpt-4.1-mini）；
-    无快照才回落默认模型。"""
-    snapshot = source.model_snapshot or {}
-    provider = payload.provider or snapshot.get("provider") or "openai"
-    model = payload.model or snapshot.get("model") or "gpt-4.1-mini"
-    return str(provider), str(model)
 
 
 @router.post("/conversations/{conversation_id}/messages")
@@ -111,7 +111,7 @@ async def regenerate_reply(conversation_id: str, message_id: str, payload: Regen
         source = await uow.conversations.get_message(message_id)
         if source is None or not await uow.conversations.belongs_to_owner(conversation_id, user.id):
             raise HTTPException(status_code=404, detail="message not found")
-        provider, model = _resolve_regenerate_target_model(payload, source)
+        provider, model = _resolve_target_model(payload, source)
         if payload.reasoning_level:
             # 显式级别与 send 同规则：入队前按解析后的目标模型 catalog 校验，不支持 → 422。
             catalog = await uow.model_catalog.get(provider, model)
