@@ -48,10 +48,14 @@ class OpenAIProvider(ModelProvider):
             value = getattr(request, field)
             if value is not None:
                 payload[field] = value
-        # 思考强度载荷按 catalog reasoning_parameter 的名字落到请求体顶层；
-        # None（AUTO）时不多发任何字段，由 provider 默认值接管。
+        # 思考强度：catalog 参数名 reasoning_effort 在 Responses API 里须放进
+        # 嵌套的 reasoning.effort；未知键保持顶层透传。None（AUTO）不多发字段。
         if request.reasoning is not None:
-            payload.update(request.reasoning)
+            reasoning = dict(request.reasoning)
+            effort = reasoning.pop("reasoning_effort", None)
+            if effort is not None:
+                payload["reasoning"] = {"effort": effort}
+            payload.update(reasoning)
         if request.response_schema is not None:
             payload["text"] = {"format": {"type": "json_schema", "schema": request.response_schema}}
         async with self._client().stream("POST", f"{self.base_url}/responses", headers=self._headers, json=payload) as response:

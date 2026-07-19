@@ -57,7 +57,7 @@ export function listOutlines(projectId: string) { return request<Outline[]>(`/ap
 export function importOutline(projectId: string, payload: { title: string; content?: string; data?: Record<string, unknown> }) { return request<Outline>(`/api/v1/projects/${projectId}/outlines/import`, { method: "POST", body: JSON.stringify(payload) }); }
 export function answerOutline(outlineId: string, answers: Record<string, unknown>) { return request<Outline>(`/api/v1/outlines/${outlineId}/parse`, { method: "POST", body: JSON.stringify({ answers }) }); }
 export function confirmOutline(outlineId: string) { return request<Outline>(`/api/v1/outlines/${outlineId}/confirm`, { method: "POST" }); }
-export function listContext(projectId: string) { return request<{ items: ContextItem[]; used_tokens: number; context_window: number; available_tokens: number }>(`/api/v1/projects/${projectId}/context`); }
+export function listContext(projectId: string) { return request<{ items: ContextItem[]; used_tokens: number; context_window: number; context_window_source: string; available_tokens: number }>(`/api/v1/projects/${projectId}/context`); }
 export function addContext(projectId: string, content: string, sourceType = "manual") { return request<ContextItem>(`/api/v1/projects/${projectId}/context/items`, { method: "POST", body: JSON.stringify({ content, source_type: sourceType }) }); }
 export function updateContext(itemId: string, payload: Partial<Pick<ContextItem, "content" | "pinned" | "priority" | "excluded">>) { return request<ContextItem>(`/api/v1/context/items/${itemId}`, { method: "PATCH", body: JSON.stringify(payload) }); }
 export function createWorkflow(projectId: string, chapterNumbers: number[]) { return request<Workflow>(`/api/v1/projects/${projectId}/workflows/novel`, { method: "POST", body: JSON.stringify({ chapter_numbers: chapterNumbers }) }); }
@@ -76,7 +76,7 @@ export function listAgentTasks(runId: string) { return request<AgentTask[]>("/ap
 export function controlAgentRun(runId: string, action: "pause" | "resume" | "cancel" | "retry") { return request<AgentRun>("/api/v3/agent-runs/" + runId + "/" + action, { method: "POST" }); }
 
 export function stopMessage(messageId: string) { return request<{ id: string; status: string }>(`/api/v1/messages/${messageId}/stop`, { method: "POST" }); }
-export function retryMessage(messageId: string, payload: { provider?: string; model?: string } = {}) { return request<{ id: string; status: string; task_id: string }>(`/api/v1/messages/${messageId}/retry`, { method: "POST", body: JSON.stringify(payload) }); }
+export function retryMessage(messageId: string, payload: { provider?: string; model?: string; reasoning_level?: string } = {}) { return request<{ id: string; status: string; task_id: string }>(`/api/v1/messages/${messageId}/retry`, { method: "POST", body: JSON.stringify(payload) }); }
 export type V2CatalogModel = { provider: string; model_id: string; capabilities: Record<string, unknown>; context_window?: number | null; max_output_tokens?: number | null };
 export function listV2Models(filters: { provider?: string; capability?: string } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined) as [string, string][]).toString(); return request<V2CatalogModel[]>(`/api/v2/models${query ? `?${query}` : ""}`); }
 

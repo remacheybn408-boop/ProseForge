@@ -40,6 +40,17 @@ class BranchRequest(BaseModel):
 class MessageControlRequest(BaseModel):
     provider: str = "openai"
     model: str = "gpt-4.1-mini"
+    reasoning_level: str | None = None
+
+
+def _resolve_retry_reasoning_level(explicit: str | None, snapshot: dict | None) -> str:
+    """retry/continue 的思考强度：显式指定优先；否则复用消息落库的原级别
+    （绝不静默降级为 auto）；无快照才回落 auto。"""
+    if explicit:
+        return explicit
+    if snapshot and snapshot.get("level"):
+        return str(snapshot["level"])
+    return "auto"
 
 
 @router.post("/conversations")
@@ -136,7 +147,8 @@ async def _requeue_message(message_id: str, payload: MessageControlRequest, requ
     async with unit_of_work(request) as uow:
         await uow.conversations.set_message_status(message_id, "PENDING")
         await uow.commit()
-    task_id = await request.app.state.queue.enqueue("proseforge.chat.generate", {"message_id": message_id, "user_id": user.id, "provider": payload.provider, "model": payload.model})
+    reasoning_level = _resolve_retry_reasoning_level(payload.reasoning_level, message.reasoning_snapshot)
+    task_id = await request.app.state.queue.enqueue("proseforge.chat.generate", {"message_id": message_id, "user_id": user.id, "provider": payload.provider, "model": payload.model, "reasoning_level": reasoning_level})
     return {"id": message_id, "status": "PENDING", "task_id": task_id}
 
 

@@ -29,7 +29,7 @@ export function useStopMessage() {
 
 export function useRetryMessage() {
   return useMutation({
-    mutationFn: ({ messageId, options }: { messageId: string; options?: SendOptions }) => retryMessage(messageId, { provider: options?.provider, model: options?.model }),
+    mutationFn: ({ messageId, options }: { messageId: string; options?: SendOptions }) => retryMessage(messageId, { provider: options?.provider, model: options?.model, reasoning_level: options?.reasoning }),
   });
 }
 

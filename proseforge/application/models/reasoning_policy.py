@@ -8,6 +8,10 @@
 其它参数名按 ``{"<parameter>": strength}`` 透传。不支持的级别抛
 ValueError（路由层转 422 + supported_levels），绝不静默降级为 auto；
 max 被钳到 provider 上限时记入 warnings。
+
+Anthropic 要求 ``budget_tokens >= 1024`` 且严格小于 ``max_tokens``：预算钳到
+``max_output_tokens - 1``；若 ``max_output_tokens <= 1024``（合法窗口为空），
+不静默降级——``provider_parameter`` 返回 None（不发 thinking）并记 warning。
 """
 
 from __future__ import annotations
@@ -33,13 +37,19 @@ def resolve_reasoning(level: ReasoningLevel | str, capabilities) -> dict[str, ob
     return {"level": selected.value, "parameter": parameter, "strength": strength, "provider_parameter": provider_parameter, "warnings": warnings}
 
 
-def _provider_parameter(parameter: str, strength: float, selected: ReasoningLevel, capabilities, warnings: list[str]) -> dict[str, object]:
+def _provider_parameter(parameter: str, strength: float, selected: ReasoningLevel, capabilities, warnings: list[str]) -> dict[str, object] | None:
     if parameter == "reasoning_effort":
         if selected is ReasoningLevel.MAX:
             warnings.append("reasoning level 'max' is clamped to the provider's maximum effort 'high'")
         return {"reasoning_effort": _EFFORT_WORDS[selected]}
     if parameter == "thinking":
+        if capabilities.max_output_tokens <= _ANTHROPIC_MIN_THINKING_BUDGET:
+            # budget_tokens 须 ≥ 1024 且 < max_tokens，二者不可兼得——显式关闭
+            # thinking 并记 warning，绝不发出 provider 必拒的载荷。
+            warnings.append("thinking disabled: max_output_tokens below provider minimum")
+            return None
         budget = max(_ANTHROPIC_MIN_THINKING_BUDGET, int(strength * capabilities.max_output_tokens))
+        budget = min(budget, capabilities.max_output_tokens - 1)
         return {"thinking": {"type": "enabled", "budget_tokens": budget}}
     if parameter == "thinking_budget":
         return {"thinking_budget": max(1, int(strength * capabilities.max_output_tokens))}

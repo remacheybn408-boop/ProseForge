@@ -68,4 +68,50 @@ describe("ReasoningPicker", () => {
     expect(onModel).toHaveBeenCalledWith(model);
     expect((screen.getByRole("radio", { name: "max" }) as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it("moves selection with arrow keys per APG radiogroup semantics", () => {
+    const onChange = vi.fn();
+    render(<ReasoningPicker value="standard" supported={all} onChange={onChange} />);
+    const standard = screen.getByRole("radio", { name: "standard" });
+    fireEvent.keyDown(standard, { key: "ArrowRight" });
+    expect(onChange).toHaveBeenCalledWith("deep");
+    fireEvent.keyDown(standard, { key: "ArrowLeft" });
+    expect(onChange).toHaveBeenCalledWith("fast");
+    fireEvent.keyDown(standard, { key: "ArrowDown" });
+    expect(onChange).toHaveBeenCalledWith("deep");
+    fireEvent.keyDown(standard, { key: "ArrowUp" });
+    expect(onChange).toHaveBeenCalledWith("fast");
+  });
+
+  it("wraps around and skips disabled levels during arrow navigation", () => {
+    const onChange = vi.fn();
+    render(<ReasoningPicker value="standard" supported={["auto", "standard"]} onChange={onChange} />);
+    fireEvent.keyDown(screen.getByRole("radio", { name: "standard" }), { key: "ArrowRight" });
+    expect(onChange).toHaveBeenCalledWith("auto"); // deep/max disabled → 跳过并回卷
+    fireEvent.keyDown(screen.getByRole("radio", { name: "auto" }), { key: "ArrowLeft" });
+    expect(onChange).toHaveBeenCalledWith("standard"); // 反向同样跳过 disabled
+  });
+
+  it("jumps to the first and last enabled levels with Home and End", () => {
+    const onChange = vi.fn();
+    render(<ReasoningPicker value="fast" supported={all} onChange={onChange} />);
+    const fast = screen.getByRole("radio", { name: "fast" });
+    fireEvent.keyDown(fast, { key: "End" });
+    expect(onChange).toHaveBeenCalledWith("max");
+    fireEvent.keyDown(fast, { key: "Home" });
+    expect(onChange).toHaveBeenCalledWith("auto");
+  });
+
+  it("keeps a roving tabindex with only the checked radio in the tab order", () => {
+    render(<ReasoningPicker value="standard" supported={all} onChange={() => undefined} />);
+    expect((screen.getByRole("radio", { name: "standard" }) as HTMLButtonElement).tabIndex).toBe(0);
+    for (const name of ["auto", "fast", "deep", "max"]) {
+      expect((screen.getByRole("radio", { name }) as HTMLButtonElement).tabIndex).toBe(-1);
+    }
+  });
+
+  it("puts the first enabled level in the tab order when the current value is unsupported", () => {
+    render(<ReasoningPicker value="deep" supported={["auto"]} onChange={() => undefined} />);
+    expect((screen.getByRole("radio", { name: "auto" }) as HTMLButtonElement).tabIndex).toBe(0);
+  });
 });

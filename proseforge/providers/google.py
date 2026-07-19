@@ -85,10 +85,19 @@ class GoogleProvider(ModelProvider):
                 ]
             }
         model = request.model if request.model.startswith("models/") else f"models/{request.model}"
-        # 思考强度载荷按 catalog reasoning_parameter 的名字落到请求体顶层；
-        # None（AUTO）时不多发任何字段，由 provider 默认值接管。
+        # 思考强度：catalog 参数名 thinking_budget 在 Gemini API 里须放进
+        # generationConfig.thinkingConfig.thinkingBudget（合并而非覆盖已有的
+        # generationConfig）；未知键保持顶层透传。None（AUTO）不多发字段。
         if request.reasoning is not None:
-            payload.update(request.reasoning)
+            reasoning = dict(request.reasoning)
+            thinking_budget = reasoning.pop("thinking_budget", None)
+            if thinking_budget is not None:
+                generation_config = payload.get("generationConfig")
+                if not isinstance(generation_config, dict):
+                    generation_config = {}
+                    payload["generationConfig"] = generation_config
+                generation_config["thinkingConfig"] = {"thinkingBudget": thinking_budget}
+            payload.update(reasoning)
         url = f"{self.base_url}/{model}:streamGenerateContent?alt=sse"
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             async with client.stream("POST", url, headers=self._headers, json=payload) as response:
