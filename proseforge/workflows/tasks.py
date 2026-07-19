@@ -1,15 +1,17 @@
 """任务 handler 实现（celery-free，V15-004）。
 
-5 个持久任务的实际执行体，统一签名为
+6 个持久任务的实际执行体，统一签名为
 ``async handler(payload: dict[str, object]) -> object``。
 模块级不 import celery——native profile 的 LocalTaskQueue 直接复用
 HANDLERS；celery_app.py 只做薄封装（asyncio.run + celery.task 注册）。
-重型依赖全部在函数体内惰性 import。
+重型依赖全部在函数体内惰性 import。v2 workflow 执行器在 v2_tasks.py。
 """
 
 from __future__ import annotations
 
 from typing import Awaitable, Callable
+
+from proseforge.workflows.v2_tasks import execute_v2_run
 
 TaskHandler = Callable[[dict[str, object]], Awaitable[object]]
 
@@ -460,4 +462,5 @@ HANDLERS: dict[str, TaskHandler] = {
     "proseforge.workflows.recover_expired": recover_expired,
     "proseforge.healthcheck": healthcheck,
     "proseforge.agents.execute_run": execute_agent_run,
+    "proseforge.workflows.execute_v2_run": execute_v2_run,
 }

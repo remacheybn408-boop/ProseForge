@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from proseforge.domain.common.ids import new_id
 from proseforge.infrastructure.database.models.project import ProjectModel
 from proseforge.infrastructure.database.models.remaining import WorkflowEventModel, WorkflowRunModel
+from proseforge.infrastructure.database.models.workflow_v2 import WorkflowNodeStateModel
 from proseforge.domain.workflow.state import ALLOWED_TRANSITIONS
 from proseforge.application.workflows.control import decode_checkpoint
 
@@ -97,9 +98,40 @@ class SqlAlchemyWorkflowRepository:
             run.lease_owner = None
             run.lease_expires_at = None
             await self.append_event(run.id, "RECOVERING", {"status": "RECOVERING", "reason": "lease_expired"})
+            nodes = await self.session.scalars(select(WorkflowNodeStateModel).where(WorkflowNodeStateModel.run_id == run.id, WorkflowNodeStateModel.status == "RUNNING", WorkflowNodeStateModel.lease_expires_at <= now))
+            for node in nodes:
+                node.status = "PENDING"
+                node.lease_owner = None
+                node.lease_expires_at = None
+                node.retry_count += 1
+                node.reserved_tokens = 0
+                node.reserved_cost = 0
+                node.updated_at = now
             recovered += 1
         await self.session.flush()
         return recovered
+
+    async def reserve_node_budget(self, run: WorkflowRunModel, node: WorkflowNodeStateModel, estimated_tokens: int, estimated_cost: float) -> bool:
+        locked_run = await self.session.scalar(select(WorkflowRunModel).where(WorkflowRunModel.id == run.id).with_for_update())
+        locked_node = await self.session.scalar(select(WorkflowNodeStateModel).where(WorkflowNodeStateModel.id == node.id).with_for_update())
+        if locked_run is None or locked_node is None:
+            raise LookupError("workflow run or node not found")
+        token_exceeded = bool(locked_run.token_limit and locked_run.used_tokens + estimated_tokens > locked_run.token_limit)
+        cost_exceeded = bool(locked_run.cost_limit and float(locked_run.estimated_cost or 0) + estimated_cost > locked_run.cost_limit)
+        if token_exceeded or cost_exceeded:
+            locked_run.status = "BUDGET_BLOCKED"
+            locked_node.status = "BLOCKED"
+            locked_node.reserved_tokens = 0
+            locked_node.reserved_cost = 0
+            await self.append_event(locked_run.id, "run.budget_blocked", {"status": "BUDGET_BLOCKED", "node_key": locked_node.node_key})
+            await self.session.flush()
+            return False
+        locked_node.reserved_tokens = estimated_tokens
+        locked_node.reserved_cost = estimated_cost
+        locked_node.status = "RUNNING"
+        locked_node.updated_at = datetime.now(UTC)
+        await self.session.flush()
+        return True
 
     async def append_event(self, workflow_id: str, event_type: str, payload: dict[str, object]) -> None:
         sequence = await self.session.scalar(

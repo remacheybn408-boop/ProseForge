@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -13,6 +15,8 @@ from proseforge.application.workflows.control import WorkflowControlService, wor
 from proseforge.domain.chapter.entity import Chapter
 from proseforge.application.workflows.control import decode_checkpoint
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
+from proseforge.infrastructure.database.models.remaining import WorkflowEventModel, WorkflowRunModel
+from sqlalchemy import select
 
 router = APIRouter(prefix="/api/v1", tags=["workflows"])
 
@@ -84,15 +88,17 @@ async def control_workflow(
     request: Request,
     user: Annotated[AuthUser, Depends(current_user)],
     uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key", min_length=1)] = None,
 ) -> dict[str, object]:
     async with uow:
         try:
-            result = await WorkflowControlService(uow, request.app.state.queue).execute(workflow_id, user.id, action)
+            result = await WorkflowControlService(uow, request.app.state.queue).execute(workflow_id, user.id, action, idempotency_key=idempotency_key)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         response = _response(result.run)
+        response["idempotent_replay"] = result.idempotent_replay
         if result.task_id:
             response["task_id"] = result.task_id
         return response
@@ -113,10 +119,28 @@ async def workflow_events(
     async with uow:
         if await uow.workflows.get_owned(workflow_id, user.id) is None:
             raise HTTPException(status_code=404, detail="workflow not found")
-        events = await uow.workflows.events(workflow_id, after)
-
     async def body():
-        for event in events:
-            yield encode_sse(event_id=str(event["id"]), event=str(event["event"]), data=event["data"])
+        cursor = after
+        idle_seconds = 0
+        terminal = {"COMPLETED", "FAILED", "CANCELLED"}
+        while not await request.is_disconnected():
+            async with request.app.state.session_factory() as session:
+                rows = list((await session.scalars(select(WorkflowEventModel).where(WorkflowEventModel.workflow_run_id == workflow_id, WorkflowEventModel.sequence_no > cursor).order_by(WorkflowEventModel.sequence_no))).all())
+                run_status = await session.scalar(select(WorkflowRunModel.status).where(WorkflowRunModel.id == workflow_id))
+            if rows:
+                idle_seconds = 0
+                for row in rows:
+                    cursor = row.sequence_no
+                    yield encode_sse(event_id=str(row.sequence_no), event=row.event_type, data=json.loads(row.payload))
+                if run_status in terminal:
+                    return
+            else:
+                idle_seconds += 1
+                if idle_seconds >= 15:
+                    idle_seconds = 0
+                    yield ": heartbeat\n\n"
+                if run_status in terminal:
+                    return
+            await asyncio.sleep(1)
 
     return StreamingResponse(body(), media_type="text/event-stream", headers={"cache-control": "no-cache", "x-accel-buffering": "no"})

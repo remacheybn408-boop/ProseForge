@@ -5,6 +5,9 @@ export type ContextItem = { id: string; project_id: string; source_type: string;
 export type Chapter = { id: string; project_id: string; chapter_no: number; title: string; status: string; active_version_id?: string | null };
 export type ChapterVersion = { id: string; chapter_id: string; version_no: number; content: string; word_count: number };
 export type Workflow = { id: string; project_id: string; workflow_type: string; status: string };
+export type WorkflowDefinition = { id: string; project_id: string; name: string; revision: number; definition: { nodes: Record<string, unknown>[]; edges: Record<string, unknown>[] } };
+export type WorkflowNodeState = { id: string; node_key: string; status: string; retry_count: number; reserved_tokens: number; used_tokens: number; reserved_cost: number; used_cost: number };
+export type WorkflowRunSnapshot = { run: Workflow & { definition_id?: string; definition_revision?: number; token_limit: number; cost_limit: number }; nodes: WorkflowNodeState[]; event_cursor: number };
 export type ChatMessage = { id: string; role: "user" | "assistant"; content: string; status: string; context_snapshot_id?: string | null };
 export type StoryBibleFact = { id: string; project_id: string; kind: string; key: string; value: Record<string, unknown>; status: string; confidence: number; source: string; pinned: boolean; version: number };
 export type ContextBlock = { type?: string; source_type: string; source_id: string; text: string; token_estimate: number; priority?: number; pinned: boolean; redaction?: boolean; reason?: string };
@@ -17,6 +20,10 @@ export type ProviderOption = { id: string; status: string };
 export type CatalogModel = { provider: string; model_id: string; display_name: string; capabilities: Record<string, unknown>; context_window?: number | null; max_output_tokens?: number | null };
 export type AgentRun = { id: string; project_id: string; status: string; goal_hash: string; graph_revision: number; checkpoint_id?: string | null; budget_used: number; budget_limit: number; event_cursor: number; policy_version: string; terminal_reason?: string | null };
 export type AgentTask = { id: string; task_key: string; role: string; status: string; attempts: number; depends_on: string[] };
+export type ExportFormat = "txt" | "md" | "docx" | "epub";
+export type ExportTemplate = "web-serial" | "submission" | "archive";
+export type ExportRequestPayload = { format: ExportFormat; chapter_range?: [number, number]; version_ids?: string[]; locale?: string; title?: string; author?: string; template?: ExportTemplate };
+export type ExportManifest = { id: string; project_id: string; format: ExportFormat; template: ExportTemplate; title?: string | null; locale: string; version_ids: string[]; content_hashes: Record<string, string>; file_sha256: string; byte_size: number; download_url: string };
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string, public readonly detail = "") {
@@ -81,11 +88,17 @@ export function updateContext(itemId: string, payload: Partial<Pick<ContextItem,
 export function createWorkflow(projectId: string, chapterNumbers: number[]) { return request<Workflow>(`/api/v1/projects/${projectId}/workflows/novel`, { method: "POST", body: JSON.stringify({ chapter_numbers: chapterNumbers }) }); }
 export function getWorkflow(workflowId: string) { return request<Workflow>(`/api/v1/workflows/${workflowId}`); }
 export function controlWorkflow(workflowId: string, action: "pause" | "resume" | "cancel" | "retry") { return request<Workflow>(`/api/v1/workflows/${workflowId}/${action}`, { method: "POST" }); }
+export function listWorkflowDefinitions(projectId: string) { return request<WorkflowDefinition[]>(`/api/v2/projects/${projectId}/workflow-definitions`); }
+export function createWorkflowDefinition(projectId: string, payload: { name: string; definition: WorkflowDefinition["definition"] }) { return request<WorkflowDefinition>(`/api/v2/projects/${projectId}/workflow-definitions`, { method: "POST", body: JSON.stringify(payload) }); }
+export function updateWorkflowDefinition(definitionId: string, payload: { name?: string; definition: WorkflowDefinition["definition"] }) { return request<WorkflowDefinition>(`/api/v2/workflow-definitions/${definitionId}`, { method: "PUT", body: JSON.stringify(payload) }); }
+export function startWorkflowDefinition(definitionId: string, limits: { token_limit?: number; cost_limit?: number } = {}) { return request<{ run: WorkflowRunSnapshot["run"]; nodes: WorkflowNodeState[] }>(`/api/v2/workflow-definitions/${definitionId}/runs`, { method: "POST", body: JSON.stringify(limits) }); }
+export function getWorkflowRun(runId: string) { return request<WorkflowRunSnapshot>(`/api/v2/workflow-runs/${runId}`); }
+export function controlWorkflowRun(runId: string, action: "pause" | "resume" | "cancel" | "retry", idempotencyKey = crypto.randomUUID()) { return request<{ run: WorkflowRunSnapshot["run"]; idempotent_replay: boolean }>(`/api/v2/workflow-runs/${runId}/${action}`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey } }); }
 export function createConversation(projectId: string) { return request<{ id: string; branch_id: string; title: string }>("/api/v1/conversations", { method: "POST", body: JSON.stringify({ project_id: projectId, title: "Writing companion" }) }); }
 export function sendMessage(conversationId: string, payload: { branch_id: string; content: string; client_request_id: string; provider?: string; model?: string; reasoning_level?: string }) { return request<{ user_message_id: string; assistant_message_id: string; task_id: string }>(`/api/v2/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(payload) }); }
 export function listMessages(conversationId: string, branchId: string) { return request<ChatMessage[]>(`/api/v1/conversations/${conversationId}/branches/${branchId}/messages`); }
 export function forkConversation(conversationId: string, messageId: string, name: string) { return request<{ id: string; name: string }>(`/api/v1/conversations/${conversationId}/branches`, { method: "POST", body: JSON.stringify({ message_id: messageId, name }) }); }
-export function requestExport(projectId: string, format: "txt" | "md" | "json" | "docx" | "epub", versionIds: string[] = []) { return request<{ status: string; format: string; download_url: string; version_ids: string[] }>(`/api/v1/projects/${projectId}/exports`, { method: "POST", body: JSON.stringify({ format, version_ids: versionIds }) }); }
+export function requestExport(projectId: string, payload: ExportRequestPayload) { return request<ExportManifest>(`/api/v1/projects/${projectId}/exports`, { method: "POST", body: JSON.stringify(payload) }); }
 export function getUsageSummary(filters: { project_id?: string; conversation_id?: string; workflow_id?: string } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value) as [string, string][]).toString(); return request<UsageSummary>(`/api/v1/usage/summary${query ? `?${query}` : ""}`); }
 export function listUsageRecords(filters: { project_id?: string; conversation_id?: string; workflow_id?: string; limit?: number } = {}) { const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined) as [string, string][]).toString(); return request<Record<string, unknown>[]>(`/api/v1/usage/records${query ? `?${query}` : ""}`); }
 export function createAgentRun(projectId: string, payload: { goal: string; graph_revision?: number; budget_limit?: number }, idempotencyKey?: string) { return request<AgentRun>("/api/v3/projects/" + projectId + "/agent-runs", { method: "POST", headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined, body: JSON.stringify(payload) }); }
@@ -123,4 +136,54 @@ export function subscribeConversationEvents(conversationId: string, onEvent: (ev
   };
   for (const name of CONVERSATION_EVENT_NAMES) source.addEventListener(name, handle);
   return () => source.close();
+}
+
+export type WorkflowRunStreamEvent = { id: number; event: string; data: Record<string, unknown> };
+
+/**
+ * Streams `/api/v2/workflow-runs/{runId}/events` (replay from `lastEventId`,
+ * then live tail). The native EventSource API cannot send an initial
+ * `Last-Event-ID` header, so the SSE wire format is parsed over fetch with the
+ * same cookie auth as `request`. Heartbeat comment frames are skipped.
+ * `onClose` fires when the server ends the stream (terminal run) or the
+ * connection drops; the returned function closes the stream without `onClose`.
+ */
+export function subscribeWorkflowRunEvents(runId: string, options: { lastEventId?: number; onEvent: (event: WorkflowRunStreamEvent) => void; onClose?: () => void }) {
+  const controller = new AbortController();
+  const headers: Record<string, string> = { accept: "text/event-stream" };
+  if (options.lastEventId && options.lastEventId > 0) headers["last-event-id"] = String(options.lastEventId);
+  const parseFrame = (frame: string): WorkflowRunStreamEvent | null => {
+    if (frame.startsWith(":")) return null;
+    let id = 0;
+    let event = "message";
+    const data: string[] = [];
+    for (const line of frame.split("\n")) {
+      if (line.startsWith("id:")) id = Number(line.slice(3).trim()) || 0;
+      else if (line.startsWith("event:")) event = line.slice(6).trim();
+      else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /, ""));
+    }
+    if (!data.length) return null;
+    try { return { id, event, data: JSON.parse(data.join("\n")) as Record<string, unknown> }; } catch { return null; }
+  };
+  void fetch(`/api/v2/workflow-runs/${runId}/events`, { credentials: "include", headers, signal: controller.signal }).then(async response => {
+    if (!response.ok || !response.body) { options.onClose?.(); return; }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary >= 0) {
+        const frame = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const parsed = parseFrame(frame);
+        if (parsed) options.onEvent(parsed);
+        boundary = buffer.indexOf("\n\n");
+      }
+    }
+    options.onClose?.();
+  }).catch(() => { if (!controller.signal.aborted) options.onClose?.(); });
+  return () => controller.abort();
 }

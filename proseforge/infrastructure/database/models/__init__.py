@@ -5,6 +5,8 @@ from .conversation import ConversationBranchModel, ConversationEventModel, Conve
 from .project import ProjectModel
 from .story_bible import StoryBibleEntryModel
 from .revision import RevisionProposalModel, ReviewReportModel
+from .export import ExportManifestModel
+from .workflow_v2 import WorkflowDefinitionModel, WorkflowNodeStateModel
 from .agents import (
     AgentArtifactModel, AgentEvaluationModel, AgentEventModel, AgentMemoryModel,
     AgentPolicySnapshotModel, AgentReviewModel, AgentRunModel, AgentTaskModel,
@@ -33,11 +35,11 @@ from .remaining import (
 
 __all__ = [
     "ChapterModel", "ChapterVersionModel", "ProjectModel", "UserModel",
-    "ConversationModel", "ConversationBranchModel", "MessageModel", "MessageChunkModel", "MessageEditModel", "StoryBibleEntryModel", "RevisionProposalModel", "ReviewReportModel",
+    "ConversationModel", "ConversationBranchModel", "MessageModel", "MessageChunkModel", "MessageEditModel", "StoryBibleEntryModel", "RevisionProposalModel", "ReviewReportModel", "ExportManifestModel",
     "ConversationEventModel", "ArtifactModel", "AttachmentModel", "AuditLogModel",
     "AgentRunModel", "AgentTaskModel", "AgentEventModel", "AgentArtifactModel", "AgentReviewModel", "AgentMemoryModel", "AgentPolicySnapshotModel", "AgentEvaluationModel",
     "ContextItemModel", "ContextSnapshotModel", "EmbeddingModel", "HealthCheckModel",
     "ModelCallModel", "ModelCatalogModel", "ModelProfileModel", "OutlineModel",
     "OutlineVersionModel", "ProviderCredentialModel", "QualityReportModel",
-    "WorkflowEventModel", "WorkflowRunModel", "WorkflowStepModel", "ModelUsageRecordModel",
+    "WorkflowEventModel", "WorkflowRunModel", "WorkflowStepModel", "WorkflowDefinitionModel", "WorkflowNodeStateModel", "ModelUsageRecordModel",
 ]

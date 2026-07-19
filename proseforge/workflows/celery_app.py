@@ -15,6 +15,7 @@ from proseforge.workflows.tasks import (
     sync_all_models,
     execute_agent_run,
 )
+from proseforge.workflows.v2_tasks import execute_v2_run, recover_expired_v2
 
 
 celery = Celery(
@@ -39,6 +40,10 @@ celery.conf.update(
         },
         "recover-expired-workflows": {
             "task": "proseforge.workflows.recover_expired",
+            "schedule": 60.0,
+        },
+        "recover-expired-v2-workflow-nodes": {
+            "task": "proseforge.workflows.recover_expired_v2",
             "schedule": 60.0,
         },
     },
@@ -79,6 +84,18 @@ def generate_chat_task(self, payload: dict[str, object]) -> str:
 def execute_agent_run_task(self, payload: dict[str, object]) -> str:
     del self
     return asyncio.run(execute_agent_run(payload))
+
+
+@celery.task(name="proseforge.workflows.execute_v2_run", bind=True, max_retries=0)
+def execute_v2_run_task(self, payload: dict[str, object]) -> str:
+    del self
+    return asyncio.run(execute_v2_run(payload))
+
+
+@celery.task(name="proseforge.workflows.recover_expired_v2", bind=True, max_retries=0)
+def recover_expired_v2_workflow_nodes(self) -> dict[str, int]:
+    del self
+    return asyncio.run(recover_expired_v2({}))
 
 
 __all__ = ["HANDLERS", "celery", "should_abort_workflow"]

@@ -1,7 +1,7 @@
 """Add versioned workflow definitions and per-node run state."""
 
 from alembic import op
-from sqlalchemy import Column, DateTime, Integer, String, Text, UniqueConstraint, inspect
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text, UniqueConstraint, inspect
 
 
 revision = "0013_workflow_definitions"
@@ -38,8 +38,8 @@ def upgrade() -> None:
             Column("retry_count", Integer, nullable=False, server_default="0"),
             Column("reserved_tokens", Integer, nullable=False, server_default="0"),
             Column("used_tokens", Integer, nullable=False, server_default="0"),
-            Column("reserved_cost", Integer, nullable=False, server_default="0"),
-            Column("used_cost", Integer, nullable=False, server_default="0"),
+            Column("reserved_cost", Float, nullable=False, server_default="0"),
+            Column("used_cost", Float, nullable=False, server_default="0"),
             Column("updated_at", DateTime(timezone=True), nullable=False),
             UniqueConstraint("run_id", "node_key", name="uq_workflow_node_states_run_node_key"),
         )

@@ -26,6 +26,8 @@ from proseforge.api.routes.static_web import router as static_web_router
 from proseforge.api.routes.story_bible import router as story_bible_router
 from proseforge.api.routes.usage import router as usage_router
 from proseforge.api.routes.workflows import router as workflows_router
+from proseforge.api.routes.workflow_definitions import router as workflow_definitions_router
+from proseforge.api.routes.workflow_runs import router as workflow_runs_router
 from proseforge.api.routes.revisions import router as revisions_router
 from proseforge.api.routes.reviews import router as reviews_router
 from proseforge.api.routes.agent_runs import router as agent_runs_router
@@ -105,6 +107,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         recover_expired = getattr(application.state.queue, "recover_expired", None)
         if recover_expired is not None:
             await recover_expired()
+        # v2：租约过期节点重排（RECOVERING → QUEUED），并为 QUEUED 的
+        # definition run 补入队执行器；入队失败留待下一 tick。
+        from proseforge.application.workflows.recover_run import queued_definition_run_ids, recover_expired_workflow_nodes
+        from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
+        from proseforge.workflows.v2_tasks import EXECUTE_V2_RUN_TASK
+
+        async with SqlAlchemyUnitOfWork(application.state.session_factory) as uow:
+            await recover_expired_workflow_nodes(uow)
+            queued = await queued_definition_run_ids(uow)
+            await uow.commit()
+        for run_id in queued:
+            try:
+                await application.state.queue.enqueue(EXECUTE_V2_RUN_TASK, {"run_id": run_id})
+            except Exception:
+                break
 
     capabilities = capabilities_for(RuntimeProfile(resolved.runtime_profile))
     scheduler = (
@@ -139,6 +156,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(conversations_router)
     application.include_router(providers_router)
     application.include_router(workflows_router)
+    application.include_router(workflow_definitions_router)
+    application.include_router(workflow_runs_router)
     application.include_router(files_router)
     application.include_router(chapters_router)
     application.include_router(chapters_v2_router)
