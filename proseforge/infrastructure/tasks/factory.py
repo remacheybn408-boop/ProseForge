@@ -2,7 +2,7 @@
 
 按 runtime profile 的 queue capability 装配队列：
 native→LocalTaskQueue（注入 Settings 的 worker 并发/轮询参数，并注册
-workflows.tasks.HANDLERS 中的 6 个任务 handler）、server→CeleryTaskQueue、
+workflows.tasks.HANDLERS 中的 7 个任务 handler）、server→CeleryTaskQueue、
 test→InMemoryTaskQueue。server 绝不回退 SQLite/本地队列——profile 与
 database_url 的非法组合在 Settings 校验层已经抛错，这里不做任何兜底。
 """

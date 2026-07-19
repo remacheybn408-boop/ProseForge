@@ -28,6 +28,11 @@ services:
       context: .
       dockerfile: docker/legacy-test.Dockerfile
     command: ["sh", "-lc", "pytest -q tests/test_*.py --junitxml=/artifacts/pytest.xml"]
+    # 容器无外网（huggingface.co 不可达）：RAG 嵌入模型由宿主机预下载到
+    # .hf-cache（.gitignore 已排除），离线模式强制走本地缓存。
+    environment:
+      HF_HOME: /app/.hf-cache
+      HF_HUB_OFFLINE: "1"
     volumes:
       - .:/app
       - ./artifacts:/artifacts

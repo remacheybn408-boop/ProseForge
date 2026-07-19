@@ -24,6 +24,7 @@ EXPECTED_TASK_NAMES = {
     "proseforge.workflows.recover_expired",
     "proseforge.healthcheck",
     "proseforge.agents.execute_run",
+    "proseforge.workflows.execute_v2_run",
 }
 
 

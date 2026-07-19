@@ -64,3 +64,4 @@ htmlcov/
 .tools/
 .venv-native-*/
 .superpowers/
+.hf-cache/
