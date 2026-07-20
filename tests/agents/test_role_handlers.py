@@ -39,21 +39,22 @@ def test_role_allowlist_comes_from_domain_policy():
 
 
 def test_register_role_overrides_default_and_restores():
-    assert handler_for("merge_editor") is default_role_handler
+    # scene_writer 无专家注册（merge_editor 等已由 WS-D 专家模块接管），用于验证默认解析路径
+    assert handler_for("scene_writer") is default_role_handler
 
     async def specialist(_context):
         return RoleResult(artifact_type="candidate", payload={"ok": True})
 
-    saved = ROLE_HANDLERS.get("merge_editor")
+    saved = ROLE_HANDLERS.get("scene_writer")
     try:
-        register_role("merge_editor")(specialist)
-        assert handler_for("merge_editor") is specialist
+        register_role("scene_writer")(specialist)
+        assert handler_for("scene_writer") is specialist
     finally:
         if saved is None:
-            ROLE_HANDLERS.pop("merge_editor", None)
+            ROLE_HANDLERS.pop("scene_writer", None)
         else:
-            ROLE_HANDLERS["merge_editor"] = saved
-    assert handler_for("merge_editor") is default_role_handler
+            ROLE_HANDLERS["scene_writer"] = saved
+    assert handler_for("scene_writer") is default_role_handler
 
 
 class _RecordingProvider:

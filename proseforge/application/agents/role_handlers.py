@@ -14,6 +14,9 @@ TaskContext 约定键：
 - ``uow_factory``: 无参 callable，返回新的 SqlAlchemyUnitOfWork（handler 自持短事务用）
 - ``artifacts``: list[dict]——截至认领时已提交 Artifact 的摘要
   （id/task_key/artifact_type/preview；preview 已脱敏限长，不含正文全文）
+- ``run`` 快照可选键 ``memory_slice``：用户已批准记忆事实切片
+  （[{"fact_key", "value"}]）；缺省时默认 handler 自行经
+  ``memory_service.load_memory_slice(uow_factory, run)`` 加载（仅 ACCEPTED）
 
 默认 handler（``default_role_handler``）：按角色提示词调模型 → 解析 JSON →
 产出 artifact_type/payload/usage；模型调用发生在任何数据库事务之外。
@@ -48,7 +51,10 @@ RoleHandler = Callable[[TaskContext], Awaitable[RoleResult]]
 ROLE_HANDLERS: dict[str, RoleHandler] = {}
 
 # 专家模块路径（后续 workstream 在此登记自己的模块，import 副作用完成注册）
-SPECIALIST_MODULES: tuple[str, ...] = ()
+SPECIALIST_MODULES: tuple[str, ...] = (
+    "proseforge.application.agents.review_handlers",  # WS-D：评审簇 + merge_editor
+    "proseforge.application.agents.chief_handler",  # WS-D：chief_editor（MergeCandidate → V2 proposal）
+)
 
 _specialists_loaded = False
 
@@ -151,6 +157,7 @@ async def default_role_handler(context: TaskContext) -> RoleResult:
     模型输出非合法 JSON 时抛 JSONDecodeError，由 executor 按 malformed_json
     语义重试（max_attempts 内重置 PENDING，否则任务 FAILED）。
     """
+    from proseforge.application.agents.memory_service import load_memory_slice
     from proseforge.application.agents.prompts import build_task_prompt, prompt_for_role
     from proseforge.domain.ports.model_provider import GenerationRequest
     from proseforge.providers.usage import normalize_provider_usage
@@ -161,10 +168,13 @@ async def default_role_handler(context: TaskContext) -> RoleResult:
     role, task_key = str(task["role"]), str(task["task_key"])
     provider_id = str(context.get("provider_id", "unknown"))
     provider = context["provider"]
+    memory_slice = run.get("memory_slice")
+    if memory_slice is None:
+        memory_slice = await load_memory_slice(context.get("uow_factory"), run)
     request = GenerationRequest(
         model=str(context["model"]),
         system_blocks=({"role": "system", "text": prompt_for_role(role)},),
-        input_blocks=({"role": "user", "text": build_task_prompt(role=role, task_key=task_key, goal_hint=str(run.get("goal_hash", ""))[:12], artifacts=list(context.get("artifacts", [])))},),
+        input_blocks=({"role": "user", "text": build_task_prompt(role=role, task_key=task_key, goal_hint=str(run.get("goal_hash", ""))[:12], artifacts=list(context.get("artifacts", [])), memory_slice=list(memory_slice))},),
         response_schema={"type": "object"},
         metadata={"workflow": "agent-run", "run_id": str(run.get("id", "")), "role": role, "task_key": task_key},
     )

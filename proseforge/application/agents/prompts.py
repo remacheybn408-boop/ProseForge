@@ -34,11 +34,11 @@ ROLE_OUTPUT_HINTS: dict[str, str] = {
     "character_designer": '形如 {"name": "...", "role": "...", "traits": ["..."]}',
     "timeline_analyst": '形如 {"events": ["..."], "issues": ["..."]}',
     "scene_writer": '形如 {"title": "...", "content": "..."}',
-    "style_editor": '形如 {"summary": "...", "issues": ["..."]}',
-    "continuity_reviewer": '形如 {"summary": "...", "issues": ["..."]}',
-    "adversarial_reviewer": '形如 {"summary": "...", "risks": ["..."]}',
-    "merge_editor": '形如 {"summary": "...", "sources": ["..."]}',
-    "chief_editor": '形如 {"summary": "...", "changes": ["..."]}',
+    "style_editor": '形如 {"summary": "...", "findings": [{"finding": "...", "severity": "low|medium|high", "target_artifact_id": "...", "evidence_spans": [{"artifact_id": "...", "start": 0, "end": 1, "quote": "..."}], "verdict": "PASS|WARNING|CONFLICT|UNSUPPORTED"}]}，证据区间必须引用上游 artifact_id，无证据时 verdict=UNSUPPORTED 且 evidence_spans 为空',
+    "continuity_reviewer": '形如 {"summary": "...", "findings": [{"finding": "...", "severity": "low|medium|high", "target_artifact_id": "...", "evidence_spans": [{"artifact_id": "...", "start": 0, "end": 1, "quote": "..."}], "verdict": "PASS|WARNING|CONFLICT|UNSUPPORTED"}]}，证据区间必须引用上游 artifact_id，无证据时 verdict=UNSUPPORTED 且 evidence_spans 为空',
+    "adversarial_reviewer": '形如 {"summary": "...", "findings": [{"finding": "...", "severity": "low|medium|high", "target_artifact_id": "...", "evidence_spans": [{"artifact_id": "...", "start": 0, "end": 1, "quote": "..."}], "verdict": "PASS|WARNING|CONFLICT|UNSUPPORTED"}]}，证据区间必须引用上游 artifact_id，无证据时 verdict=UNSUPPORTED 且 evidence_spans 为空',
+    "merge_editor": '形如 {"summary": "...", "agreements": ["..."], "conflicts": [{"conflict_group": "...", "parties": ["..."], "claims": ["..."], "resolution": null}], "unsupported": ["..."], "accepted": ["..."]}，只做分类，不改写作者正文',
+    "chief_editor": '形如 {"summary": "...", "appendix": "..."}，appendix 是追加在正文后的合并附录（落实一致与已接受发现），不得改写原文',
 }
 
 
@@ -51,9 +51,16 @@ def prompt_for_role(role: str) -> str:
     return f"{base}\n{JSON_OUTPUT_INSTRUCTION}"
 
 
-def build_task_prompt(*, role: str, task_key: str, goal_hint: str, artifacts: list[dict[str, object]]) -> str:
-    """用户提示词：任务标识 + 目标摘要 + 上游 Artifact 摘要（preview 已脱敏限长）。"""
+def build_task_prompt(*, role: str, task_key: str, goal_hint: str, artifacts: list[dict[str, object]], memory_slice: list[dict[str, object]] | None = None) -> str:
+    """用户提示词：任务标识 + 目标摘要 + 上游 Artifact 摘要（preview 已脱敏限长）。
+
+    ``memory_slice`` 为用户已批准的记忆事实（每形 {"fact_key", "value"}，
+    条数/长度已由 memory_service 限界）；注入时带显式 token 预算说明。
+    """
     lines = [f"任务：{task_key}（角色 {role}）", f"写作目标摘要：{goal_hint}"]
+    if memory_slice:
+        lines.append("已批准记忆切片（仅作背景约束，不得复述；token 预算 400 以内）：")
+        lines.extend(f"- {item.get('fact_key', '')}: {item.get('value', '')}" for item in memory_slice)
     if artifacts:
         lines.append("上游 Artifact 摘要：")
         lines.extend(f"- [{item.get('artifact_type', '')}] {item.get('task_key', '')}: {item.get('preview', '')}" for item in artifacts)

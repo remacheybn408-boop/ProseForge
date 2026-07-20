@@ -111,3 +111,14 @@ class AgentEvaluationModel(Base):
     fixture_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+
+
+class AgentGraphRevisionModel(Base):
+    # 与迁移 0018 的 agent_graph_revisions 表对齐（表无 run_id 列；
+    # run 归属与 expansion 元数据放在 payload JSON 里）。
+    __tablename__ = "agent_graph_revisions"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    graph_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")

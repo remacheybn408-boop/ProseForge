@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "rubric_version": "v3-rubric-1",
+  "note": "全部为虚构合成片段，不含任何真实稿件；expected 为确定性 rubric 的期望区间 [lo, hi]。",
+  "cases": [
+    {
+      "id": "clean",
+      "file": "chapter_clean.txt",
+      "sha256": "fd2a094108521bbbe635d24e92e44c6306d783d2431f04e3f09cc0897ab7dbe7",
+      "facts": ["林雪:左撇子", "林雪:二十二岁", "顾岩:沉默寡言"],
+      "banned_voice_words": ["老子"],
+      "reviews": [
+        {"finding": "第二段封条线索与第三章呼应", "evidence": "铁盒上的封条"},
+        {"finding": "结尾纸牌钩子有效", "evidence": "写满字的纸牌"}
+      ],
+      "cost": {"budget_used": 900, "duration_ms": 8000, "baseline_budget_used": 1000, "baseline_duration_ms": 10000},
+      "expected": {
+        "continuity": [5, 5],
+        "character": [5, 5],
+        "plot_causality": [5, 5],
+        "style_adherence": [5, 5],
+        "useful_review": [5, 5],
+        "pacing": [4, 5],
+        "cost_latency": [5, 5]
+      }
+    },
+    {
+      "id": "contradiction",
+      "file": "chapter_contradiction.txt",
+      "sha256": "6fc81b2b6c988a58260dad2ac7db1268060f72bf496f86e8b972744ec9f31122",
+      "facts": ["林雪:左撇子", "林雪:二十二岁"],
+      "banned_voice_words": ["老子"],
+      "reviews": [
+        {"finding": "整体尚可"},
+        {"finding": "风格需打磨"}
+      ],
+      "cost": {"budget_used": 1500, "duration_ms": 17000, "baseline_budget_used": 1000, "baseline_duration_ms": 10000},
+      "expected": {
+        "continuity": [1, 3],
+        "character": [1, 3],
+        "plot_causality": [1, 4],
+        "style_adherence": [1, 2],
+        "useful_review": [1, 1],
+        "pacing": [1, 3],
+        "cost_latency": [3, 3]
+      }
+    },
+    {
+      "id": "mixed",
+      "file": "chapter_mixed.txt",
+      "sha256": "f0cd89092e51499dfb08f1f052e8185d34aa158296fe5f7cb28b30ad1f7a0a7f",
+      "facts": ["苏晴:黑发"],
+      "banned_voice_words": ["废物"],
+      "reviews": [
+        {"finding": "怀表动机铺垫不足", "evidence": "墙角那只旧怀表"},
+        {"finding": "节奏可以更紧凑"}
+      ],
+      "cost": {"budget_used": 1200, "duration_ms": 13000, "baseline_budget_used": 1000, "baseline_duration_ms": 10000},
+      "expected": {
+        "continuity": [5, 5],
+        "character": [5, 5],
+        "plot_causality": [4, 4],
+        "style_adherence": [4, 4],
+        "useful_review": [3, 3],
+        "pacing": [3, 5],
+        "cost_latency": [4, 4]
+      }
+    }
+  ]
+}
