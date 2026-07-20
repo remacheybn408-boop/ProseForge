@@ -13,3 +13,6 @@
 
 # Windows batch stays CRLF
 *.bat text eol=crlf
+
+# Evaluation fixtures hash raw bytes; never convert line endings
+tests/evaluation/fixtures/*.txt text eol=lf
