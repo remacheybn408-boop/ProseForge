@@ -21,7 +21,9 @@ async function createAgentRun(request: APIRequestContext, projectId: string, dat
 }
 
 test("v3 agent swarm is idempotent, replayable, reviewable, and visible in the workspace", async ({ page, request }) => {
-  test.setTimeout(90_000);
+  // Budget covers the long API phase (shared, rate-limited account) plus the UI
+  // phase; sibling v3 specs running in parallel can stretch both.
+  test.setTimeout(180_000);
   const email = process.env.E2E_EMAIL ?? "v2-e2e-b074fc29@example.local";
   const password = process.env.E2E_PASSWORD ?? "E2ePassw0rd!";
   const setup = await request.post("/api/v1/auth/setup", { data: { email, password } });
@@ -95,6 +97,9 @@ test("v3 agent swarm is idempotent, replayable, reviewable, and visible in the w
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
+  // Wait for the signed-in shell before navigating, otherwise goto can race the
+  // sign-in request and the studio route loads without a session.
+  await expect(page.getByRole("button", { name: "Projects", exact: true })).toBeVisible({ timeout: 30_000 });
   await page.goto("/projects/" + project.id + "/studio");
   await page.getByRole("button", { name: "Agent Swarm" }).click();
   await expect(page.getByRole("heading", { name: "Agent orchestration" })).toBeVisible();
