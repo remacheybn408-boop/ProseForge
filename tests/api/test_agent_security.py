@@ -51,7 +51,8 @@ def _create_project(auth_client) -> dict:
 
 def _create_run(auth_client, project_id: str, goal: str = "策略安全用例", idempotency_key: str | None = None):
     headers = {"Idempotency-Key": idempotency_key} if idempotency_key else {}
-    return auth_client.post(f"/api/v1/projects/{project_id}/agent-runs", json={"goal": goal}, headers=headers)
+    # agent_runs 路由只挂在 /api/v3（main.py 无 /api/v1 别名），v1 路径会 404。
+    return auth_client.post(f"/api/v3/projects/{project_id}/agent-runs", json={"goal": goal}, headers=headers)
 
 
 def test_run_creation_writes_signed_policy_snapshot(auth_client, api_settings):

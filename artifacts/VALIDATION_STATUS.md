@@ -59,7 +59,7 @@
 2. ✅ CI 修复（ruff / trivy 弃用遭攻陷 action 改直跑镜像 / pnpm audit corepack / 接入 e2e；另修复 nginx resolver Podman 不兼容、pnpm store 卷、exports tmpfs）
 3. ✅ V15-008 / V15-009 / V15-010（蓝图 V1.5_NATIVE_RUNTIME）——Windows/Linux 绿，macOS BLOCKED 待 runner；证据见 `V1_5_NATIVE_VALIDATION.md` 与 `BATCH_VALIDATION_V1.5_B4.md`
 4. ✅ V2-001～010 补齐——V2-010 发布门禁已执行并 PASS（2026-07-20，ECS Docker L2，证据见 `V2_FINAL_VALIDATION.md` / `BATCH_VALIDATION_V2_B4.md`）
-5. ⬜ V3-001～010 重实现（另立计划）——注意恢复 e2e skip：`v3-agent-swarm.spec.ts`、`v3-execution-proposal.spec.ts`；修共享账号 fixture 隔离
+5. ⬜ V3-001～010 重实现（另立计划）——e2e skip 已恢复（V3-010）：`v3-agent-swarm.spec.ts`、`v3-execution-proposal.spec.ts` 已按真实执行器重写；`/api/v1/auth/setup` 为一次性 owner 端点（后端不允许第二账号），共享账号不可消除，改为唯一幂等键/项目 slug + RUN_CONCURRENCY_LIMIT 有界重试 + `compose.test.yaml` 放宽 e2e 堆栈 /api/v3 限流桶（写 60/读 240，中间件默认值不变、仍由 api 测试断言 429）
 
 ## 证据标准（蓝图 `TEST_EXECUTION_POLICY.md` §五）
 

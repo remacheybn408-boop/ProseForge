@@ -2,6 +2,12 @@ services:
   api:
     environment:
       PROSEFORGE_PUBLIC_URL: http://web
+      # 产品只允许一个账号（/api/v1/auth/setup 一次性），整套并行 e2e 共享同一
+      # 用户的限流桶：全套件 /api/v3 写 ~25 次/分钟、轮询读峰值 >60 次/分钟，
+      # 超过默认 20/60。这里只放宽 e2e 堆栈的桶大小；中间件本身由
+      # tests/api/test_agent_security.py 以默认值做 429 断言，不受影响。
+      PROSEFORGE_AGENT_RATE_LIMIT_WRITE_PER_MINUTE: "60"
+      PROSEFORGE_AGENT_RATE_LIMIT_READ_PER_MINUTE: "240"
 
   postgres:
     volumes:
