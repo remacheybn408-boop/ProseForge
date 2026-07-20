@@ -93,7 +93,14 @@ export function createWorkflowDefinition(projectId: string, payload: { name: str
 export function updateWorkflowDefinition(definitionId: string, payload: { name?: string; definition: WorkflowDefinition["definition"] }) { return request<WorkflowDefinition>(`/api/v2/workflow-definitions/${definitionId}`, { method: "PUT", body: JSON.stringify(payload) }); }
 export function startWorkflowDefinition(definitionId: string, limits: { token_limit?: number; cost_limit?: number } = {}) { return request<{ run: WorkflowRunSnapshot["run"]; nodes: WorkflowNodeState[] }>(`/api/v2/workflow-definitions/${definitionId}/runs`, { method: "POST", body: JSON.stringify(limits) }); }
 export function getWorkflowRun(runId: string) { return request<WorkflowRunSnapshot>(`/api/v2/workflow-runs/${runId}`); }
-export function controlWorkflowRun(runId: string, action: "pause" | "resume" | "cancel" | "retry", idempotencyKey = crypto.randomUUID()) { return request<{ run: WorkflowRunSnapshot["run"]; idempotent_replay: boolean }>(`/api/v2/workflow-runs/${runId}/${action}`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey } }); }
+function newIdempotencyKey(): string {
+  // crypto.randomUUID exists only in secure contexts; plain-http deployments
+  // still need unique keys for the idempotent workflow controls.
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+export function controlWorkflowRun(runId: string, action: "pause" | "resume" | "cancel" | "retry", idempotencyKey = newIdempotencyKey()) { return request<{ run: WorkflowRunSnapshot["run"]; idempotent_replay: boolean }>(`/api/v2/workflow-runs/${runId}/${action}`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey } }); }
 export function createConversation(projectId: string) { return request<{ id: string; branch_id: string; title: string }>("/api/v1/conversations", { method: "POST", body: JSON.stringify({ project_id: projectId, title: "Writing companion" }) }); }
 export function sendMessage(conversationId: string, payload: { branch_id: string; content: string; client_request_id: string; provider?: string; model?: string; reasoning_level?: string }) { return request<{ user_message_id: string; assistant_message_id: string; task_id: string }>(`/api/v2/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify(payload) }); }
 export function listMessages(conversationId: string, branchId: string) { return request<ChatMessage[]>(`/api/v1/conversations/${conversationId}/branches/${branchId}/messages`); }

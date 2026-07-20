@@ -52,7 +52,7 @@ class WorkflowRunService:
         return run, states
 
     async def get_owned(self, run_id: str, owner_id: str, *, lock: bool = False) -> WorkflowRunModel | None:
-        query = select(WorkflowRunModel).join(ProjectModel, ProjectModel.id == WorkflowRunModel.project_id).where(WorkflowRunModel.id == run_id, ProjectModel.owner_id == owner_id)
+        query = select(WorkflowRunModel).join(ProjectModel, ProjectModel.id == WorkflowRunModel.project_id).where(WorkflowRunModel.id == run_id, ProjectModel.owner_id == owner_id, WorkflowRunModel.workflow_type == "DEFINITION")
         if lock:
             query = query.with_for_update()
         return await self.session.scalar(query)
