@@ -21,7 +21,7 @@ class AgentRunModel(Base):
     idempotency_key: Mapped[str | None] = mapped_column(String(200), nullable=True, index=True)
     graph_revision: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING")
-    checkpoint_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    checkpoint_id: Mapped[str | None] = mapped_column(String(512), nullable=True)
     budget_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     budget_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     event_cursor: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -44,6 +44,7 @@ class AgentTaskModel(Base):
     depends_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     checkpoint_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     lease_owner: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
@@ -100,6 +101,7 @@ class AgentPolicySnapshotModel(Base):
     policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
     policy_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     payload: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    signature: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
 class AgentEvaluationModel(Base):

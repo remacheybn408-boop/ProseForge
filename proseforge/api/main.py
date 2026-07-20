@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from proseforge.api.middleware import CorrelationIdMiddleware
+from proseforge.api.middleware import AgentRateLimitMiddleware, CorrelationIdMiddleware
 from proseforge.api.routes.auth import router as auth_router
 from proseforge.api.routes.branches import router as branches_router
 from proseforge.api.routes.chapters import router as chapters_router, v2_router as chapters_v2_router
@@ -96,6 +96,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application = FastAPI(title="ProseForge API", version="1.5.0", lifespan=lifespan)
     application.add_middleware(CorrelationIdMiddleware)
+    application.add_middleware(
+        AgentRateLimitMiddleware,
+        read_per_minute=resolved.agent_rate_limit_read_per_minute,
+        write_per_minute=resolved.agent_rate_limit_write_per_minute,
+    )
     application.state.settings = resolved
     application.state.runtime = create_runtime(resolved)
     application.state.auth = AuthService(resolved.jwt_secret.get_secret_value())

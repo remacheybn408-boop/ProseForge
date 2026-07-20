@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     serve_web: bool = False
     native_queue_poll_seconds: float = 1.0
     native_worker_concurrency: int = 2
+    agent_rate_limit_read_per_minute: int = 60
+    agent_rate_limit_write_per_minute: int = 20
 
     @model_validator(mode="after")
     def validate_runtime(self) -> "Settings":

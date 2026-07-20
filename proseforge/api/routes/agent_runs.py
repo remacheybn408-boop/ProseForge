@@ -6,19 +6,24 @@ from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from pydantic import BaseModel, Field
-from sqlalchemy import select
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, SecretStr
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from proseforge.api.dependencies import current_user, unit_of_work
+from proseforge.application.agents.policy_snapshot import build_snapshot, canonical_json, sign, verify
 from proseforge.application.agents.validate_graph import validate_graph
 from proseforge.application.auth.service import AuthUser
 from proseforge.domain.agents.task_graph import AgentTaskSpec, TaskGraph
-from proseforge.domain.agents.roles import AgentRole
 from proseforge.domain.common.ids import new_id
 from proseforge.infrastructure.database.models.agents import AgentArtifactModel, AgentEventModel, AgentPolicySnapshotModel, AgentReviewModel, AgentRunModel, AgentTaskModel
 from proseforge.infrastructure.database.uow import SqlAlchemyUnitOfWork
 
 router = APIRouter(prefix="/api/v3", tags=["agent-runs"])
+
+# 单用户并发 run 上限（PENDING/RUNNING 计入），超出拒绝新建。
+MAX_ACTIVE_RUNS_PER_USER = 3
 
 
 class GraphTaskRequest(BaseModel):
@@ -67,6 +72,20 @@ def _run_response(run: AgentRunModel) -> dict[str, object]:
     }
 
 
+def _envelope(code: str, message: str, request_id: str = "", *, retryable: bool = False) -> dict[str, object]:
+    # 公共错误封套，形状与 api/errors.py 的 domain_error_handler 一致。
+    return {"error": {"code": code, "message": message, "retryable": retryable, "request_id": request_id, "details": {}}}
+
+
+def _audit_payload(user_id: str, run: AgentRunModel, action: str, decision: str, reason: str = "", task_id: str | None = None) -> dict[str, object]:
+    # 审计词汇：actor/run/task/action/policy_version/resource/decision/reason；绝不放原始目标或正文。
+    return {
+        "actor": user_id, "run_id": run.id, "task_id": task_id, "action": action,
+        "policy_version": run.policy_version, "resource_id": run.id,
+        "decision": decision, "reason": reason,
+    }
+
+
 async def _owned_run(uow: SqlAlchemyUnitOfWork, run_id: str, user_id: str) -> AgentRunModel:
     run = await uow.session.scalar(select(AgentRunModel).where(AgentRunModel.id == run_id, AgentRunModel.user_id == user_id))
     if run is None:
@@ -87,6 +106,17 @@ async def _event(uow: SqlAlchemyUnitOfWork, run: AgentRunModel, event_type: str,
     uow.session.add(AgentEventModel(id=new_id(), run_id=locked.id, sequence=sequence, event_type=event_type, payload=json.dumps(payload or {}, ensure_ascii=False, sort_keys=True)))
     locked.event_cursor = sequence
     locked.updated_at = datetime.now(UTC)
+
+
+async def _policy_snapshot_valid(uow: SqlAlchemyUnitOfWork, run: AgentRunModel, master_key: SecretStr) -> bool:
+    row = await uow.session.scalar(select(AgentPolicySnapshotModel).where(AgentPolicySnapshotModel.run_id == run.id).order_by(AgentPolicySnapshotModel.id).limit(1))
+    if row is None or row.policy_version != run.policy_version:
+        return False
+    try:
+        snapshot = json.loads(row.payload)
+    except ValueError:
+        return False
+    return verify(snapshot, row.signature, master_key)
 
 
 @router.post("/projects/{project_id}/agent-runs", status_code=status.HTTP_201_CREATED)
@@ -116,6 +146,9 @@ async def start_run(
             existing = await uow.session.scalar(select(AgentRunModel).where(AgentRunModel.user_id == user.id, AgentRunModel.project_id == project_id, AgentRunModel.idempotency_key == idempotency_key))
             if existing is not None:
                 return _run_response(existing)
+        active = int(await uow.session.scalar(select(func.count(AgentRunModel.id)).where(AgentRunModel.user_id == user.id, AgentRunModel.status.in_(("PENDING", "RUNNING")))) or 0)
+        if active >= MAX_ACTIVE_RUNS_PER_USER:
+            return JSONResponse(status_code=409, content=_envelope("RUN_CONCURRENCY_LIMIT", "maximum concurrent agent runs reached", getattr(request.state, "correlation_id", ""), retryable=True))
         now = datetime.now(UTC)
         if payload.chapter_id is not None:
             chapter = await uow.chapters.get_owned(payload.chapter_id, user.id)
@@ -123,14 +156,23 @@ async def start_run(
                 raise HTTPException(status_code=404, detail="chapter not found")
         run = AgentRunModel(id=new_id(), user_id=user.id, project_id=project_id, chapter_id=payload.chapter_id, base_version_id=payload.base_version_id, fault_mode=payload.fault_mode, goal_hash=hashlib.sha256(payload.goal.encode()).hexdigest(), idempotency_key=idempotency_key, graph_revision=payload.graph_revision, status="PENDING", budget_limit=payload.budget_limit, created_at=now, updated_at=now)
         uow.session.add(run)
-        policy_payload = {"roles": sorted(role.value for role in AgentRole), "version": "v3-policy-1"}
-        policy_json = json.dumps(policy_payload, sort_keys=True)
-        run.policy_version = policy_payload["version"]
-        uow.session.add(AgentPolicySnapshotModel(id=new_id(), run_id=run.id, policy_version=run.policy_version, policy_hash=hashlib.sha256(policy_json.encode()).hexdigest(), payload=policy_json))
+        snapshot = build_snapshot()
+        policy_json = canonical_json(snapshot)
+        run.policy_version = str(snapshot["policy_version"])
+        uow.session.add(AgentPolicySnapshotModel(id=new_id(), run_id=run.id, policy_version=run.policy_version, policy_hash=hashlib.sha256(policy_json.encode()).hexdigest(), payload=policy_json, signature=sign(snapshot, request.app.state.settings.master_key)))
         for item in tasks:
             uow.session.add(AgentTaskModel(id=new_id(), run_id=run.id, task_key=item.id, role=item.role, status="PENDING", token_budget=item.token_budget, depends_on=json.dumps(item.depends_on), checkpoint_id=None))
-        await _event(uow, run, "run.created", {"graph_revision": payload.graph_revision, "task_count": len(tasks)})
-        await uow.commit()
+        await _event(uow, run, "run.created", {"graph_revision": payload.graph_revision, "task_count": len(tasks), **_audit_payload(user.id, run, "create", "allow")})
+        try:
+            await uow.commit()
+        except IntegrityError:
+            # 幂等竞态：部分唯一索引拦截了并发同键插入，回滚后按 (user_id, idempotency_key) 回读并重放。
+            await uow.rollback()
+            if idempotency_key:
+                existing = await uow.session.scalar(select(AgentRunModel).where(AgentRunModel.user_id == user.id, AgentRunModel.project_id == project_id, AgentRunModel.idempotency_key == idempotency_key))
+                if existing is not None:
+                    return _run_response(existing)
+            raise
         try:
             await request.app.state.queue.enqueue("proseforge.agents.execute_run", {"run_id": run.id, "user_id": user.id})
         except Exception as exc:
@@ -148,29 +190,39 @@ async def get_run(run_id: str, user: Annotated[AuthUser, Depends(current_user)],
         return _run_response(await _owned_run(uow, run_id, user.id))
 
 
-async def _control(run_id: str, action: str, user: AuthUser, uow: SqlAlchemyUnitOfWork, task_id: str | None = None, queue=None) -> dict[str, object]:
+async def _control(run_id: str, action: str, user: AuthUser, uow: SqlAlchemyUnitOfWork, master_key: SecretStr, task_id: str | None = None, queue=None, request_id: str = "") -> dict[str, object]:
     run = await _owned_run(uow, run_id, user.id)
-    transitions = {"pause": ("PAUSED", {"PENDING", "RUNNING"}), "resume": ("RUNNING", {"PENDING", "PAUSED", "FAILED"}), "cancel": ("CANCELLED", {"PENDING", "RUNNING", "PAUSED", "FAILED"})}
+    # 策略快照签名校验（fail-closed）：快照被篡改或签名缺失一律拒绝控制动作并留审计事件。
+    if not await _policy_snapshot_valid(uow, run, master_key):
+        await _event(uow, run, "run.policy_violation", _audit_payload(user.id, run, action, "deny", "policy snapshot signature mismatch", task_id))
+        await uow.commit()
+        return JSONResponse(status_code=409, content=_envelope("POLICY_VIOLATION", "policy snapshot signature mismatch", request_id))
+    transitions = {"pause": ("PAUSED", {"PENDING", "RUNNING"}), "resume": ("RUNNING", {"PENDING", "PAUSED"}), "cancel": ("CANCELLED", {"PENDING", "RUNNING", "PAUSED", "FAILED"})}
     if action == "retry":
         if run.status not in {"FAILED", "PAUSED", "RUNNING"}:
-            raise HTTPException(status_code=409, detail="run is not retryable")
+            return JSONResponse(status_code=409, content=_envelope("RUN_NOT_RETRYABLE", "run is not retryable", request_id))
         if task_id:
             task = await uow.session.scalar(select(AgentTaskModel).where(AgentTaskModel.id == task_id, AgentTaskModel.run_id == run.id))
             if task is None:
                 raise HTTPException(status_code=404, detail="task not found")
             task.status, task.attempts, task.last_error = "PENDING", task.attempts + 1, None
+        previous = run.status
         run.status = "RUNNING"
-        await _event(uow, run, "run.retry", {"task_id": task_id})
+        await _event(uow, run, "run.retry", _audit_payload(user.id, run, action, "allow", f"{previous}->RUNNING", task_id))
     else:
         target, allowed = transitions[action]
         if run.status == target:
             return _run_response(run)
+        if action == "resume" and run.status == "FAILED":
+            # FAILED 只允许 retry 重新入队，resume 一律 409。
+            return JSONResponse(status_code=409, content=_envelope("INVALID_RUN_TRANSITION", "failed runs can only be retried, not resumed", request_id))
         if run.status not in allowed:
-            raise HTTPException(status_code=409, detail="invalid run transition")
+            return JSONResponse(status_code=409, content=_envelope("INVALID_RUN_TRANSITION", "invalid run transition", request_id))
+        previous = run.status
         run.status = target
         if target == "CANCELLED":
             run.terminal_reason = "cancelled by user"
-        await _event(uow, run, f"run.{action}")
+        await _event(uow, run, f"run.{action}", _audit_payload(user.id, run, action, "allow", f"{previous}->{target}"))
     await uow.commit()
     if action in {"resume", "retry"} and queue is not None:
         await queue.enqueue("proseforge.agents.execute_run", {"run_id": run.id, "user_id": user.id})
@@ -185,7 +237,7 @@ def _make_control_handler(action: str):
         uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)],
     ):
         async with uow:
-            return await _control(run_id, action, user, uow, queue=request.app.state.queue)
+            return await _control(run_id, action, user, uow, request.app.state.settings.master_key, queue=request.app.state.queue, request_id=getattr(request.state, "correlation_id", ""))
 
     handler.__name__ = f"{action}_agent_run"
     return handler
@@ -198,7 +250,7 @@ for _action in ("pause", "resume", "cancel"):
 @router.post("/agent-runs/{run_id}/retry")
 async def retry_run(run_id: str, request: Request, user: Annotated[AuthUser, Depends(current_user)], uow: Annotated[SqlAlchemyUnitOfWork, Depends(unit_of_work)], task_id: str | None = None) -> dict[str, object]:
     async with uow:
-        return await _control(run_id, "retry", user, uow, task_id, request.app.state.queue)
+        return await _control(run_id, "retry", user, uow, request.app.state.settings.master_key, task_id, request.app.state.queue, getattr(request.state, "correlation_id", ""))
 
 
 @router.get("/agent-runs/{run_id}/tasks")
@@ -250,7 +302,7 @@ async def create_review(run_id: str, payload: ReviewRequest, user: Annotated[Aut
         review = AgentReviewModel(id=new_id(), run_id=run_id, artifact_id=payload.artifact_id, reviewer_role=payload.reviewer_role, status=payload.status, evidence=json.dumps(payload.evidence), conflict_group=payload.conflict_group, payload="{}")
         uow.session.add(review)
         await uow.commit()
-        return {"id": review.id, "artifact_id": review.artifact_id, "status": review.status, "evidence": payload.evidence, "conflict_group": review.conflict_group}
+        return {"id": review.id, "artifact_id": payload.artifact_id, "status": review.status, "evidence": payload.evidence, "conflict_group": review.conflict_group}
 
 
 @router.get("/agent-runs/{run_id}/reviews")
