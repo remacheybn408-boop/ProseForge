@@ -58,7 +58,10 @@ class SqlAlchemyWorkflowRepository:
 
     async def acquire_lease(self, run: WorkflowRunModel, owner: str, ttl_seconds: int = 60) -> bool:
         now = datetime.now(UTC)
-        if run.lease_owner and run.lease_expires_at and run.lease_expires_at > now:
+        # 租约身份按 run 归属（owner=celery:{run_id}）：pause/resume、retry 的
+        # 继任任务携带同一 owner，必须能直接接管——否则前任暂停退出后租约残留，
+        # 继任 lease-unavailable 退出且无再入队机制，run 永久卡死。
+        if run.lease_owner and run.lease_owner != owner and run.lease_expires_at and run.lease_expires_at > now:
             return False
         run.lease_owner = owner
         run.lease_expires_at = now + timedelta(seconds=ttl_seconds)

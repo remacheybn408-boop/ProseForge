@@ -36,6 +36,7 @@ async def generate_novel(payload: dict[str, object]) -> str:
     from proseforge.domain.workflow.budget import budget_blocked
     from proseforge.context_engine.compiler import compile_context
     from proseforge.workflows.novel_generation import run_writer_editor_loop
+    from proseforge.application.workflows.control import decode_checkpoint
 
     settings = get_settings()
     engine, session_factory = create_engine_and_sessionmaker(settings)
@@ -44,6 +45,23 @@ async def generate_novel(payload: dict[str, object]) -> str:
     provider_id = str(payload.get("provider", "openai"))
     model_id = str(payload.get("model", "gpt-4.1-mini"))
     lease_owner = f"celery:{workflow_id}"
+    # celery 包装层注入的当前任务 id（control.set_task 把最近一次入队的
+    # task_id 写进 checkpoint.active_task_id）；无该键（本地队列/直调）时
+    # 接力检测自动跳过。
+    my_task_id = str(payload.get("task_id", "") or "")
+
+    def superseded(run_status: str, checkpoint: str | None) -> bool:
+        # resume/retry 已入队继任任务，旧任务必须在章节边界尽快让位：
+        # RETRYING 覆盖“继任尚未翻回 RUNNING”的窗口；active_task_id 覆盖
+        # “继任已翻回 RUNNING”的窗口（此时状态上已看不出交接）。
+        if run_status == "RETRYING":
+            return True
+        if my_task_id:
+            active = decode_checkpoint(checkpoint).get("active_task_id")
+            if isinstance(active, str) and active and active != my_task_id:
+                return True
+        return False
+
     try:
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             run = await uow.workflows.get_owned(workflow_id, owner_id)
@@ -51,7 +69,7 @@ async def generate_novel(payload: dict[str, object]) -> str:
                 return "workflow-not-found"
             if should_abort_workflow(run.status):
                 return "cancelled"
-            if run.status == "QUEUED":
+            if run.status in {"QUEUED", "RETRYING"}:
                 await uow.workflows.transition(run, "RUNNING")
             if not await uow.workflows.acquire_lease(run, lease_owner):
                 return "lease-unavailable"
@@ -103,6 +121,8 @@ async def generate_novel(payload: dict[str, object]) -> str:
                     return "cancelled"
                 if run.status == "PAUSED":
                     return "paused"
+                if superseded(run.status, run.checkpoint):
+                    return "superseded"
                 if budget_blocked(used_tokens=int(getattr(run, "used_tokens", 0) or 0), token_limit=int(getattr(run, "token_limit", 0) or 0), estimated_next_tokens=1, estimated_cost=float(run.estimated_cost or 0), cost_limit=float(run.cost_limit or 0), estimated_next_cost=None):
                     await uow.workflows.transition(run, "BUDGET_BLOCKED")
                     await uow.commit()
@@ -119,6 +139,8 @@ async def generate_novel(payload: dict[str, object]) -> str:
                     return "cancelled"
                 if run.status == "PAUSED":
                     return "paused"
+                if superseded(run.status, run.checkpoint):
+                    return "superseded"
                 version = await uow.chapters.append_version(chapter_id=chapter.id, content=content)
                 await uow.chapters.set_active_version(chapter.id, version.id)
                 await uow.workflows.checkpoint(run, lease_owner, f"CHAPTER_{chapter.chapter_no}_COMMITTED_REWRITES_{rewrite_rounds}")

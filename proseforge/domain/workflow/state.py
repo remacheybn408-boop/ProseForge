@@ -42,7 +42,9 @@ class WorkflowRun:
 
     def acquire_lease(self, owner: str, ttl_seconds: int = 60, now: datetime | None = None) -> bool:
         current = now or datetime.now(UTC)
-        if self.lease_owner and self.lease_expires_at and self.lease_expires_at > current:
+        # 同一 owner（按 run 归属）可重入接管：pause/resume、retry 接力语义；
+        # 仅不同 owner 且租约未过期时互斥。与 SqlAlchemyWorkflowRepository 同语义。
+        if self.lease_owner and self.lease_owner != owner and self.lease_expires_at and self.lease_expires_at > current:
             return False
         self.lease_owner = owner
         self.lease_expires_at = current + timedelta(seconds=ttl_seconds)

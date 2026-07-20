@@ -52,8 +52,9 @@ celery.conf.update(
 
 @celery.task(name="proseforge.workflows.generate_novel", bind=True, max_retries=0)
 def generate_novel_workflow(self, payload: dict[str, object]) -> str:
-    del self
-    return asyncio.run(generate_novel(payload))
+    # 注入当前 celery task id：handler 用它对照 checkpoint.active_task_id
+    # 判断自己是否已被 resume/retry 的继任任务接替（旧任务须让位）。
+    return asyncio.run(generate_novel({**payload, "task_id": str(self.request.id)}))
 
 
 @celery.task(name="proseforge.healthcheck")
