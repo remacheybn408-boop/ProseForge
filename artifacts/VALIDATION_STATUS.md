@@ -2,7 +2,7 @@
 
 > 本文件是三个版本验证状态的唯一事实源（2026-07-18 全量排查后建立）。任何与本文件冲突的历史验证文档，以本文件为准。蓝图：`D:\引擎备份\PROSEFORGE_ENGINEERING_EXECUTION_BLUEPRINT`。
 >
-> 最近状态更新：2026-07-20。V2-010 完整 L2 已在 ECS Docker 执行并全绿（12 步证据见 `artifacts/v2-l2-run.log`、`V2_FINAL_VALIDATION.md`），V2 发布门禁 PASS。
+> 最近状态更新：2026-07-20。V2-010 完整 L2 已在 ECS Docker 执行并全绿（12 步证据见 `artifacts/v2-l2-run.log`、`V2_FINAL_VALIDATION.md`），V2 发布门禁 PASS。V3 重实现完成，V3-010 发布门禁同日在 ECS Docker 执行并全绿（14 步证据见 `artifacts/v3-l2-run.log`、`V3_FINAL_VALIDATION.md`），V3 发布门禁 PASS。
 
 ## 版本真实状态
 
@@ -10,7 +10,7 @@
 |---|---|---|
 | V1.5 Native Runtime | **Windows/Linux 达成；macOS BLOCKED**（2026-07-18） | V15-008/009/010 已按蓝图实现并实测：PyInstaller onedir（钉版 3.12）、Inno 安装器（安装/卸载留数据实测）、deb/rpm/pkg 脚本、CLI `web`/真实 `upgrade`、L2 全矩阵绿。macOS 安装验证待 macOS runner |
 | V2 Chat Workspace | **达成（2026-07-20）** | V2-001～010 全部进入 `master`；发布门禁已执行：ECS Docker L2 12 步全绿（legacy 408 / api 864 / contract 43 / migration 24 / recovery 5 / web 105 / e2e 12+2skip / ruff / OpenAPI 111 paths），真实 10 步 E2E 与导出/请求证据齐全，见 `artifacts/V2_FINAL_VALIDATION.md`、`artifacts/BATCH_VALIDATION_V2_B4.md`。Known unvalidated 如实记录在案（全量 i18n 文案、真实 provider、macOS） |
-| V3 Agent Swarm | **实现未完成** | 有表、基础路由和 UI 壳；执行器是占位（串行、不调模型、固定 JSON）、权限 fail-open、无评审集群/记忆/扩图/评测/安全边界 |
+| V3 Agent Swarm | **达成（2026-07-20）** | V3-001～010 重实现全部进入 `master`（fail-closed 策略+签名快照、真实有界执行器、评审集群、approval-bound Chief Editor、记忆/扩图/评测、限流/审计/并发上限、前端面板、真实 E2E）；发布门禁已执行：ECS Docker L2 14 步全绿（legacy 408 / api 940 / contract 43 / migration 24 / recovery 5 / web 110 / e2e 14 含 5 个 v3 测试 / eval-ab / ruff / OpenAPI 117 paths），见 `artifacts/V3_FINAL_VALIDATION.md`、`artifacts/BATCH_VALIDATION_V3_B4.md`。Known unvalidated 如实记录在案（mock provider 确定性产出、A/B 仅装置验证、共享账号隔离方案、macOS） |
 | 主分支 | **CI 已修复，待推送验证** | ruff 0 错；trivy 弃用遭攻陷 action 改钉 digest 容器扫描；pnpm audit corepack 修复；Playwright e2e 已接入 workflow |
 
 ## 已撤销/降级的历史文档
@@ -59,7 +59,7 @@
 2. ✅ CI 修复（ruff / trivy 弃用遭攻陷 action 改直跑镜像 / pnpm audit corepack / 接入 e2e；另修复 nginx resolver Podman 不兼容、pnpm store 卷、exports tmpfs）
 3. ✅ V15-008 / V15-009 / V15-010（蓝图 V1.5_NATIVE_RUNTIME）——Windows/Linux 绿，macOS BLOCKED 待 runner；证据见 `V1_5_NATIVE_VALIDATION.md` 与 `BATCH_VALIDATION_V1.5_B4.md`
 4. ✅ V2-001～010 补齐——V2-010 发布门禁已执行并 PASS（2026-07-20，ECS Docker L2，证据见 `V2_FINAL_VALIDATION.md` / `BATCH_VALIDATION_V2_B4.md`）
-5. ⬜ V3-001～010 重实现（另立计划）——e2e skip 已恢复（V3-010）：`v3-agent-swarm.spec.ts`、`v3-execution-proposal.spec.ts` 已按真实执行器重写；`/api/v1/auth/setup` 为一次性 owner 端点（后端不允许第二账号），共享账号不可消除，改为唯一幂等键/项目 slug + RUN_CONCURRENCY_LIMIT 有界重试 + `compose.test.yaml` 放宽 e2e 堆栈 /api/v3 限流桶（写 60/读 240，中间件默认值不变、仍由 api 测试断言 429）
+5. ✅ V3-001～010 重实现——V3-010 发布门禁已执行并 PASS（2026-07-20，ECS Docker L2，证据见 `V3_FINAL_VALIDATION.md` / `BATCH_VALIDATION_V3_B1..B4.md`）；e2e skip 已恢复（V3-010）：`v3-agent-swarm.spec.ts`、`v3-execution-proposal.spec.ts` 已按真实执行器重写并在容器内首跑通过；`/api/v1/auth/setup` 为一次性 owner 端点（后端不允许第二账号），共享账号不可消除，改为唯一幂等键/项目 slug + RUN_CONCURRENCY_LIMIT 有界重试 + `compose.test.yaml` 放宽 e2e 堆栈 /api/v3 限流桶（写 60/读 240，中间件默认值不变、仍由 api 测试断言 429）
 
 ## 证据标准（蓝图 `TEST_EXECUTION_POLICY.md` §五）
 

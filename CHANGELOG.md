@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- V3 agent swarm: fail-closed versioned role policies with signed snapshots, a real bounded executor (parallelism 16, lease/heartbeat, measured budgets, checkpoints), schema-validated hashed artifacts, a review swarm with persisted conflicts, an approval-bound Chief Editor that can only file V2 RevisionProposals, scoped memory with approved candidate facts, bounded auditable graph expansion, an evaluation A/B harness, /api/v3 rate limits + audit + per-user run caps (migration 0025), and a workspace Agent Swarm panel; v3 e2e specs re-enabled and passing in the container suite.
 - V2 professional workspace: structured Story Bible context, Tiptap selection actions, immutable review/revision proposals, attributable model usage, durable workflow studio (definitions/runs/canvas with SSE replay), and version-pinned exports with persisted manifests.
 - V2 release gate executed and green (2026-07-20, ECS Docker L2): 408 legacy + 864 api + 43 contract + 24 migration + 5 recovery + 105 web unit + 12 e2e passed, ruff clean, deterministic OpenAPI exported (111 paths); evidence in `artifacts/V2_FINAL_VALIDATION.md` and `artifacts/v2-l2-run.log`.
 - Fixed v1 durable-workflow control handoff: same-owner lease takeover for resume/retry successors, RETRYING→RUNNING task start, and superseded workers yielding at chapter boundaries.
