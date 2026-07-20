@@ -9,8 +9,10 @@
   Artifact + 事件 + 实测 usage 结算 + run.checkpoint_id（提交阶段由
   commit_lock 串行，保证 (run_id, sequence) 唯一且单调递增）；
 - 有任务 FAILED 且无 PENDING 可重试时 run 以 FAILED 收场（不误报 COMPLETED）；
-- Chief Editor 产出仍走 V2 RevisionProposal（后续 workstream 以
-  register_role 注册的真正 chief handler 替换，见 application/agents/role_handlers.py）。
+- Chief Editor 由 application/agents/chief_handler.py 的注册 handler 产出
+  MergeCandidate + V2 RevisionProposal（未裁定冲突时 guard_status=blocked）；
+- 角色 handler 抛 PolicyDenied 视为确定性拒绝：任务立即 FAILED（不重试），
+  并留 policy.denied 审计事件。
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ from functools import partial
 
 from proseforge.application.agents.parallel import bounded_parallel
 from proseforge.application.agents.role_handlers import RoleResult, allowed_artifact_types, handler_for, validate_artifact_payload
+from proseforge.domain.agents.policy import PolicyDenied
 
 MAX_PARALLEL_TASKS = 16  # server profile（蓝图 V3-004：native 4 / server 16）
 EXECUTOR_VERSION = "v3-exec-1"
@@ -228,7 +231,12 @@ async def execute_run(payload: dict[str, object]) -> str:
                         if error is not None:
                             task.last_error = f"{type(error).__name__}: {str(error)[:200]}"
                             task.lease_owner = None
-                            if task.attempts < DEFAULT_MAX_ATTEMPTS:
+                            if isinstance(error, PolicyDenied):
+                                # 策略拒绝是确定性的：立即 FAILED（不重试），留 policy.denied 审计事件
+                                task.status = "FAILED"
+                                await add_event(uow, run, "policy.denied", {"task_id": task.id, "task_key": task.task_key, "role": task.role, "decision": "deny", "reason": str(error)[:200]})
+                                await add_event(uow, run, "task.failed", {"task_id": task.id, "task_key": task.task_key, "error": type(error).__name__, "retry": False})
+                            elif task.attempts < DEFAULT_MAX_ATTEMPTS:
                                 task.status = "PENDING"
                                 await add_event(uow, run, "task.failed", {"task_id": task.id, "task_key": task.task_key, "error": type(error).__name__, "retry": True})
                             else:
@@ -263,17 +271,6 @@ async def execute_run(payload: dict[str, object]) -> str:
                             await add_event(uow, run, str(extra.get("event", "task.event")), {key: value for key, value in extra.items() if key != "event"})
                         await add_event(uow, run, "artifact.committed", {"artifact_id": artifact.id, "task_id": task.id, "sha256": artifact.sha256})
                         await add_event(uow, run, "task.succeeded", {"task_id": task.id, "task_key": task.task_key})
-                        if task.role == "chief_editor" and run.chapter_id and run.base_version_id:
-                            base = await uow.chapters.get_version_owned(run.chapter_id, run.base_version_id, user_id)
-                            if base is None:
-                                raise ValueError("chief editor base version not found")
-                            proposal = await uow.revisions.create(
-                                chapter_id=run.chapter_id, base_version_id=base.id, before=base.content,
-                                after=base.content + "\n\n" + f"[Agent candidate: {task.task_key}]",
-                                rationale="Chief Editor candidate produced by the reviewed V3 run.",
-                            )
-                            run.proposal_id = proposal.id
-                            await add_event(uow, run, "proposal.created", {"proposal_id": proposal.id})
                         crash_after_artifact_commit = run.fault_mode == "crash_after_artifact_commit"
                         if crash_after_artifact_commit:
                             # 与 artifact/checkpoint 同一事务清开关：redelivery 观察到
