@@ -313,18 +313,14 @@ test("v2 professional flow completes the real ten-step workspace journey", async
 
   let workflow!: Workflow;
   await test.step("9. Start and control a workflow, then reload from its persisted snapshot", async () => {
-    await page.getByRole("button", { name: "Outline intake" }).click();
-    await page.getByLabel("Outline title").fill(`Recovery flow ${runId}`);
-    await page.getByLabel("Outline or story notes").fill("A complete recovery test about Mira returning home with the map.");
-    await page.getByRole("button", { name: "Import and analyze" }).click();
-    await page.getByPlaceholder("Answer the missing requirement").fill("Mira, a determined cartographer");
-    await page.getByRole("button", { name: "Save answer" }).click();
-    const workflowResponsePromise = page.waitForResponse(response => response.url().endsWith(`/api/v1/projects/${project.id}/workflows/novel`) && response.request().method() === "POST");
-    await page.getByRole("button", { name: /confirm and create workflow/i }).click();
-    const workflowResponse = await workflowResponsePromise;
+    // A one-chapter run finishes faster than the control round-trips, so seed a
+    // five-chapter run through the API to keep every durable transition
+    // observable; pause/reload/resume/retry/cancel are all driven through the UI.
+    const workflowResponse = await request.post(`/api/v1/projects/${project.id}/workflows/novel`, { data: { chapter_numbers: [1, 2, 3, 4, 5] } });
     rememberRequestId(workflowResponse);
     workflow = await json<Workflow>(workflowResponse, 201);
-    await expect(page).toHaveURL(new RegExp(`/workflows/${workflow.id}$`));
+    await page.goto(`/projects/${project.id}/workflows/${workflow.id}`);
+    await expect(page.locator(".eyebrow", { hasText: "WORKFLOW STUDIO" })).toBeVisible();
     await waitForWorkflowStatus(request, workflow.id, "RUNNING");
 
     const pauseResponsePromise = page.waitForResponse(response => response.url().endsWith(`/api/v1/workflows/${workflow.id}/pause`) && response.request().method() === "POST");
