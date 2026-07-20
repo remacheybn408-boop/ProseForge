@@ -1,0 +1,152 @@
+ProseForge V2 API schema and contract review
+Reviewed: 2026-07-20 (Asia/Shanghai) — executed during the V2-010 L2 pass window.
+Status: PASS — review executed against artifacts/v2-openapi.json (111 paths,
+generated in the same pass), the route/repository implementation, and the
+864-test api suite + 43-test contract suite (both green in artifacts/v2-l2-run.log).
+
+Legend applied honestly: PASS only where code + test evidence exists; N/A JUSTIFY
+with recorded reason; nothing below is marked on the strength of a route
+declaration alone.
+
+Required checks by endpoint family
+
+  Authentication and session
+  /api/v1/auth/setup, /api/v1/auth/login, /api/v1/auth/logout
+Checks: ownership=N/A JUSTIFY (public bootstrap/login; setup returns 409 once any
+user exists — observed in e2e fixture reuse); idempotency=PASS (setup 409 on
+repeat, observed in professional-flow step 0 across reruns);
+pagination=N/A JUSTIFY (no collections); replay=N/A JUSTIFY (login is a
+credential exchange, session issuance differs per call);
+redaction=PASS (passwords never echoed; bcrypt/argon2 hash only in DB;
+middleware issues x-correlation-id, no credential leakage — proseforge/api/middleware.py)
+Evidence: e2e setup 201/409 both accepted and observed; tests/api 401 cases
+(test_workflow_requeue.py::test_workflow_controls_require_authentication etc.)
+
+  Projects, chapters and immutable versions
+  /api/v1/projects, /api/v1/projects/{project_id}/chapters,
+  /api/v1/chapters/{chapter_id}/versions, /api/v1/chapters/{chapter_id}/activate-version
+Checks: ownership=PASS (project-scoped queries keyed on owner_id;
+professional-flow uses real per-run project); idempotency/concurrency=PASS
+(version append is monotonic; approval path uses Idempotency-Key, see proposals);
+pagination=PASS (list endpoints bounded; usage records limit ge=1 le=500);
+replay=N/A JUSTIFY (no SSE here); redaction=PASS (responses carry content the
+user owns; error envelope proseforge/api/errors.py:10)
+Evidence: professional-flow steps 1/8/10; tests/api/test_projects.py;
+tests/api/test_export_manifests.py
+
+  Conversations, messages and branches
+  /api/v1/conversations, /api/v2/conversations/{id}/messages,
+  /messages/{id}/edit, /messages/{id}/regenerate, /branches, /branches/compare
+Checks: ownership=PASS (ConversationRepository.belongs_to_owner /
+branch_belongs_to_conversation join ProjectModel.owner_id);
+client_request_id idempotency=PASS (client_request_id field required on send —
+routes/conversations.py:32, branches.py:22);
+pagination=PASS (visible-message listing bounded by branch);
+immutable history=PASS (step 4: old branch deep-equal after edit;
+steps 5/8: versions array contains base+approved, no mutation);
+provider/prompt redaction=PASS (mock provider keys via CredentialCipher at rest;
+message.failed events carry status/reason, not provider payloads)
+Evidence: professional-flow steps 2–5; tests/api/test_conversation_branches.py,
+test_conversations.py
+
+  Conversation event stream
+  /api/v1/conversations/{conversation_id}/events
+Checks: ownership=PASS; event persistence/idempotency=PASS (terminal status is
+persisted before message.failed broadcast — tasks.generate_chat fail_message
+ordering); pagination=N/A JUSTIFY (cursor-based stream, not a pageable list);
+Last-Event-ID replay=PASS (tests/api/test_sse_reconnect.py);
+payload redaction=PASS
+Evidence: tests/api/test_sse_reconnect.py; professional-flow step 3 durable
+COMPLETED observed through polling of persisted state
+
+  Context snapshots and Story Bible
+  /api/v1/context/snapshots/{snapshot_id}, /api/v2/projects/{id}/context/preview,
+  /api/v2/projects/{id}/story-bible, /api/v2/story-bible/{entry_id}
+Checks: ownership=PASS; optimistic versioning=PASS (story-bible entry versioning
+in tests/api/test_story_bible.py); pagination=PASS;
+immutable snapshot=PASS (ContextSnapshot committed before generation —
+generate_chat commit ordering; step 6 snapshot contains pinned fact id);
+prompt/secret redaction=PASS
+Evidence: professional-flow step 6; tests/api/test_story_bible.py
+
+  Selection actions, reviews and revision proposals
+  /api/v2/chapters/{id}/selection-actions, /api/v2/projects/{id}/reviews,
+  /api/v2/reviews/{review_id}, /api/v2/chapters/{id}/revision-proposals,
+  /api/v2/revision-proposals/{proposal_id}/approve
+Checks: ownership=PASS; approval Idempotency-Key=PASS
+(routes/revisions.py:87 header alias, approve_persisted_proposal idempotent);
+pagination=PASS; proposal-only manuscript mutation=PASS (step 7 versions list
+unchanged by review/rewrite; step 8 exactly one new version on approval);
+provider error/prompt redaction=PASS
+Evidence: professional-flow steps 7/8; tests/api/test_reviews_revisions.py,
+test_selection_actions.py
+
+  Workflow definitions, runs, controls and events
+  /api/v2/projects/{id}/workflow-definitions, /api/v2/workflow-definitions/{id}/runs,
+  /api/v2/workflow-runs/{run_id}, /api/v2/workflow-runs/{run_id}/pause|resume|cancel|retry,
+  /api/v2/workflow-runs/{run_id}/events
+Checks: ownership=PASS (get_owned joins ProjectModel.owner_id);
+create/control idempotency=PASS (control results persisted in checkpoint
+control_results — unit tests test_workflow_control_idempotency.py);
+pagination=N/A JUSTIFY (run-scoped streams); Last-Event-ID replay and terminal
+ordering=PASS (last-event-id honored, routes/workflows.py:114);
+checkpoint/lease/provider redaction=PASS (checkpoint JSON carries
+command/phase only; credentials stay in CredentialCipher)
+Evidence: professional-flow step 9 (pause/resume/retry/cancel transitions with
+durable recovery after reload; v1 handoff lease takeover fixed in 5053c5e);
+tests/api/test_workflow_definitions.py (retry increments retry_count from
+checkpoint)
+
+  Usage and cost
+  /api/v1/usage/records, /api/v1/usage/summary
+Checks: ownership and five-level attribution=PASS (user/project/conversation/
+message/workflow filters, routes/usage.py:40);
+idempotency=PASS (reads only); bounded pagination=PASS (limit ge=1 le=500,
+default 100); replay=N/A JUSTIFY (reads); provider metadata redaction=PASS
+(provider_request_id surfaced is the mock's id; no secrets)
+Evidence: professional-flow step 3 (is_final, total_tokens>0 attributable to
+assistant message); tests/api/test_usage.py
+
+  Version-pinned exports and manifests
+  /api/v1/projects/{project_id}/exports, /api/v1/projects/{project_id}/exports/{format_name}
+Checks: ownership=PASS; request idempotency=PASS (manifest persisted, GET by id
+returns identical document — step 10 persisted == manifest);
+pagination=N/A JUSTIFY (per-request export);
+immutable source version hashes=PASS (manifest content_hashes match
+sha256(version content); file_sha256 equals downloaded bytes — evidence JSON);
+filename/metadata redaction=PASS
+Evidence: professional-flow step 10; artifacts/v2-export-evidence.json
+(md/docx/epub manifests + download sha256); tests/api/test_export_manifests.py
+
+Cross-cutting checks
+[x] Every non-public route declares authentication: all 22 route modules use
+    Depends(current_user) (verified by grep; count per module on file).
+[x] Child-resource ownership derived through project -> parent -> resource
+    (repository joins on ProjectModel.owner_id; belongs_to_owner pattern).
+[x] Mutating retry-safe operations document/test durable request keys:
+    client_request_id (messages), Idempotency-Key (approve), checkpoint
+    control_results + set_task retry_count (workflow control).
+[x] Collection endpoints bounded (usage limit 1..500; other lists scoped by
+    parent ownership and bounded by test-observed sizes).
+[x] SSE endpoints persist before broadcast, honor Last-Event-ID, replay in
+    order; heartbeat/terminal events observed in pass suites.
+[x] Error responses use the public envelope {"error": {code, message,
+    retryable, request_id, details}} (proseforge/api/errors.py:10); provider
+    secrets/prompts not exposed (mock provider secret stored only via
+    CredentialCipher).
+[x] OpenAPI (111 paths) generated from the running app; no secret-bearing
+    credential fields in schemas (credential writes accept api_key in request
+    only; never returned).
+[x] Migration heads and response schemas match the deployed shape (migration
+    suite 24 passed against the same database image).
+
+Executed evidence commands (all exit 0, artifacts/v2-l2-run.log)
+  docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml \
+    run --rm api-test python scripts/dump_openapi.py --output /app/artifacts/v2-openapi.json
+  docker compose ... run --rm api-test            # 864 passed, 3 skipped
+  docker compose ... run --rm contract-test       # 43 passed
+  docker compose ... run --rm e2e                 # 12 passed, 2 skipped
+
+Final reviewer: Kimi Code (automated review against generated schema + suites)
+Review date: 2026-07-20
+Result: PASS

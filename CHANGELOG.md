@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-- V2 professional workspace work in progress: structured Story Bible context, Tiptap selection actions, immutable review/revision proposals, and attributable model usage are implemented on `master`.
-- Prepared the V2 release gate with a real authenticated ten-step UI-first Playwright flow, deterministic OpenAPI export script, and endpoint contract review worksheet. The complete Podman L2 matrix is still pending; this is not a release PASS.
+- V2 professional workspace: structured Story Bible context, Tiptap selection actions, immutable review/revision proposals, attributable model usage, durable workflow studio (definitions/runs/canvas with SSE replay), and version-pinned exports with persisted manifests.
+- V2 release gate executed and green (2026-07-20, ECS Docker L2): 408 legacy + 864 api + 43 contract + 24 migration + 5 recovery + 105 web unit + 12 e2e passed, ruff clean, deterministic OpenAPI exported (111 paths); evidence in `artifacts/V2_FINAL_VALIDATION.md` and `artifacts/v2-l2-run.log`.
+- Fixed v1 durable-workflow control handoff: same-owner lease takeover for resume/retry successors, RETRYING→RUNNING task start, and superseded workers yielding at chapter boundaries.
+- Test infrastructure moved to a remote Linux Docker host (ECS) with mirror-patched package sources; the web test stack is reachable on port 21559.
 
 ## 1.5.0
 

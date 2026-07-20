@@ -13,7 +13,7 @@ Wait for PostgreSQL, Redis, API, worker, scheduler, and web to report `healthy`.
 
 ## Isolated test stack
 
-`compose.test.yaml` overrides PostgreSQL and Redis with `postgres-test-data` and `redis-test-data`. Never use `down -v`: named volumes contain durable user data.
+`compose.test.yaml` overrides PostgreSQL and Redis with `postgres-test-data` and `redis-test-data`. Never use `down -v` on the dev/prod stack: its named volumes contain durable user data. The disposable test stack is the exception — the test execution policy tears it down with `down -v` between batches, which wipes only the `*-test-data` and build-cache volumes.
 
 Run the main suites with:
 

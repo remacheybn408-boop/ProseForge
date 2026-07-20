@@ -84,7 +84,7 @@ test("v2 professional flow completes the real ten-step workspace journey", async
   const runId = `${Date.now()}-${testInfo.workerIndex}`;
   const requestIds = new Set<string>();
   const rememberRequestId = (response: HttpResponse) => {
-    const id = response.headers()["x-request-id"] ?? response.headers()["x-trace-id"];
+    const id = response.headers()["x-request-id"] ?? response.headers()["x-trace-id"] ?? response.headers()["x-correlation-id"];
     if (id) requestIds.add(id);
   };
   // Pin the UI language so localized selectors (export dialog) stay deterministic.

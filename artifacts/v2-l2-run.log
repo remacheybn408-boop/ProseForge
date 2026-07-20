@@ -1,0 +1,1492 @@
+### V2 L2 run evidence log (remote ECS docker, Linux native)
+date: 2026-07-20T14:57:36+08:00
+git: 0687ed5a36a459f1bd637eb865074532e6f0de1d (git archive snapshot)
+host: Linux ecs-tb26072010 6.8.0-134-generic #134-Ubuntu SMP PREEMPT_DYNAMIC Fri Jun 26 18:43:11 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+docker version:
+Client: Docker Engine - Community
+ Version:           29.6.2
+ API version:       1.55
+ Go version:        go1.26.5
+ Git commit:        dfc4efb
+ Built:             Thu Jul 16 16:12:18 2026
+ OS/Arch:           linux/amd64
+ Context:           default
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          29.6.2
+  API version:      1.55 (minimum version 1.40)
+  Go version:       go1.26.5
+  Git commit:       3d80467
+  Built:            Thu Jul 16 16:12:18 2026
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.2.6
+  GitCommit:        11ce9d5f3c68c941867e82890e93e815c1304f1b
+ runc:
+  Version:          1.3.6
+  GitCommit:        v1.3.6-0-g491b69ba
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+
+### STEP down -v (pre-pass reset): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml down -v
+start: 2026-07-20T14:57:36+08:00
+ Container proseforge-web-1 Stopping 
+ Container proseforge-worker-1 Stopping 
+ Container proseforge-provider-mock-1 Stopping 
+ Container proseforge-web-1 Stopped 
+ Container proseforge-web-1 Removing 
+ Container proseforge-web-1 Removed 
+ Container proseforge-api-1 Stopping 
+Error response from daemon: No such container: 241b2b9c6533ce77dc9a7cf0498199fcea658f5d8e42ae2f6fda0907d8126a52
+ Container proseforge-api-1 Stopped 
+ Container proseforge-api-1 Removing 
+ Container proseforge-api-1 Removed 
+ Container proseforge-worker-1 Stopped 
+ Container proseforge-worker-1 Removing 
+ Container proseforge-worker-1 Removed 
+ Container proseforge-postgres-1 Stopping 
+ Container proseforge-redis-1 Stopping 
+ Container proseforge-postgres-1 Stopped 
+ Container proseforge-postgres-1 Removing 
+ Container proseforge-postgres-1 Removed 
+ Container proseforge-redis-1 Stopped 
+ Container proseforge-redis-1 Removing 
+ Container proseforge-redis-1 Removed 
+ Container proseforge-provider-mock-1 Stopped 
+ Container proseforge-provider-mock-1 Removing 
+ Container proseforge-provider-mock-1 Removed 
+ Volume proseforge_proseforge-blobs Removing 
+ Volume proseforge_proseforge-backups Removing 
+ Volume proseforge_postgres-test-data Removing 
+ Network proseforge_default Removing 
+ Volume proseforge_proseforge-blobs Removed 
+ Volume proseforge_redis-test-data Removing 
+ Volume proseforge_postgres-test-data Removed 
+ Volume proseforge_proseforge-backups Removed 
+ Volume proseforge_redis-test-data Removed 
+ Network proseforge_default Removed 
+EXIT(down -v (pre-pass reset))=0
+end: 2026-07-20T14:57:47+08:00
+
+### STEP up --build (final): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml up -d --build --wait postgres redis provider-mock api worker web
+start: 2026-07-20T14:57:47+08:00
+ Image proseforge-api Building 
+ Image proseforge-web Building 
+ Image proseforge-worker Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.31kB done
+#1 DONE 0.0s
+
+#2 [worker internal] load build definition from worker.Dockerfile
+#2 transferring dockerfile: 705B done
+#2 DONE 0.0s
+
+#3 [api internal] load build definition from api.Dockerfile
+#3 transferring dockerfile: 1.16kB done
+#3 DONE 0.0s
+
+#4 [web internal] load build definition from web.Dockerfile
+#4 transferring dockerfile: 494B done
+#4 DONE 0.0s
+
+#5 [worker internal] load metadata for docker.io/library/python:3.12-slim
+#5 DONE 0.1s
+
+#6 [web internal] load metadata for docker.io/library/node:22-alpine
+#6 DONE 0.1s
+
+#7 [web internal] load metadata for docker.io/library/nginx:1.27-alpine
+#7 DONE 0.1s
+
+#8 [api internal] load .dockerignore
+#8 transferring context: 223B done
+#8 DONE 0.0s
+
+#9 [web internal] load build context
+#9 DONE 0.0s
+
+#10 [worker internal] load build context
+#10 DONE 0.0s
+
+#11 [worker 1/9] FROM docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#11 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#11 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.0s done
+#11 DONE 0.0s
+
+#12 [web stage-1 1/3] FROM docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#12 resolve docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 0.0s done
+#12 DONE 0.0s
+
+#13 [web build 1/6] FROM docker.io/library/node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+#13 resolve docker.io/library/node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 0.0s done
+#13 DONE 0.0s
+
+#14 [worker 2/9] WORKDIR /app
+#14 CACHED
+
+#9 [web internal] load build context
+#9 transferring context: 9.54kB 0.0s done
+#9 DONE 0.0s
+
+#10 [worker internal] load build context
+#10 transferring context: 69.79kB 0.1s done
+#10 transferring context: 69.79kB 0.1s done
+#10 DONE 0.1s
+
+#15 [web build 4/6] RUN corepack enable && pnpm install --frozen-lockfile
+#15 CACHED
+
+#16 [web stage-1 2/3] COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+#16 CACHED
+
+#17 [web build 3/6] COPY apps/web/package.json apps/web/pnpm-lock.yaml ./
+#17 CACHED
+
+#18 [web build 6/6] RUN pnpm build
+#18 CACHED
+
+#19 [web build 5/6] COPY apps/web/ ./
+#19 CACHED
+
+#20 [web build 2/6] WORKDIR /app/apps/web
+#20 CACHED
+
+#21 [web stage-1 3/3] COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+#21 CACHED
+
+#22 [worker 4/8] COPY src ./src
+#22 CACHED
+
+#23 [worker 5/8] COPY proseforge ./proseforge
+#23 CACHED
+
+#24 [worker 3/8] COPY pyproject.toml README.md ./
+#24 CACHED
+
+#25 [worker 6/8] RUN python -m pip install --no-cache-dir --upgrade pip     && python -m pip install --no-cache-dir -e ".[api,worker]"
+#25 CACHED
+
+#26 [web] exporting to image
+#26 exporting layers 0.0s done
+#26 exporting manifest sha256:66dadbd037a8eddb27a9bbd139f78297f7433bb3c277c78dbda1e43dd46fb42f done
+#26 exporting config sha256:916301f32c07302ef08090d85d4d0d7d6c5a15ddf9db35514b40cabc30e21ff4 done
+#26 exporting attestation manifest sha256:d78dd8ecae1849c904d266323583ec3715bd05be8da1e4d1b58601f959ab8d83 0.1s done
+#26 exporting manifest list sha256:eb7140cbc6ab1e293ed41f3e07d408852484bce6bac10cacf451fbdd0126a0d2
+#26 exporting manifest list sha256:eb7140cbc6ab1e293ed41f3e07d408852484bce6bac10cacf451fbdd0126a0d2 0.0s done
+#26 naming to docker.io/library/proseforge-web:latest done
+#26 unpacking to docker.io/library/proseforge-web:latest 0.0s done
+#26 DONE 0.2s
+
+#27 [api 3/9] RUN (sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list)     && apt-get update     && apt-get install -y --no-install-recommends postgresql-client     && rm -rf /var/lib/apt/lists/*
+#27 0.412 Get:1 http://mirrors.aliyun.com/debian trixie InRelease [140 kB]
+#27 ...
+
+#28 [web] resolving provenance for metadata file
+#28 DONE 0.0s
+
+#27 [api 3/9] RUN (sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list)     && apt-get update     && apt-get install -y --no-install-recommends postgresql-client     && rm -rf /var/lib/apt/lists/*
+#27 0.612 Get:2 http://mirrors.aliyun.com/debian trixie-updates InRelease [47.3 kB]
+#27 0.699 Get:3 http://mirrors.aliyun.com/debian-security trixie-security InRelease [43.4 kB]
+#27 0.780 Get:4 http://mirrors.aliyun.com/debian trixie/main amd64 Packages [9673 kB]
+#27 3.670 Get:5 http://mirrors.aliyun.com/debian trixie-updates/main amd64 Packages [4412 B]
+#27 3.787 Get:6 http://mirrors.aliyun.com/debian-security trixie-security/main amd64 Packages [226 kB]
+#27 ...
+
+#29 [worker 7/8] COPY . .
+#29 DONE 5.0s
+
+#27 [api 3/9] RUN (sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list)     && apt-get update     && apt-get install -y --no-install-recommends postgresql-client     && rm -rf /var/lib/apt/lists/*
+#27 5.116 Fetched 10.1 MB in 5s (2099 kB/s)
+#27 5.116 Reading package lists...
+#27 5.858 Reading package lists...
+#27 6.529 Building dependency tree...
+#27 6.701 Reading state information...
+#27 6.945 The following additional packages will be installed:
+#27 6.945   libcom-err2 libgdbm-compat4t64 libgssapi-krb5-2 libk5crypto3 libkeyutils1
+#27 6.946   libkrb5-3 libkrb5support0 libldap2 libperl5.40 libpq5 libsasl2-2
+#27 6.947   libsasl2-modules-db perl perl-modules-5.40 postgresql-client-17
+#27 6.947   postgresql-client-common sensible-utils
+#27 6.949 Suggested packages:
+#27 6.949   krb5-doc krb5-user perl-doc libterm-readline-gnu-perl
+#27 6.949   | libterm-readline-perl-perl make libtap-harness-archive-perl postgresql-17
+#27 6.949   postgresql-doc-17
+#27 6.949 Recommended packages:
+#27 6.949   krb5-locales libldap-common libsasl2-modules
+#27 7.108 The following NEW packages will be installed:
+#27 7.108   libcom-err2 libgdbm-compat4t64 libgssapi-krb5-2 libk5crypto3 libkeyutils1
+#27 7.109   libkrb5-3 libkrb5support0 libldap2 libperl5.40 libpq5 libsasl2-2
+#27 7.110   libsasl2-modules-db perl perl-modules-5.40 postgresql-client
+#27 7.110   postgresql-client-17 postgresql-client-common sensible-utils
+#27 7.249 0 upgraded, 18 newly installed, 0 to remove and 0 not upgraded.
+#27 7.249 Need to get 10.9 MB of archives.
+#27 7.249 After this operation, 66.4 MB of additional disk space will be used.
+#27 7.249 Get:1 http://mirrors.aliyun.com/debian trixie/main amd64 sensible-utils all 0.0.25 [25.0 kB]
+#27 7.418 Get:2 http://mirrors.aliyun.com/debian trixie/main amd64 perl-modules-5.40 all 5.40.1-6 [3019 kB]
+#27 8.399 Get:3 http://mirrors.aliyun.com/debian trixie/main amd64 libgdbm-compat4t64 amd64 1.24-2 [50.3 kB]
+#27 8.401 Get:4 http://mirrors.aliyun.com/debian trixie/main amd64 libperl5.40 amd64 5.40.1-6 [4341 kB]
+#27 9.034 Get:5 http://mirrors.aliyun.com/debian trixie/main amd64 perl amd64 5.40.1-6 [267 kB]
+#27 9.036 Get:6 http://mirrors.aliyun.com/debian trixie/main amd64 libcom-err2 amd64 1.47.2-3+b11 [25.0 kB]
+#27 9.058 Get:7 http://mirrors.aliyun.com/debian trixie/main amd64 libkrb5support0 amd64 1.21.3-5+deb13u1 [33.1 kB]
+#27 9.591 Get:8 http://mirrors.aliyun.com/debian trixie/main amd64 libk5crypto3 amd64 1.21.3-5+deb13u1 [81.2 kB]
+#27 9.592 Get:9 http://mirrors.aliyun.com/debian trixie/main amd64 libkeyutils1 amd64 1.6.3-6 [9456 B]
+#27 9.592 Get:10 http://mirrors.aliyun.com/debian trixie/main amd64 libkrb5-3 amd64 1.21.3-5+deb13u1 [326 kB]
+#27 9.593 Get:11 http://mirrors.aliyun.com/debian trixie/main amd64 libgssapi-krb5-2 amd64 1.21.3-5+deb13u1 [138 kB]
+#27 9.595 Get:12 http://mirrors.aliyun.com/debian trixie/main amd64 libsasl2-modules-db amd64 2.1.28+dfsg1-9 [19.8 kB]
+#27 9.595 Get:13 http://mirrors.aliyun.com/debian trixie/main amd64 libsasl2-2 amd64 2.1.28+dfsg1-9 [57.5 kB]
+#27 9.595 Get:14 http://mirrors.aliyun.com/debian trixie/main amd64 libldap2 amd64 2.6.10+dfsg-1 [194 kB]
+#27 9.865 Get:15 http://mirrors.aliyun.com/debian trixie/main amd64 libpq5 amd64 17.10-0+deb13u1 [230 kB]
+#27 9.866 Get:16 http://mirrors.aliyun.com/debian trixie/main amd64 postgresql-client-common all 278 [47.1 kB]
+#27 9.867 Get:17 http://mirrors.aliyun.com/debian trixie/main amd64 postgresql-client-17 amd64 17.10-0+deb13u1 [2052 kB]
+#27 10.43 Get:18 http://mirrors.aliyun.com/debian trixie/main amd64 postgresql-client all 17+278 [14.0 kB]
+#27 10.80 debconf: unable to initialize frontend: Dialog
+#27 10.80 debconf: (TERM is not set, so the dialog frontend is not usable.)
+#27 10.80 debconf: falling back to frontend: Readline
+#27 10.80 debconf: unable to initialize frontend: Readline
+#27 10.80 debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC entries checked: /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.40.1 /usr/local/share/perl/5.40.1 /usr/lib/x86_64-linux-gnu/perl5/5.40 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.40 /usr/share/perl/5.40 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 8, <STDIN> line 18.)
+#27 10.80 debconf: falling back to frontend: Teletype
+#27 10.81 debconf: unable to initialize frontend: Teletype
+#27 10.81 debconf: (This frontend requires a controlling tty.)
+#27 10.81 debconf: falling back to frontend: Noninteractive
+#27 ...
+
+#30 [worker 8/8] RUN addgroup --system --gid 10001 proseforge     && adduser --system --uid 10001 --ingroup proseforge proseforge     && mkdir -p /data/blobs /data/backups     && chown -R proseforge:proseforge /app /data
+#30 0.340 useradd warning: proseforge's uid 10001 is greater than SYS_UID_MAX 999
+#30 DONE 6.4s
+
+#27 [api 3/9] RUN (sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list)     && apt-get update     && apt-get install -y --no-install-recommends postgresql-client     && rm -rf /var/lib/apt/lists/*
+#27 11.59 Fetched 10.9 MB in 3s (3310 kB/s)
+#27 11.64 Selecting previously unselected package sensible-utils.
+#27 11.64 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 5645 files and directories currently installed.)
+#27 11.68 Preparing to unpack .../00-sensible-utils_0.0.25_all.deb ...
+#27 11.69 Unpacking sensible-utils (0.0.25) ...
+#27 11.75 Selecting previously unselected package perl-modules-5.40.
+#27 11.75 Preparing to unpack .../01-perl-modules-5.40_5.40.1-6_all.deb ...
+#27 11.75 Unpacking perl-modules-5.40 (5.40.1-6) ...
+#27 12.03 Selecting previously unselected package libgdbm-compat4t64:amd64.
+#27 12.03 Preparing to unpack .../02-libgdbm-compat4t64_1.24-2_amd64.deb ...
+#27 12.04 Unpacking libgdbm-compat4t64:amd64 (1.24-2) ...
+#27 12.08 Selecting previously unselected package libperl5.40:amd64.
+#27 12.08 Preparing to unpack .../03-libperl5.40_5.40.1-6_amd64.deb ...
+#27 12.09 Unpacking libperl5.40:amd64 (5.40.1-6) ...
+#27 12.41 Selecting previously unselected package perl.
+#27 12.41 Preparing to unpack .../04-perl_5.40.1-6_amd64.deb ...
+#27 12.42 Unpacking perl (5.40.1-6) ...
+#27 12.48 Selecting previously unselected package libcom-err2:amd64.
+#27 12.48 Preparing to unpack .../05-libcom-err2_1.47.2-3+b11_amd64.deb ...
+#27 12.49 Unpacking libcom-err2:amd64 (1.47.2-3+b11) ...
+#27 12.55 Selecting previously unselected package libkrb5support0:amd64.
+#27 12.55 Preparing to unpack .../06-libkrb5support0_1.21.3-5+deb13u1_amd64.deb ...
+#27 12.55 Unpacking libkrb5support0:amd64 (1.21.3-5+deb13u1) ...
+#27 12.61 Selecting previously unselected package libk5crypto3:amd64.
+#27 12.61 Preparing to unpack .../07-libk5crypto3_1.21.3-5+deb13u1_amd64.deb ...
+#27 12.62 Unpacking libk5crypto3:amd64 (1.21.3-5+deb13u1) ...
+#27 12.67 Selecting previously unselected package libkeyutils1:amd64.
+#27 12.67 Preparing to unpack .../08-libkeyutils1_1.6.3-6_amd64.deb ...
+#27 12.67 Unpacking libkeyutils1:amd64 (1.6.3-6) ...
+#27 12.72 Selecting previously unselected package libkrb5-3:amd64.
+#27 12.73 Preparing to unpack .../09-libkrb5-3_1.21.3-5+deb13u1_amd64.deb ...
+#27 12.73 Unpacking libkrb5-3:amd64 (1.21.3-5+deb13u1) ...
+#27 12.81 Selecting previously unselected package libgssapi-krb5-2:amd64.
+#27 12.81 Preparing to unpack .../10-libgssapi-krb5-2_1.21.3-5+deb13u1_amd64.deb ...
+#27 12.81 Unpacking libgssapi-krb5-2:amd64 (1.21.3-5+deb13u1) ...
+#27 12.85 Selecting previously unselected package libsasl2-modules-db:amd64.
+#27 12.85 Preparing to unpack .../11-libsasl2-modules-db_2.1.28+dfsg1-9_amd64.deb ...
+#27 12.86 Unpacking libsasl2-modules-db:amd64 (2.1.28+dfsg1-9) ...
+#27 12.92 Selecting previously unselected package libsasl2-2:amd64.
+#27 12.92 Preparing to unpack .../12-libsasl2-2_2.1.28+dfsg1-9_amd64.deb ...
+#27 12.92 Unpacking libsasl2-2:amd64 (2.1.28+dfsg1-9) ...
+#27 12.97 Selecting previously unselected package libldap2:amd64.
+#27 12.97 Preparing to unpack .../13-libldap2_2.6.10+dfsg-1_amd64.deb ...
+#27 12.98 Unpacking libldap2:amd64 (2.6.10+dfsg-1) ...
+#27 13.04 Selecting previously unselected package libpq5:amd64.
+#27 13.04 Preparing to unpack .../14-libpq5_17.10-0+deb13u1_amd64.deb ...
+#27 13.04 Unpacking libpq5:amd64 (17.10-0+deb13u1) ...
+#27 13.11 Selecting previously unselected package postgresql-client-common.
+#27 13.11 Preparing to unpack .../15-postgresql-client-common_278_all.deb ...
+#27 13.12 Unpacking postgresql-client-common (278) ...
+#27 13.17 Selecting previously unselected package postgresql-client-17.
+#27 13.18 Preparing to unpack .../16-postgresql-client-17_17.10-0+deb13u1_amd64.deb ...
+#27 13.18 Unpacking postgresql-client-17 (17.10-0+deb13u1) ...
+#27 13.35 Selecting previously unselected package postgresql-client.
+#27 13.35 Preparing to unpack .../17-postgresql-client_17+278_all.deb ...
+#27 13.35 Unpacking postgresql-client (17+278) ...
+#27 13.40 Setting up libkeyutils1:amd64 (1.6.3-6) ...
+#27 13.42 Setting up libgdbm-compat4t64:amd64 (1.24-2) ...
+#27 13.44 Setting up libcom-err2:amd64 (1.47.2-3+b11) ...
+#27 13.45 Setting up libkrb5support0:amd64 (1.21.3-5+deb13u1) ...
+#27 13.48 Setting up libsasl2-modules-db:amd64 (2.1.28+dfsg1-9) ...
+#27 13.49 Setting up libk5crypto3:amd64 (1.21.3-5+deb13u1) ...
+#27 13.51 Setting up libsasl2-2:amd64 (2.1.28+dfsg1-9) ...
+#27 13.52 Setting up perl-modules-5.40 (5.40.1-6) ...
+#27 13.54 Setting up sensible-utils (0.0.25) ...
+#27 13.56 Setting up libkrb5-3:amd64 (1.21.3-5+deb13u1) ...
+#27 13.57 Setting up libldap2:amd64 (2.6.10+dfsg-1) ...
+#27 13.59 Setting up libperl5.40:amd64 (5.40.1-6) ...
+#27 13.61 Setting up perl (5.40.1-6) ...
+#27 13.64 Setting up libgssapi-krb5-2:amd64 (1.21.3-5+deb13u1) ...
+#27 13.65 Setting up postgresql-client-common (278) ...
+#27 13.68 Setting up libpq5:amd64 (17.10-0+deb13u1) ...
+#27 13.70 Setting up postgresql-client-17 (17.10-0+deb13u1) ...
+#27 14.27 update-alternatives: using /usr/share/postgresql/17/man/man1/psql.1.gz to provide /usr/share/man/man1/psql.1.gz (psql.1.gz) in auto mode
+#27 14.32 Setting up postgresql-client (17+278) ...
+#27 14.34 Processing triggers for libc-bin (2.41-12+deb13u3) ...
+#27 DONE 15.6s
+
+#31 [worker] exporting to image
+#31 exporting layers
+#31 ...
+
+#32 [api 4/9] COPY pyproject.toml README.md ./
+#32 DONE 0.1s
+
+#33 [api 5/9] COPY src ./src
+#33 DONE 0.1s
+
+#34 [api 6/9] COPY proseforge ./proseforge
+#34 DONE 0.1s
+
+#31 [worker] exporting to image
+#31 ...
+
+#35 [api 7/9] RUN python -m pip install --no-cache-dir --upgrade pip     && python -m pip install --no-cache-dir -e ".[api]"
+#35 2.178 Looking in indexes: https://mirrors.aliyun.com/pypi/simple/
+#35 2.179 Requirement already satisfied: pip in /usr/local/lib/python3.12/site-packages (25.0.1)
+#35 2.392 Collecting pip
+#35 2.439   Downloading https://mirrors.aliyun.com/pypi/packages/5d/95/6b5cb3461ea5673ba0995989746db58eb18b91b54dbf331e72f569540946/pip-26.1.2-py3-none-any.whl (1.8 MB)
+#35 3.253      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 2.2 MB/s eta 0:00:00
+#35 3.274 Installing collected packages: pip
+#35 3.275   Attempting uninstall: pip
+#35 3.277     Found existing installation: pip 25.0.1
+#35 3.320     Uninstalling pip-25.0.1:
+#35 3.562       Successfully uninstalled pip-25.0.1
+#35 4.574 Successfully installed pip-26.1.2
+#35 4.575 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#35 5.628 Looking in indexes: https://mirrors.aliyun.com/pypi/simple/
+#35 5.629 Obtaining file:///app
+#35 5.631   Installing build dependencies: started
+#35 6.844   Installing build dependencies: finished with status 'done'
+#35 6.844   Checking if build backend supports build_editable: started
+#35 7.198   Checking if build backend supports build_editable: finished with status 'done'
+#35 7.199   Getting requirements to build editable: started
+#35 7.627   Getting requirements to build editable: finished with status 'done'
+#35 7.630   Preparing editable metadata (pyproject.toml): started
+#35 7.885   Preparing editable metadata (pyproject.toml): finished with status 'done'
+#35 8.305 Collecting pydantic<3,>=2.11 (from proseforge==1.5.0)
+#35 8.347   Downloading pydantic-2.13.4-py3-none-any.whl (472 kB)
+#35 8.680 Collecting pydantic-settings<3,>=2.9 (from proseforge==1.5.0)
+#35 8.750   Downloading pydantic_settings-2.14.2-py3-none-any.whl (61 kB)
+#35 9.261 Collecting orjson<4,>=3.10 (from proseforge==1.5.0)
+#35 9.302   Downloading orjson-3.11.9-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (134 kB)
+#35 9.560 Collecting structlog<26,>=25.1 (from proseforge==1.5.0)
+#35 9.613   Downloading structlog-25.5.0-py3-none-any.whl (72 kB)
+#35 9.752 Collecting zstandard<1,>=0.23 (from proseforge==1.5.0)
+#35 9.800   Downloading zstandard-0.25.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.5 MB)
+#35 11.65      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.5/5.5 MB 2.9 MB/s  0:00:01
+#35 11.76 Collecting pyyaml<7,>=6 (from proseforge==1.5.0)
+#35 11.80   Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (807 kB)
+#35 11.85      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 807.9/807.9 kB 12.1 MB/s  0:00:00
+#35 11.95 Collecting fastapi<1,>=0.116 (from proseforge==1.5.0)
+#35 12.00   Downloading fastapi-0.139.2-py3-none-any.whl (130 kB)
+#35 12.07 Collecting uvicorn<1,>=0.35 (from uvicorn[standard]<1,>=0.35; extra == "api"->proseforge==1.5.0)
+#35 12.11   Downloading uvicorn-0.51.0-py3-none-any.whl (73 kB)
+#35 12.60 Collecting sqlalchemy<3,>=2.0.41 (from sqlalchemy[asyncio]<3,>=2.0.41; extra == "api"->proseforge==1.5.0)
+#35 12.65   Downloading sqlalchemy-2.0.51-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (3.4 MB)
+#35 13.48      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.4/3.4 MB 3.8 MB/s  0:00:00
+#35 13.62 Collecting asyncpg<1,>=0.30 (from proseforge==1.5.0)
+#35 13.67   Downloading asyncpg-0.31.0-cp312-cp312-manylinux_2_28_x86_64.whl (3.5 MB)
+#35 14.72      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.5/3.5 MB 3.1 MB/s  0:00:01
+#35 14.98 Collecting aiosqlite<1,>=0.20 (from proseforge==1.5.0)
+#35 15.02   Downloading aiosqlite-0.22.1-py3-none-any.whl (17 kB)
+#35 15.28 Collecting psycopg<4,>=3.2 (from psycopg[binary]<4,>=3.2; extra == "api"->proseforge==1.5.0)
+#35 15.32   Downloading psycopg-3.3.4-py3-none-any.whl (213 kB)
+#35 15.39 Collecting alembic<2,>=1.16 (from proseforge==1.5.0)
+#35 15.44   Downloading alembic-1.18.5-py3-none-any.whl (264 kB)
+#35 15.72 Collecting pgvector<1,>=0.4 (from proseforge==1.5.0)
+#35 15.76   Downloading pgvector-0.5.0-py3-none-any.whl (30 kB)
+#35 16.02 Collecting httpx<1,>=0.28 (from proseforge==1.5.0)
+#35 16.07   Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+#35 16.32 Collecting python-multipart<1,>=0.0.20 (from proseforge==1.5.0)
+#35 16.36   Downloading python_multipart-0.0.32-py3-none-any.whl (30 kB)
+#35 16.70 Collecting cryptography<49,>=46.0.7 (from proseforge==1.5.0)
+#35 16.74   Downloading cryptography-48.0.1-cp311-abi3-manylinux_2_34_x86_64.whl (4.7 MB)
+#35 17.80      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.7/4.7 MB 4.2 MB/s  0:00:01
+#35 18.07 Collecting passlib<2,>=1.7 (from passlib[argon2]<2,>=1.7; extra == "api"->proseforge==1.5.0)
+#35 18.12   Downloading passlib-1.7.4-py2.py3-none-any.whl (525 kB)
+#35 18.13      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 525.6/525.6 kB 35.5 MB/s  0:00:00
+#35 18.39 Collecting pyjwt<3,>=2.10 (from proseforge==1.5.0)
+#35 18.44   Downloading pyjwt-2.13.0-py3-none-any.whl (31 kB)
+#35 18.51 Collecting redis<7,>=6 (from proseforge==1.5.0)
+#35 18.57   Downloading redis-6.4.0-py3-none-any.whl (279 kB)
+#35 18.65 Collecting celery<6,>=5.5 (from celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 18.70   Downloading celery-5.6.3-py3-none-any.whl (451 kB)
+#35 18.98 Collecting Mako (from alembic<2,>=1.16->proseforge==1.5.0)
+#35 19.04   Downloading mako-1.3.12-py3-none-any.whl (78 kB)
+#35 19.30 Collecting typing-extensions>=4.12 (from alembic<2,>=1.16->proseforge==1.5.0)
+#35 19.34   Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+#35 19.60 Collecting billiard<5.0,>=4.2.1 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 19.64   Downloading billiard-4.2.4-py3-none-any.whl (87 kB)
+#35 19.71 Collecting kombu>=5.6.0 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 19.75   Downloading kombu-5.6.2-py3-none-any.whl (214 kB)
+#35 20.01 Collecting vine<6.0,>=5.1.0 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 ...
+
+#31 [worker] exporting to image
+#31 exporting layers 24.5s done
+#31 exporting manifest sha256:919ef220ee89f60a0637d0e24ccb47bcfc11687be80578a7e35dc8532ce86201 0.0s done
+#31 exporting config sha256:b362126e96b5fb8f2e5fd51e99f07928d89e086bd5b55f0a70d60af9e1590d16
+#31 exporting config sha256:b362126e96b5fb8f2e5fd51e99f07928d89e086bd5b55f0a70d60af9e1590d16 0.0s done
+#31 exporting attestation manifest sha256:80438b040dacbc1340a7b21889c9998aa53d92eacc74a8ea7510d5dff8c30d48 0.0s done
+#31 exporting manifest list sha256:e19991dfe4061e978297d2cca0ddd0098c3545a08bfb8ef1ac96b099f51b9233 0.0s done
+#31 naming to docker.io/library/proseforge-worker:latest done
+#31 unpacking to docker.io/library/proseforge-worker:latest
+#31 unpacking to docker.io/library/proseforge-worker:latest 5.2s done
+#31 DONE 29.8s
+
+#36 [worker] resolving provenance for metadata file
+#36 DONE 0.0s
+
+#35 [api 7/9] RUN python -m pip install --no-cache-dir --upgrade pip     && python -m pip install --no-cache-dir -e ".[api]"
+#35 20.25   Downloading vine-5.1.0-py3-none-any.whl (9.6 kB)
+#35 20.52 Collecting click<9.0,>=8.1.2 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 20.59   Downloading click-8.4.2-py3-none-any.whl (119 kB)
+#35 20.83 Collecting click-didyoumean>=0.3.0 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 21.07   Downloading click_didyoumean-0.3.1-py3-none-any.whl (3.6 kB)
+#35 21.35 Collecting click-repl>=0.2.0 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 21.60   Downloading click_repl-0.3.0-py3-none-any.whl (10 kB)
+#35 21.84 Collecting click-plugins>=1.1.1 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 22.09   Downloading click_plugins-1.1.1.2-py2.py3-none-any.whl (11 kB)
+#35 22.34 Collecting python-dateutil>=2.8.2 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 22.38   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+#35 22.64 Collecting tzlocal (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 22.68   Downloading tzlocal-5.4.4-py3-none-any.whl (18 kB)
+#35 22.88 Collecting cffi>=2.0.0 (from cryptography<49,>=46.0.7->proseforge==1.5.0)
+#35 22.93   Downloading cffi-2.1.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (221 kB)
+#35 23.01 Collecting starlette>=0.46.0 (from fastapi<1,>=0.116->proseforge==1.5.0)
+#35 23.06   Downloading starlette-1.3.1-py3-none-any.whl (73 kB)
+#35 23.31 Collecting typing-inspection>=0.4.2 (from fastapi<1,>=0.116->proseforge==1.5.0)
+#35 23.55   Downloading typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+#35 23.80 Collecting annotated-doc>=0.0.2 (from fastapi<1,>=0.116->proseforge==1.5.0)
+#35 24.05   Downloading annotated_doc-0.0.4-py3-none-any.whl (5.3 kB)
+#35 24.31 Collecting anyio (from httpx<1,>=0.28->proseforge==1.5.0)
+#35 24.35   Downloading anyio-4.14.2-py3-none-any.whl (125 kB)
+#35 24.61 Collecting certifi (from httpx<1,>=0.28->proseforge==1.5.0)
+#35 24.65   Downloading certifi-2026.6.17-py3-none-any.whl (133 kB)
+#35 24.97 Collecting httpcore==1.* (from httpx<1,>=0.28->proseforge==1.5.0)
+#35 25.17   Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+#35 25.44 Collecting idna (from httpx<1,>=0.28->proseforge==1.5.0)
+#35 25.48   Downloading idna-3.18-py3-none-any.whl (65 kB)
+#35 25.73 Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.28->proseforge==1.5.0)
+#35 25.77   Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+#35 25.84 Collecting argon2-cffi>=18.2.0 (from passlib[argon2]<2,>=1.7; extra == "api"->proseforge==1.5.0)
+#35 26.08   Downloading argon2_cffi-25.1.0-py3-none-any.whl (14 kB)
+#35 26.41 Collecting psycopg-binary==3.3.4 (from psycopg[binary]<4,>=3.2; extra == "api"->proseforge==1.5.0)
+#35 26.45   Downloading psycopg_binary-3.3.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.2 MB)
+#35 27.82      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.2/5.2 MB 3.6 MB/s  0:00:01
+#35 28.09 Collecting annotated-types>=0.6.0 (from pydantic<3,>=2.11->proseforge==1.5.0)
+#35 28.34   Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+#35 29.75 Collecting pydantic-core==2.46.4 (from pydantic<3,>=2.11->proseforge==1.5.0)
+#35 29.79   Downloading pydantic_core-2.46.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+#35 30.17      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 5.0 MB/s  0:00:00
+#35 30.44 Collecting python-dotenv>=0.21.0 (from pydantic-settings<3,>=2.9->proseforge==1.5.0)
+#35 30.48   Downloading python_dotenv-1.2.2-py3-none-any.whl (22 kB)
+#35 30.76 Collecting greenlet>=1 (from sqlalchemy<3,>=2.0.41->sqlalchemy[asyncio]<3,>=2.0.41; extra == "api"->proseforge==1.5.0)
+#35 30.80   Downloading greenlet-3.5.3-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (614 kB)
+#35 30.85      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 614.2/614.2 kB 10.1 MB/s  0:00:00
+#35 30.94 Collecting httptools>=0.8.0 (from uvicorn[standard]<1,>=0.35; extra == "api"->proseforge==1.5.0)
+#35 30.98   Downloading httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (523 kB)
+#35 31.09 Collecting uvloop>=0.15.1 (from uvicorn[standard]<1,>=0.35; extra == "api"->proseforge==1.5.0)
+#35 31.13   Downloading uvloop-0.22.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (4.4 MB)
+#35 32.05      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.4/4.4 MB 4.6 MB/s  0:00:00
+#35 32.23 Collecting watchfiles>=0.20 (from uvicorn[standard]<1,>=0.35; extra == "api"->proseforge==1.5.0)
+#35 32.29   Downloading watchfiles-1.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (456 kB)
+#35 32.48 Collecting websockets>=13.0 (from uvicorn[standard]<1,>=0.35; extra == "api"->proseforge==1.5.0)
+#35 32.53   Downloading websockets-16.1.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (187 kB)
+#35 32.79 Collecting argon2-cffi-bindings (from argon2-cffi>=18.2.0->passlib[argon2]<2,>=1.7; extra == "api"->proseforge==1.5.0)
+#35 32.83   Downloading argon2_cffi_bindings-25.1.0-cp39-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl (87 kB)
+#35 33.08 Collecting pycparser (from cffi>=2.0.0->cryptography<49,>=46.0.7->proseforge==1.5.0)
+#35 33.13   Downloading pycparser-3.0-py3-none-any.whl (48 kB)
+#35 33.20 Collecting prompt-toolkit>=3.0.36 (from click-repl>=0.2.0->celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 33.26   Downloading prompt_toolkit-3.0.52-py3-none-any.whl (391 kB)
+#35 33.54 Collecting amqp<6.0.0,>=5.1.1 (from kombu>=5.6.0->celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 33.58   Downloading amqp-5.3.1-py3-none-any.whl (50 kB)
+#35 33.84 Collecting tzdata>=2025.2 (from kombu>=5.6.0->celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 33.88   Downloading tzdata-2026.3-py2.py3-none-any.whl (348 kB)
+#35 34.15 Collecting packaging (from kombu>=5.6.0->celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 34.19   Downloading packaging-26.2-py3-none-any.whl (100 kB)
+#35 34.45 Collecting wcwidth (from prompt-toolkit>=3.0.36->click-repl>=0.2.0->celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 34.49   Downloading wcwidth-0.8.2-py3-none-any.whl (323 kB)
+#35 34.75 Collecting six>=1.5 (from python-dateutil>=2.8.2->celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#35 35.00   Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+#35 35.13 Collecting MarkupSafe>=0.9.2 (from Mako->alembic<2,>=1.16->proseforge==1.5.0)
+#35 35.17   Downloading markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (22 kB)
+#35 35.17 Building wheels for collected packages: proseforge
+#35 35.17   Building editable for proseforge (pyproject.toml): started
+#35 35.46   Building editable for proseforge (pyproject.toml): finished with status 'done'
+#35 35.46   Created wheel for proseforge: filename=proseforge-1.5.0-0.editable-py3-none-any.whl size=2061 sha256=a4a7661c56953627a7800b37d63d115597c3b52140ada4f2a7ef45c3f427ae07
+#35 35.46   Stored in directory: /tmp/pip-ephem-wheel-cache-p44ve8yz/wheels/54/1b/b7/aa63e25c8f14f4f2ae7b04e6097bdecb770e455c5c1ee0a600
+#35 35.46 Successfully built proseforge
+#35 35.57 Installing collected packages: passlib, zstandard, websockets, wcwidth, vine, uvloop, tzlocal, tzdata, typing-extensions, structlog, six, redis, pyyaml, python-multipart, python-dotenv, pyjwt, pycparser, psycopg-binary, pgvector, packaging, orjson, MarkupSafe, idna, httptools, h11, greenlet, click, certifi, billiard, asyncpg, annotated-types, annotated-doc, aiosqlite, uvicorn, typing-inspection, sqlalchemy, python-dateutil, pydantic-core, psycopg, prompt-toolkit, Mako, httpcore, click-plugins, click-didyoumean, cffi, anyio, amqp, watchfiles, starlette, pydantic, kombu, httpx, cryptography, click-repl, argon2-cffi-bindings, alembic, pydantic-settings, fastapi, celery, argon2-cffi, proseforge
+#35 42.33 
+#35 42.34 Successfully installed Mako-1.3.12 MarkupSafe-3.0.3 aiosqlite-0.22.1 alembic-1.18.5 amqp-5.3.1 annotated-doc-0.0.4 annotated-types-0.7.0 anyio-4.14.2 argon2-cffi-25.1.0 argon2-cffi-bindings-25.1.0 asyncpg-0.31.0 billiard-4.2.4 celery-5.6.3 certifi-2026.6.17 cffi-2.1.0 click-8.4.2 click-didyoumean-0.3.1 click-plugins-1.1.1.2 click-repl-0.3.0 cryptography-48.0.1 fastapi-0.139.2 greenlet-3.5.3 h11-0.16.0 httpcore-1.0.9 httptools-0.8.0 httpx-0.28.1 idna-3.18 kombu-5.6.2 orjson-3.11.9 packaging-26.2 passlib-1.7.4 pgvector-0.5.0 prompt-toolkit-3.0.52 proseforge-1.5.0 psycopg-3.3.4 psycopg-binary-3.3.4 pycparser-3.0 pydantic-2.13.4 pydantic-core-2.46.4 pydantic-settings-2.14.2 pyjwt-2.13.0 python-dateutil-2.9.0.post0 python-dotenv-1.2.2 python-multipart-0.0.32 pyyaml-6.0.3 redis-6.4.0 six-1.17.0 sqlalchemy-2.0.51 starlette-1.3.1 structlog-25.5.0 typing-extensions-4.16.0 typing-inspection-0.4.2 tzdata-2026.3 tzlocal-5.4.4 uvicorn-0.51.0 uvloop-0.22.1 vine-5.1.0 watchfiles-1.2.0 wcwidth-0.8.2 websockets-16.1.1 zstandard-0.25.0
+#35 42.34 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#35 DONE 49.3s
+
+#37 [api 8/9] COPY . .
+#37 DONE 3.6s
+
+#38 [api 9/9] RUN addgroup --system --gid 10001 proseforge     && adduser --system --uid 10001 --ingroup proseforge proseforge     && mkdir -p /data/blobs /data/backups     && chown -R proseforge:proseforge /app /data
+#38 0.373 useradd warning: proseforge's uid 10001 is greater than SYS_UID_MAX 999
+#38 DONE 6.3s
+
+#39 [api] exporting to image
+#39 exporting layers
+#39 exporting layers 25.8s done
+#39 exporting manifest sha256:e562b7edb526a86ee352e91430d41c5ebf327b5081d6f5f19d3c2996c0bb3842 0.0s done
+#39 exporting config sha256:7c7db0ca405e7a001dcccf57354ad58d3a5d42a26a4f31337bd452e5ba564bd9 0.0s done
+#39 exporting attestation manifest sha256:851beb86d59532f0526c156d101c35f9091afb81973a7f3cbe5027dee0818065 0.0s done
+#39 exporting manifest list sha256:978070f676eb767fa4c94359b13a8ad43238cd5ca226bc0f9fef07cea01f0a71 0.0s done
+#39 naming to docker.io/library/proseforge-api:latest
+#39 naming to docker.io/library/proseforge-api:latest done
+#39 unpacking to docker.io/library/proseforge-api:latest
+#39 unpacking to docker.io/library/proseforge-api:latest 7.5s done
+#39 DONE 33.4s
+
+#40 [api] resolving provenance for metadata file
+#40 DONE 0.0s
+ Image proseforge-worker Built 
+ Image proseforge-api Built 
+ Image proseforge-web Built 
+ Network proseforge_default Creating 
+ Network proseforge_default Created 
+ Volume proseforge_postgres-test-data Creating 
+ Volume proseforge_postgres-test-data Created 
+ Volume proseforge_proseforge-blobs Creating 
+ Volume proseforge_proseforge-blobs Created 
+ Volume proseforge_proseforge-backups Creating 
+ Volume proseforge_proseforge-backups Created 
+ Volume proseforge_redis-test-data Creating 
+ Volume proseforge_redis-test-data Created 
+ Container proseforge-postgres-1 Creating 
+ Container proseforge-provider-mock-1 Creating 
+ Container proseforge-redis-1 Creating 
+ Container proseforge-postgres-1 Created 
+ Container proseforge-provider-mock-1 Created 
+ Container proseforge-redis-1 Created 
+ Container proseforge-worker-1 Creating 
+ Container proseforge-api-1 Creating 
+ Container proseforge-worker-1 Created 
+ Container proseforge-api-1 Created 
+ Container proseforge-web-1 Creating 
+ Container proseforge-web-1 Created 
+ Container proseforge-provider-mock-1 Starting 
+ Container proseforge-redis-1 Starting 
+ Container proseforge-postgres-1 Starting 
+ Container proseforge-provider-mock-1 Started 
+ Container proseforge-redis-1 Started 
+ Container proseforge-postgres-1 Started 
+ Container proseforge-postgres-1 Waiting 
+ Container proseforge-redis-1 Waiting 
+ Container proseforge-postgres-1 Waiting 
+ Container proseforge-redis-1 Waiting 
+ Container proseforge-postgres-1 Healthy 
+ Container proseforge-redis-1 Healthy 
+ Container proseforge-redis-1 Healthy 
+ Container proseforge-api-1 Starting 
+ Container proseforge-postgres-1 Healthy 
+ Container proseforge-worker-1 Starting 
+ Container proseforge-worker-1 Started 
+ Container proseforge-api-1 Started 
+ Container proseforge-web-1 Starting 
+ Container proseforge-web-1 Started 
+ Container proseforge-postgres-1 Waiting 
+ Container proseforge-provider-mock-1 Waiting 
+ Container proseforge-api-1 Waiting 
+ Container proseforge-redis-1 Waiting 
+ Container proseforge-web-1 Waiting 
+ Container proseforge-worker-1 Waiting 
+ Container proseforge-redis-1 Healthy 
+ Container proseforge-provider-mock-1 Healthy 
+ Container proseforge-postgres-1 Healthy 
+ Container proseforge-api-1 Healthy 
+ Container proseforge-web-1 Healthy 
+ Container proseforge-worker-1 Healthy 
+EXIT(up --build (final))=0
+end: 2026-07-20T15:00:08+08:00
+
+### STEP digests (final)
+proseforge-api                 latest          sha256:978070f676eb767fa4c94359b13a8ad43238cd5ca226bc0f9fef07cea01f0a71   978070f676eb   About a minute ago   2.37GB
+proseforge-worker              latest          sha256:e19991dfe4061e978297d2cca0ddd0098c3545a08bfb8ef1ac96b099f51b9233   e19991dfe406   2 minutes ago        2.29GB
+proseforge-web                 latest          sha256:eb7140cbc6ab1e293ed41f3e07d408852484bce6bac10cacf451fbdd0126a0d2   eb7140cbc6ab   19 minutes ago       75.2MB
+mcr.microsoft.com/playwright   v1.61.1-noble   sha256:be22982d683fe55ef44f66e042a08be636fa5db61de7479b7a7ddbefb2da6407   be22982d683f   3 weeks ago          3.45GB
+
+### STEP legacy-test (final pass): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml run --rm legacy-test
+start: 2026-07-20T15:00:09+08:00
+ Container proseforge-legacy-test-run-fffad3f20334 Creating 
+ Container proseforge-legacy-test-run-fffad3f20334 Created 
+........................................................................ [ 17%]
+........................................................................ [ 35%]
+........................................................................ [ 52%]
+........................................................................ [ 70%]
+........................................................................ [ 88%]
+................................................                         [100%]
+408 passed in 46.74s
+EXIT(legacy-test (final pass))=0
+end: 2026-07-20T15:01:02+08:00
+
+### STEP api-test (final pass): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml run --rm api-test
+start: 2026-07-20T15:01:02+08:00
+ Container proseforge-postgres-1 Running 
+ Container proseforge-redis-1 Running 
+ Image proseforge-api-test Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 510B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from test.Dockerfile
+#2 transferring dockerfile: 455B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 223B done
+#4 DONE 0.0s
+
+#5 [1/7] FROM docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#5 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 482.92MB 2.9s done
+#6 DONE 2.9s
+
+#7 [2/7] WORKDIR /app
+#7 CACHED
+
+#8 [3/7] COPY pyproject.toml README.md ./
+#8 CACHED
+
+#9 [4/7] COPY src ./src
+#9 CACHED
+
+#10 [5/7] COPY proseforge ./proseforge
+#10 CACHED
+
+#11 [6/7] RUN python -m pip install --no-cache-dir --upgrade pip     && python -m pip install --no-cache-dir -e ".[api,dev]"
+#11 2.034 Looking in indexes: https://mirrors.aliyun.com/pypi/simple/
+#11 2.034 Requirement already satisfied: pip in /usr/local/lib/python3.12/site-packages (25.0.1)
+#11 2.299 Collecting pip
+#11 2.430   Downloading https://mirrors.aliyun.com/pypi/packages/5d/95/6b5cb3461ea5673ba0995989746db58eb18b91b54dbf331e72f569540946/pip-26.1.2-py3-none-any.whl (1.8 MB)
+#11 3.748      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 1.3 MB/s eta 0:00:00
+#11 3.770 Installing collected packages: pip
+#11 3.770   Attempting uninstall: pip
+#11 3.772     Found existing installation: pip 25.0.1
+#11 3.817     Uninstalling pip-25.0.1:
+#11 4.042       Successfully uninstalled pip-25.0.1
+#11 4.986 Successfully installed pip-26.1.2
+#11 4.987 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#11 5.846 Looking in indexes: https://mirrors.aliyun.com/pypi/simple/
+#11 5.846 Obtaining file:///app
+#11 5.848   Installing build dependencies: started
+#11 9.593   Installing build dependencies: finished with status 'done'
+#11 9.594   Checking if build backend supports build_editable: started
+#11 9.968   Checking if build backend supports build_editable: finished with status 'done'
+#11 9.969   Getting requirements to build editable: started
+#11 10.37   Getting requirements to build editable: finished with status 'done'
+#11 10.38   Preparing editable metadata (pyproject.toml): started
+#11 10.62   Preparing editable metadata (pyproject.toml): finished with status 'done'
+#11 11.06 Collecting pydantic<3,>=2.11 (from proseforge==1.5.0)
+#11 11.13   Downloading pydantic-2.13.4-py3-none-any.whl (472 kB)
+#11 11.52 Collecting pydantic-settings<3,>=2.9 (from proseforge==1.5.0)
+#11 11.57   Downloading pydantic_settings-2.14.2-py3-none-any.whl (61 kB)
+#11 11.99 Collecting orjson<4,>=3.10 (from proseforge==1.5.0)
+#11 12.04   Downloading orjson-3.11.9-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (134 kB)
+#11 12.31 Collecting structlog<26,>=25.1 (from proseforge==1.5.0)
+#11 12.36   Downloading structlog-25.5.0-py3-none-any.whl (72 kB)
+#11 12.51 Collecting zstandard<1,>=0.23 (from proseforge==1.5.0)
+#11 12.56   Downloading zstandard-0.25.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.5 MB)
+#11 15.60      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.5/5.5 MB 1.7 MB/s  0:00:03
+#11 15.86 Collecting pyyaml<7,>=6 (from proseforge==1.5.0)
+#11 16.03   Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (807 kB)
+#11 16.15      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 807.9/807.9 kB 5.4 MB/s  0:00:00
+#11 16.42 Collecting fastapi<1,>=0.116 (from proseforge==1.5.0)
+#11 16.60   Downloading fastapi-0.139.2-py3-none-any.whl (130 kB)
+#11 16.90 Collecting uvicorn<1,>=0.35 (from uvicorn[standard]<1,>=0.35; extra == "api"->proseforge==1.5.0)
+#11 17.31   Downloading uvicorn-0.51.0-py3-none-any.whl (73 kB)
+#11 18.06 Collecting sqlalchemy<3,>=2.0.41 (from sqlalchemy[asyncio]<3,>=2.0.41; extra == "api"->proseforge==1.5.0)
+#11 18.21   Downloading sqlalchemy-2.0.51-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (3.4 MB)
+#11 19.69      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.4/3.4 MB 2.1 MB/s  0:00:01
+#11 19.83 Collecting asyncpg<1,>=0.30 (from proseforge==1.5.0)
+#11 19.87   Downloading asyncpg-0.31.0-cp312-cp312-manylinux_2_28_x86_64.whl (3.5 MB)
+#11 21.36      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.5/3.5 MB 2.2 MB/s  0:00:01
+#11 21.63 Collecting aiosqlite<1,>=0.20 (from proseforge==1.5.0)
+#11 21.71   Downloading aiosqlite-0.22.1-py3-none-any.whl (17 kB)
+#11 21.98 Collecting psycopg<4,>=3.2 (from psycopg[binary]<4,>=3.2; extra == "api"->proseforge==1.5.0)
+#11 22.06   Downloading psycopg-3.3.4-py3-none-any.whl (213 kB)
+#11 22.18 Collecting alembic<2,>=1.16 (from proseforge==1.5.0)
+#11 22.24   Downloading alembic-1.18.5-py3-none-any.whl (264 kB)
+#11 22.91 Collecting pgvector<1,>=0.4 (from proseforge==1.5.0)
+#11 22.98   Downloading pgvector-0.5.0-py3-none-any.whl (30 kB)
+#11 23.27 Collecting httpx<1,>=0.28 (from proseforge==1.5.0)
+#11 23.32   Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+#11 23.57 Collecting python-multipart<1,>=0.0.20 (from proseforge==1.5.0)
+#11 23.62   Downloading python_multipart-0.0.32-py3-none-any.whl (30 kB)
+#11 23.96 Collecting cryptography<49,>=46.0.7 (from proseforge==1.5.0)
+#11 24.01   Downloading cryptography-48.0.1-cp311-abi3-manylinux_2_34_x86_64.whl (4.7 MB)
+#11 26.18      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.7/4.7 MB 2.1 MB/s  0:00:02
+#11 26.45 Collecting passlib<2,>=1.7 (from passlib[argon2]<2,>=1.7; extra == "api"->proseforge==1.5.0)
+#11 26.53   Downloading passlib-1.7.4-py2.py3-none-any.whl (525 kB)
+#11 26.55      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 525.6/525.6 kB 25.5 MB/s  0:00:00
+#11 26.83 Collecting pyjwt<3,>=2.10 (from proseforge==1.5.0)
+#11 26.90   Downloading pyjwt-2.13.0-py3-none-any.whl (31 kB)
+#11 26.98 Collecting redis<7,>=6 (from proseforge==1.5.0)
+#11 27.03   Downloading redis-6.4.0-py3-none-any.whl (279 kB)
+#11 27.13 Collecting celery<6,>=5.5 (from celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 27.23   Downloading celery-5.6.3-py3-none-any.whl (451 kB)
+#11 27.38 Collecting pytest<10,>=9.0.3 (from proseforge==1.5.0)
+#11 27.46   Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+#11 27.78 Collecting pytest-asyncio<2,>=1 (from proseforge==1.5.0)
+#11 27.85   Downloading pytest_asyncio-1.4.0-py3-none-any.whl (16 kB)
+#11 28.16 Collecting pytest-cov<7,>=6 (from proseforge==1.5.0)
+#11 28.20   Downloading pytest_cov-6.3.0-py3-none-any.whl (25 kB)
+#11 28.46 Collecting respx<1,>=0.22 (from proseforge==1.5.0)
+#11 28.54   Downloading respx-0.23.1-py2.py3-none-any.whl (25 kB)
+#11 29.23 Collecting ruff<1,>=0.12 (from proseforge==1.5.0)
+#11 29.29   Downloading ruff-0.15.22-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (11.4 MB)
+#11 33.93      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.4/11.4 MB 2.4 MB/s  0:00:04
+#11 34.20 Collecting mypy<2,>=1.16 (from proseforge==1.5.0)
+#11 34.28   Downloading mypy-1.20.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (14.7 MB)
+#11 40.26      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.7/14.7 MB 2.4 MB/s  0:00:05
+#11 40.60 Collecting Mako (from alembic<2,>=1.16->proseforge==1.5.0)
+#11 40.64   Downloading mako-1.3.12-py3-none-any.whl (78 kB)
+#11 40.90 Collecting typing-extensions>=4.12 (from alembic<2,>=1.16->proseforge==1.5.0)
+#11 40.96   Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+#11 41.23 Collecting billiard<5.0,>=4.2.1 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 41.28   Downloading billiard-4.2.4-py3-none-any.whl (87 kB)
+#11 41.36 Collecting kombu>=5.6.0 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 41.41   Downloading kombu-5.6.2-py3-none-any.whl (214 kB)
+#11 41.67 Collecting vine<6.0,>=5.1.0 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 42.15   Downloading vine-5.1.0-py3-none-any.whl (9.6 kB)
+#11 42.72 Collecting click<9.0,>=8.1.2 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 42.89   Downloading click-8.4.2-py3-none-any.whl (119 kB)
+#11 43.30 Collecting click-didyoumean>=0.3.0 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 43.60   Downloading click_didyoumean-0.3.1-py3-none-any.whl (3.6 kB)
+#11 43.87 Collecting click-repl>=0.2.0 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 44.13   Downloading click_repl-0.3.0-py3-none-any.whl (10 kB)
+#11 44.38 Collecting click-plugins>=1.1.1 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 44.63   Downloading click_plugins-1.1.1.2-py2.py3-none-any.whl (11 kB)
+#11 44.89 Collecting python-dateutil>=2.8.2 (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 44.97   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+#11 45.25 Collecting tzlocal (from celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 45.31   Downloading tzlocal-5.4.4-py3-none-any.whl (18 kB)
+#11 45.52 Collecting cffi>=2.0.0 (from cryptography<49,>=46.0.7->proseforge==1.5.0)
+#11 45.62   Downloading cffi-2.1.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (221 kB)
+#11 45.83 Collecting starlette>=0.46.0 (from fastapi<1,>=0.116->proseforge==1.5.0)
+#11 45.95   Downloading starlette-1.3.1-py3-none-any.whl (73 kB)
+#11 46.37 Collecting typing-inspection>=0.4.2 (from fastapi<1,>=0.116->proseforge==1.5.0)
+#11 46.72   Downloading typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+#11 47.40 Collecting annotated-doc>=0.0.2 (from fastapi<1,>=0.116->proseforge==1.5.0)
+#11 47.96   Downloading annotated_doc-0.0.4-py3-none-any.whl (5.3 kB)
+#11 48.54 Collecting anyio (from httpx<1,>=0.28->proseforge==1.5.0)
+#11 48.88   Downloading anyio-4.14.2-py3-none-any.whl (125 kB)
+#11 49.41 Collecting certifi (from httpx<1,>=0.28->proseforge==1.5.0)
+#11 49.63   Downloading certifi-2026.6.17-py3-none-any.whl (133 kB)
+#11 50.02 Collecting httpcore==1.* (from httpx<1,>=0.28->proseforge==1.5.0)
+#11 50.12   Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+#11 50.42 Collecting idna (from httpx<1,>=0.28->proseforge==1.5.0)
+#11 50.47   Downloading idna-3.18-py3-none-any.whl (65 kB)
+#11 50.73 Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.28->proseforge==1.5.0)
+#11 50.78   Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+#11 51.06 Collecting mypy_extensions>=1.0.0 (from mypy<2,>=1.16->proseforge==1.5.0)
+#11 51.35   Downloading mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+#11 51.63 Collecting pathspec>=1.0.0 (from mypy<2,>=1.16->proseforge==1.5.0)
+#11 51.67   Downloading pathspec-1.1.1-py3-none-any.whl (57 kB)
+#11 51.97 Collecting librt>=0.8.0 (from mypy<2,>=1.16->proseforge==1.5.0)
+#11 52.02   Downloading librt-0.13.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (531 kB)
+#11 52.07      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 531.8/531.8 kB 7.5 MB/s  0:00:00
+#11 52.14 Collecting argon2-cffi>=18.2.0 (from passlib[argon2]<2,>=1.7; extra == "api"->proseforge==1.5.0)
+#11 52.39   Downloading argon2_cffi-25.1.0-py3-none-any.whl (14 kB)
+#11 52.74 Collecting psycopg-binary==3.3.4 (from psycopg[binary]<4,>=3.2; extra == "api"->proseforge==1.5.0)
+#11 52.79   Downloading psycopg_binary-3.3.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.2 MB)
+#11 54.42      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.2/5.2 MB 3.0 MB/s  0:00:01
+#11 54.68 Collecting annotated-types>=0.6.0 (from pydantic<3,>=2.11->proseforge==1.5.0)
+#11 54.94   Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+#11 56.57 Collecting pydantic-core==2.46.4 (from pydantic<3,>=2.11->proseforge==1.5.0)
+#11 56.61   Downloading pydantic_core-2.46.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+#11 57.36      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 2.5 MB/s  0:00:00
+#11 57.63 Collecting python-dotenv>=0.21.0 (from pydantic-settings<3,>=2.9->proseforge==1.5.0)
+#11 57.68   Downloading python_dotenv-1.2.2-py3-none-any.whl (22 kB)
+#11 57.94 Collecting iniconfig>=1.0.1 (from pytest<10,>=9.0.3->proseforge==1.5.0)
+#11 58.22   Downloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
+#11 58.55 Collecting packaging>=22 (from pytest<10,>=9.0.3->proseforge==1.5.0)
+#11 58.61   Downloading packaging-26.2-py3-none-any.whl (100 kB)
+#11 58.90 Collecting pluggy<2,>=1.5 (from pytest<10,>=9.0.3->proseforge==1.5.0)
+#11 58.96   Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+#11 59.02 Collecting pygments>=2.7.2 (from pytest<10,>=9.0.3->proseforge==1.5.0)
+#11 59.08   Downloading pygments-2.20.0-py3-none-any.whl (1.2 MB)
+#11 59.55      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 2.1 MB/s  0:00:00
+#11 60.25 Collecting coverage>=7.5 (from coverage[toml]>=7.5->pytest-cov<7,>=6->proseforge==1.5.0)
+#11 60.35   Downloading coverage-7.15.2-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (256 kB)
+#11 60.64 Collecting greenlet>=1 (from sqlalchemy<3,>=2.0.41->sqlalchemy[asyncio]<3,>=2.0.41; extra == "api"->proseforge==1.5.0)
+#11 60.69   Downloading greenlet-3.5.3-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (614 kB)
+#11 60.74      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 614.2/614.2 kB 9.1 MB/s  0:00:00
+#11 60.84 Collecting httptools>=0.8.0 (from uvicorn[standard]<1,>=0.35; extra == "api"->proseforge==1.5.0)
+#11 60.89   Downloading httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (523 kB)
+#11 61.01 Collecting uvloop>=0.15.1 (from uvicorn[standard]<1,>=0.35; extra == "api"->proseforge==1.5.0)
+#11 61.06   Downloading uvloop-0.22.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (4.4 MB)
+#11 62.40      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.4/4.4 MB 3.1 MB/s  0:00:01
+#11 62.58 Collecting watchfiles>=0.20 (from uvicorn[standard]<1,>=0.35; extra == "api"->proseforge==1.5.0)
+#11 62.63   Downloading watchfiles-1.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (456 kB)
+#11 62.93 Collecting websockets>=13.0 (from uvicorn[standard]<1,>=0.35; extra == "api"->proseforge==1.5.0)
+#11 62.98   Downloading websockets-16.1.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (187 kB)
+#11 63.24 Collecting argon2-cffi-bindings (from argon2-cffi>=18.2.0->passlib[argon2]<2,>=1.7; extra == "api"->proseforge==1.5.0)
+#11 63.29   Downloading argon2_cffi_bindings-25.1.0-cp39-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl (87 kB)
+#11 63.54 Collecting pycparser (from cffi>=2.0.0->cryptography<49,>=46.0.7->proseforge==1.5.0)
+#11 63.59   Downloading pycparser-3.0-py3-none-any.whl (48 kB)
+#11 63.67 Collecting prompt-toolkit>=3.0.36 (from click-repl>=0.2.0->celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 63.71   Downloading prompt_toolkit-3.0.52-py3-none-any.whl (391 kB)
+#11 63.99 Collecting amqp<6.0.0,>=5.1.1 (from kombu>=5.6.0->celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 64.04   Downloading amqp-5.3.1-py3-none-any.whl (50 kB)
+#11 64.33 Collecting tzdata>=2025.2 (from kombu>=5.6.0->celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 64.38   Downloading tzdata-2026.3-py2.py3-none-any.whl (348 kB)
+#11 64.67 Collecting wcwidth (from prompt-toolkit>=3.0.36->click-repl>=0.2.0->celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 64.71   Downloading wcwidth-0.8.2-py3-none-any.whl (323 kB)
+#11 64.98 Collecting six>=1.5 (from python-dateutil>=2.8.2->celery<6,>=5.5->celery[redis]<6,>=5.5; extra == "api"->proseforge==1.5.0)
+#11 65.24   Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+#11 65.39 Collecting MarkupSafe>=0.9.2 (from Mako->alembic<2,>=1.16->proseforge==1.5.0)
+#11 65.47   Downloading markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (22 kB)
+#11 65.48 Building wheels for collected packages: proseforge
+#11 65.48   Building editable for proseforge (pyproject.toml): started
+#11 65.79   Building editable for proseforge (pyproject.toml): finished with status 'done'
+#11 65.79   Created wheel for proseforge: filename=proseforge-1.5.0-0.editable-py3-none-any.whl size=2061 sha256=d7ccb3fa0310943bf123fc9ee6273d19a8648d4746d5cbbde2d55daf218b335a
+#11 65.79   Stored in directory: /tmp/pip-ephem-wheel-cache-909doeiq/wheels/54/1b/b7/aa63e25c8f14f4f2ae7b04e6097bdecb770e455c5c1ee0a600
+#11 65.79 Successfully built proseforge
+#11 65.94 Installing collected packages: passlib, zstandard, websockets, wcwidth, vine, uvloop, tzlocal, tzdata, typing-extensions, structlog, six, ruff, redis, pyyaml, python-multipart, python-dotenv, pyjwt, pygments, pycparser, psycopg-binary, pluggy, pgvector, pathspec, packaging, orjson, mypy_extensions, MarkupSafe, librt, iniconfig, idna, httptools, h11, greenlet, coverage, click, certifi, billiard, asyncpg, annotated-types, annotated-doc, aiosqlite, uvicorn, typing-inspection, sqlalchemy, python-dateutil, pytest, pydantic-core, psycopg, prompt-toolkit, mypy, Mako, httpcore, click-plugins, click-didyoumean, cffi, anyio, amqp, watchfiles, starlette, pytest-cov, pytest-asyncio, pydantic, kombu, httpx, cryptography, click-repl, argon2-cffi-bindings, alembic, respx, pydantic-settings, fastapi, celery, argon2-cffi, proseforge
+#11 76.15 
+#11 76.16 Successfully installed Mako-1.3.12 MarkupSafe-3.0.3 aiosqlite-0.22.1 alembic-1.18.5 amqp-5.3.1 annotated-doc-0.0.4 annotated-types-0.7.0 anyio-4.14.2 argon2-cffi-25.1.0 argon2-cffi-bindings-25.1.0 asyncpg-0.31.0 billiard-4.2.4 celery-5.6.3 certifi-2026.6.17 cffi-2.1.0 click-8.4.2 click-didyoumean-0.3.1 click-plugins-1.1.1.2 click-repl-0.3.0 coverage-7.15.2 cryptography-48.0.1 fastapi-0.139.2 greenlet-3.5.3 h11-0.16.0 httpcore-1.0.9 httptools-0.8.0 httpx-0.28.1 idna-3.18 iniconfig-2.3.0 kombu-5.6.2 librt-0.13.0 mypy-1.20.2 mypy_extensions-1.1.0 orjson-3.11.9 packaging-26.2 passlib-1.7.4 pathspec-1.1.1 pgvector-0.5.0 pluggy-1.6.0 prompt-toolkit-3.0.52 proseforge-1.5.0 psycopg-3.3.4 psycopg-binary-3.3.4 pycparser-3.0 pydantic-2.13.4 pydantic-core-2.46.4 pydantic-settings-2.14.2 pygments-2.20.0 pyjwt-2.13.0 pytest-9.1.1 pytest-asyncio-1.4.0 pytest-cov-6.3.0 python-dateutil-2.9.0.post0 python-dotenv-1.2.2 python-multipart-0.0.32 pyyaml-6.0.3 redis-6.4.0 respx-0.23.1 ruff-0.15.22 six-1.17.0 sqlalchemy-2.0.51 starlette-1.3.1 structlog-25.5.0 typing-extensions-4.16.0 typing-inspection-0.4.2 tzdata-2026.3 tzlocal-5.4.4 uvicorn-0.51.0 uvloop-0.22.1 vine-5.1.0 watchfiles-1.2.0 wcwidth-0.8.2 websockets-16.1.1 zstandard-0.25.0
+#11 76.16 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#11 DONE 78.4s
+
+#12 [7/7] COPY . .
+#12 DONE 3.7s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 20.5s done
+#13 exporting manifest sha256:4665ab2a398d8b6ca18c048de0051f93c00b8354f7290856adf02faa7244b00e 0.0s done
+#13 exporting config sha256:c9035de527f6271259ba1c0e1f96e3775649d176e3e155fc6e08b0e8780d270c 0.0s done
+#13 exporting attestation manifest sha256:c5ca0782130ee1874090069427f4402236be6740b2e14d576dc7c5d6705a929a 0.0s done
+#13 exporting manifest list sha256:d12cd2dac367b66c73221b6ce0068930dae76be3388b741290ac994700049cee 0.0s done
+#13 naming to docker.io/library/proseforge-api-test:latest
+#13 naming to docker.io/library/proseforge-api-test:latest done
+#13 unpacking to docker.io/library/proseforge-api-test:latest
+#13 unpacking to docker.io/library/proseforge-api-test:latest 5.4s done
+#13 DONE 26.0s
+
+#14 resolving provenance for metadata file
+#14 DONE 0.0s
+ Image proseforge-api-test Built 
+ Container proseforge-postgres-1 Waiting 
+ Container proseforge-redis-1 Waiting 
+ Container proseforge-redis-1 Healthy 
+ Container proseforge-postgres-1 Healthy 
+ Container proseforge-api-test-run-d4ec16ef334d Creating 
+ Container proseforge-api-test-run-d4ec16ef334d Created 
+........................................................................ [  8%]
+........................................................................ [ 16%]
+........................................................................ [ 24%]
+...........................................................ss........... [ 33%]
+........................................................................ [ 41%]
+........................................................................ [ 49%]
+........................................................................ [ 58%]
+........................................................................ [ 66%]
+........................................................................ [ 74%]
+........................................................................ [ 83%]
+........................................................................ [ 91%]
+........................................................................ [ 99%]
+..                                                                       [100%]
+=============================== warnings summary ===============================
+../usr/local/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /usr/local/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+../usr/local/lib/python3.12/site-packages/passlib/utils/__init__.py:854
+  /usr/local/lib/python3.12/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+tests/api/test_conversation_branches.py::test_edit_keeps_original_message_content
+  /usr/local/lib/python3.12/site-packages/passlib/handlers/argon2.py:716: DeprecationWarning: Accessing argon2.__version__ is deprecated and will be removed in a future release. Use importlib.metadata directly to query for argon2-cffi's packaging metadata.
+    _argon2_cffi.__version__, max_version)
+
+tests/api/test_conversation_branches.py: 14 warnings
+tests/api/test_export_manifests.py: 3 warnings
+tests/api/test_model_capabilities.py: 11 warnings
+tests/api/test_reviews_revisions.py: 5 warnings
+tests/api/test_selection_actions.py: 5 warnings
+tests/api/test_story_bible.py: 5 warnings
+tests/api/test_workflow_definitions.py: 13 warnings
+  /usr/local/lib/python3.12/site-packages/jwt/api_jwt.py:147: InsecureKeyLengthWarning: The HMAC key is 31 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+tests/api/test_conversation_branches.py: 15 warnings
+tests/api/test_export_manifests.py: 5 warnings
+tests/api/test_model_capabilities.py: 12 warnings
+tests/api/test_reviews_revisions.py: 7 warnings
+tests/api/test_selection_actions.py: 5 warnings
+tests/api/test_story_bible.py: 5 warnings
+tests/api/test_workflow_definitions.py: 13 warnings
+  /usr/local/lib/python3.12/site-packages/jwt/api_jwt.py:368: InsecureKeyLengthWarning: The HMAC key is 31 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+    decoded = self.decode_complete(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_rag_worldbuilding.py:5: could not import 'chromadb': No module named 'chromadb'
+SKIPPED [2] tests/packaging/test_installers.py:207: PowerShell not available on this host
+864 passed, 3 skipped, 121 warnings in 50.91s
+EXIT(api-test (final pass))=0
+end: 2026-07-20T15:03:54+08:00
+
+### STEP contract-test (final pass): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml run --rm contract-test
+start: 2026-07-20T15:03:54+08:00
+ Container proseforge-postgres-1 Running 
+ Container proseforge-redis-1 Running 
+ Image proseforge-contract-test Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 530B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from test.Dockerfile
+#2 transferring dockerfile: 455B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 223B done
+#4 DONE 0.0s
+
+#5 [1/7] FROM docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#5 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 69.22kB 0.0s done
+#6 DONE 0.1s
+
+#7 [2/7] WORKDIR /app
+#7 CACHED
+
+#8 [3/7] COPY pyproject.toml README.md ./
+#8 CACHED
+
+#9 [4/7] COPY src ./src
+#9 CACHED
+
+#10 [5/7] COPY proseforge ./proseforge
+#10 CACHED
+
+#11 [6/7] RUN python -m pip install --no-cache-dir --upgrade pip     && python -m pip install --no-cache-dir -e ".[api,dev]"
+#11 CACHED
+
+#12 [7/7] COPY . .
+#12 DONE 3.5s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 20.5s done
+#13 exporting manifest sha256:548b1cec454410d1114df9b9a0792b8f9e14c7a8a7688198f0eed56d9c034a8f 0.0s done
+#13 exporting config sha256:9387e9def015dde236423448fb91d58b0eb092bbd50e9e609e6af7959a592dd4 0.0s done
+#13 exporting attestation manifest sha256:7194df29c6a7daecdcb10789d22e6f9fedc387e13d59e764d01e0a03ff279ec9 0.0s done
+#13 exporting manifest list sha256:0a79ad8c0853ae0f551f5cb87500efad9a4402227081e6560ecdcf09a0d622eb 0.0s done
+#13 naming to docker.io/library/proseforge-contract-test:latest
+#13 naming to docker.io/library/proseforge-contract-test:latest done
+#13 unpacking to docker.io/library/proseforge-contract-test:latest
+#13 unpacking to docker.io/library/proseforge-contract-test:latest 2.8s done
+#13 DONE 23.4s
+
+#14 resolving provenance for metadata file
+#14 DONE 0.0s
+ Image proseforge-contract-test Built 
+ Container proseforge-redis-1 Waiting 
+ Container proseforge-postgres-1 Waiting 
+ Container proseforge-redis-1 Healthy 
+ Container proseforge-postgres-1 Healthy 
+ Container proseforge-contract-test-run-e8a8d05bdc0a Creating 
+ Container proseforge-contract-test-run-e8a8d05bdc0a Created 
+...........................................                              [100%]
+43 passed in 0.51s
+EXIT(contract-test (final pass))=0
+end: 2026-07-20T15:04:29+08:00
+
+### STEP migration-test (final pass): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml run --rm migration-test
+start: 2026-07-20T15:04:29+08:00
+ Container proseforge-postgres-1 Running 
+ Container proseforge-redis-1 Running 
+ Image proseforge-migration-test Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 534B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from test.Dockerfile
+#2 transferring dockerfile: 455B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 223B done
+#4 DONE 0.0s
+
+#5 [1/7] FROM docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#5 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 68.92kB 0.1s done
+#6 DONE 0.1s
+
+#7 [3/7] COPY pyproject.toml README.md ./
+#7 CACHED
+
+#8 [4/7] COPY src ./src
+#8 CACHED
+
+#9 [5/7] COPY proseforge ./proseforge
+#9 CACHED
+
+#10 [6/7] RUN python -m pip install --no-cache-dir --upgrade pip     && python -m pip install --no-cache-dir -e ".[api,dev]"
+#10 CACHED
+
+#11 [2/7] WORKDIR /app
+#11 CACHED
+
+#12 [7/7] COPY . .
+#12 CACHED
+
+#13 exporting to image
+#13 exporting layers done
+#13 exporting manifest sha256:a830dde2a8795187f3226a3b1dd77904bc41e14235a075d1845883c39133ec0b 0.0s done
+#13 exporting config sha256:a08cf3654d319f5c15f9a7066a1ba0736efc86bde227db9731b09ce917598128 0.0s done
+#13 exporting attestation manifest sha256:f8bdde9cf7a8aa679d8173a5d2fdb5d3e598198193cb5335b7c2739b17fffab6 0.0s done
+#13 exporting manifest list sha256:5f5966a3642d22653a2ebb8f7ed8ac15dde0832241c0b5856d866a6bad0a0823 0.0s done
+#13 naming to docker.io/library/proseforge-migration-test:latest
+#13 naming to docker.io/library/proseforge-migration-test:latest done
+#13 unpacking to docker.io/library/proseforge-migration-test:latest 0.0s done
+#13 DONE 0.2s
+
+#14 resolving provenance for metadata file
+#14 DONE 0.0s
+ Image proseforge-migration-test Built 
+ Container proseforge-redis-1 Waiting 
+ Container proseforge-postgres-1 Waiting 
+ Container proseforge-postgres-1 Healthy 
+ Container proseforge-redis-1 Healthy 
+ Container proseforge-migration-test-run-f912e94984e5 Creating 
+ Container proseforge-migration-test-run-f912e94984e5 Created 
+........................                                                 [100%]
+24 passed in 15.58s
+EXIT(migration-test (final pass))=0
+end: 2026-07-20T15:04:50+08:00
+
+### STEP recovery-test (final pass): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml run --rm recovery-test
+start: 2026-07-20T15:04:50+08:00
+ Container proseforge-postgres-1 Running 
+ Container proseforge-redis-1 Running 
+ Image proseforge-recovery-test Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 530B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from test.Dockerfile
+#2 transferring dockerfile: 455B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 223B done
+#4 DONE 0.0s
+
+#5 [1/7] FROM docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de
+#5 resolve docker.io/library/python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 68.92kB 0.0s done
+#6 DONE 0.1s
+
+#7 [3/7] COPY pyproject.toml README.md ./
+#7 CACHED
+
+#8 [6/7] RUN python -m pip install --no-cache-dir --upgrade pip     && python -m pip install --no-cache-dir -e ".[api,dev]"
+#8 CACHED
+
+#9 [2/7] WORKDIR /app
+#9 CACHED
+
+#10 [4/7] COPY src ./src
+#10 CACHED
+
+#11 [5/7] COPY proseforge ./proseforge
+#11 CACHED
+
+#12 [7/7] COPY . .
+#12 CACHED
+
+#13 exporting to image
+#13 exporting layers done
+#13 exporting manifest sha256:b940a54ca8410295c4ef9570e8f0970165bff0c8f4bd291495d4be0feb04989f 0.0s done
+#13 exporting config sha256:b552b1a013f1385f9d7cdceb41d9b210300ef5edd82c529a48680e292e351cf5 0.0s done
+#13 exporting attestation manifest sha256:5e4d26cefdf93bdbce5e28764d9015dc92ddd20900c65f2f1fc14daf22938909 0.0s done
+#13 exporting manifest list sha256:ea046c4aae0f8fd8bb8d17306fa48192fcec656da37be8afe48fb0fe01cd0fd0 0.0s done
+#13 naming to docker.io/library/proseforge-recovery-test:latest
+#13 naming to docker.io/library/proseforge-recovery-test:latest done
+#13 unpacking to docker.io/library/proseforge-recovery-test:latest 0.0s done
+#13 DONE 0.2s
+
+#14 resolving provenance for metadata file
+#14 DONE 0.0s
+ Image proseforge-recovery-test Built 
+ Container proseforge-redis-1 Waiting 
+ Container proseforge-postgres-1 Waiting 
+ Container proseforge-redis-1 Healthy 
+ Container proseforge-postgres-1 Healthy 
+ Container proseforge-recovery-test-run-0f36bdf3fa20 Creating 
+ Container proseforge-recovery-test-run-0f36bdf3fa20 Created 
+created missing schema tables: agent_artifacts, agent_evaluations, agent_events, agent_memories, agent_policy_snapshots, agent_reviews, agent_runs, agent_tasks, artifacts, attachments, audit_logs, chapter_versions, chapters, context_items, context_snapshots, conversation_branches, conversation_events, conversations, embeddings, export_manifests, health_checks, message_chunks, message_edits, messages, model_calls, model_catalog, model_profiles, model_usage_records, outline_versions, outlines, projects, provider_credentials, quality_reports, review_reports, revision_proposals, story_bible_entries, users, workflow_definitions, workflow_events, workflow_node_states, workflow_runs, workflow_steps
+.....                                                                    [100%]
+5 passed in 0.07s
+EXIT(recovery-test (final pass))=0
+end: 2026-07-20T15:04:55+08:00
+
+### STEP web-test (final pass): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml run --rm web-test
+start: 2026-07-20T15:04:55+08:00
+ Volume proseforge_web-pnpm-store Creating 
+ Volume proseforge_web-pnpm-store Created 
+ Volume proseforge_web-node-modules Creating 
+ Volume proseforge_web-node-modules Created 
+ Container proseforge-web-test-run-664a974cba89 Creating 
+ Container proseforge-web-test-run-664a974cba89 Created 
+! Corepack is about to download https://registry.npmmirror.com/pnpm/-/pnpm-11.13.0.tgz
+? Verifying lockfile against supply-chain policies (342 entries)...
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +291
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 291, reused 0, downloaded 12, added 10
+
+   ╭───────────────────────────────────────────────╮
+   │                                               │
+   │     Update available! 11.13.0 → 11.15.1.      │
+   │     Changelog: https://pnpm.io/v/11.15.1      │
+   │   To update, run: corepack use pnpm@11.15.1   │
+   │                                               │
+   ╰───────────────────────────────────────────────╯
+
+Progress: resolved 291, reused 0, downloaded 61, added 60
+Progress: resolved 291, reused 0, downloaded 114, added 114
+Progress: resolved 291, reused 0, downloaded 183, added 183
+Progress: resolved 291, reused 0, downloaded 229, added 228
+Progress: resolved 291, reused 0, downloaded 267, added 266
+Progress: resolved 291, reused 0, downloaded 285, added 285
+[WARN] Tarball download average speed 31 KiB/s (size 82 KiB) is below 50 KiB/s: https://registry.npmjs.org/tldts-core/-/tldts-core-7.4.8.tgz (GET)
+Progress: resolved 291, reused 0, downloaded 288, added 288
+Progress: resolved 291, reused 0, downloaded 289, added 288
+Progress: resolved 291, reused 0, downloaded 290, added 290
+[WARN] Tarball download average speed 28 KiB/s (size 158 KiB) is below 50 KiB/s: https://registry.npmjs.org/@bramus/specificity/-/specificity-2.4.2.tgz (GET)
+Progress: resolved 291, reused 0, downloaded 291, added 291, done
+[WARN] Request took 10866ms: https://registry.npmjs.org/playwright-core
+[WARN] Request took 10882ms: https://registry.npmjs.org/rolldown
+[WARN] Request took 12150ms: https://registry.npmjs.org/typescript
+[WARN] Request took 13331ms: https://registry.npmjs.org/tldts-core
+[WARN] Request took 15583ms: https://registry.npmjs.org/scheduler
+[WARN] Request took 15391ms: https://registry.npmjs.org/typescript
+✓ Lockfile passes supply-chain policies (342 entries in 33.9s)
+
+dependencies:
++ @tanstack/react-query 5.101.2
++ @tanstack/react-router 1.170.18
++ @tiptap/core 3.28.0
++ @tiptap/react 3.28.0
++ @tiptap/starter-kit 3.28.0
++ @vitejs/plugin-react 6.0.3
++ @xyflow/react 12.11.2
++ dompurify 3.4.12
++ i18next 25.10.10
++ react 19.2.7
++ react-dom 19.2.7
++ react-i18next 16.6.6
++ react-markdown 10.1.0
++ typescript 7.0.2
++ vite 8.1.4
++ zustand 5.0.14
+
+devDependencies:
++ @axe-core/playwright 4.12.1
++ @playwright/test 1.61.1
++ @testing-library/jest-dom 6.9.1
++ @testing-library/react 16.3.2
++ @types/dompurify 3.2.0
++ @types/node 26.1.1
++ @types/react 19.2.17
++ @types/react-dom 19.2.3
++ jsdom 29.1.1
++ vitest 4.1.10
+
+Done in 34.9s using pnpm v11.13.0
+$ tsc --noEmit
+$ vitest run
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/app/apps/web[39m
+
+ [32m✓[39m src/features/chat/chatQueries.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 410[2mms[22m[39m
+ [32m✓[39m src/features/models/ModelPicker.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 585[2mms[22m[39m
+ [32m✓[39m src/features/chat/ChatPage.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 882[2mms[22m[39m
+ [32m✓[39m src/features/editor/editorState.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 151[2mms[22m[39m
+ [32m✓[39m src/features/workflows/WorkflowStudioPage.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 357[2mms[22m[39m
+     [33m[2m✓[22m[39m uses the same value for the ink pool and budget text [33m 347[2mms[22m[39m
+ [32m✓[39m src/features/chat/MessageActions.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 425[2mms[22m[39m
+     [33m[2m✓[22m[39m opens an inline editor from the edit button and submits the new content [33m 309[2mms[22m[39m
+ [32m✓[39m src/features/branches/BranchCompareView.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 92[2mms[22m[39m
+ [32m✓[39m src/features/branches/BranchTreeView.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 482[2mms[22m[39m
+ [32m✓[39m src/app/router.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m src/features/review/ReviewFilters.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 282[2mms[22m[39m
+[90mstdout[2m | src/features/export/ExportDialog.test.tsx[2m > [22m[2mExportDialog[2m > [22m[2msubmits format, range, immutable version and preset
+[22m[39m🌐 i18next is made possible by our own product, Locize — consider powering your project with managed localization (AI, CDN, integrations): https://locize.com 💙
+
+ [32m✓[39m src/features/export/ExportDialog.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 422[2mms[22m[39m
+     [33m[2m✓[22m[39m submits format, range, immutable version and preset [33m 349[2mms[22m[39m
+ [32m✓[39m src/styles/tokens.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m src/features/revision/ProposalActions.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 264[2mms[22m[39m
+ [32m✓[39m src/features/editor/ManuscriptEditor.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 381[2mms[22m[39m
+     [33m[2m✓[22m[39m uses the plain-text adapter when requested and returns an action without mutating the document [33m 301[2mms[22m[39m
+ [32m✓[39m src/features/editor/ChapterTree.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 76[2mms[22m[39m
+ [32m✓[39m src/features/editor/documentState.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/lib/api/client.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/lib/i18n.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 79[2mms[22m[39m
+ [32m✓[39m src/features/VersionHistory.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 277[2mms[22m[39m
+ [32m✓[39m src/features/story-bible/FactEditor.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 323[2mms[22m[39m
+     [33m[2m✓[22m[39m saves character voice, triggers, and a budget as structured values [33m 321[2mms[22m[39m
+ [32m✓[39m src/app/runtime.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/app.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/features/context/ContextInspector.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 93[2mms[22m[39m
+ [32m✓[39m src/features/usage/TokenMeter.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 219[2mms[22m[39m
+ [32m✓[39m src/lib/pwa/sw.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/features/revision/ProposalDiff.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 235[2mms[22m[39m
+ [32m✓[39m src/features/agents/AgentRunPage.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 318[2mms[22m[39m
+     [33m[2m✓[22m[39m shows role/status stamps and controls do not write chapters [33m 315[2mms[22m[39m
+ [32m✓[39m src/features/editor/ChapterEditor.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 70[2mms[22m[39m
+ [32m✓[39m src/features/providers/ProviderSettings.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 72[2mms[22m[39m
+ [32m✓[39m src/features/usage/ContextBudgetBar.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 232[2mms[22m[39m
+ [32m✓[39m src/features/workflows/WorkflowStatus.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 245[2mms[22m[39m
+ [32m✓[39m src/main.structure.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/lib/drafts.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m33 passed[39m[22m[90m (33)[39m
+[2m      Tests [22m [1m[32m105 passed[39m[22m[90m (105)[39m
+[2m   Start at [22m 07:05:35
+[2m   Duration [22m 22.12s[2m (transform 1.38s, setup 6.91s, import 3.29s, tests 7.12s, environment 39.48s)[22m
+
+$ vite build
+vite v8.1.4 building client environment for production...
+[2Ktransforming...✓ 592 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                 0.78 kB │ gzip:   0.43 kB
+dist/assets/index-C0TH4CxQ.css                 45.93 kB │ gzip:   8.50 kB
+dist/assets/WorkflowStudioPage-f-qwrWAw.js      3.22 kB │ gzip:   1.29 kB
+dist/assets/index-BCPzNo49.js               1,130.88 kB │ gzip: 355.39 kB
+
+✓ built in 622ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+EXIT(web-test (final pass))=0
+end: 2026-07-20T15:06:00+08:00
+
+### STEP e2e (final pass): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml run --rm e2e
+start: 2026-07-20T15:06:00+08:00
+ Volume proseforge_e2e-node-modules Creating 
+ Volume proseforge_e2e-node-modules Created 
+ Container proseforge-redis-1 Running 
+ Container proseforge-postgres-1 Running 
+ Container proseforge-provider-mock-1 Running 
+ Container proseforge-web-1 Running 
+ Container proseforge-worker-1 Running 
+ Container proseforge-api-1 Running 
+ Container proseforge-postgres-1 Waiting 
+ Container proseforge-redis-1 Waiting 
+ Container proseforge-redis-1 Waiting 
+ Container proseforge-postgres-1 Waiting 
+ Container proseforge-postgres-1 Healthy 
+ Container proseforge-redis-1 Healthy 
+ Container proseforge-redis-1 Healthy 
+ Container proseforge-postgres-1 Healthy 
+ Container proseforge-api-1 Waiting 
+ Container proseforge-worker-1 Waiting 
+ Container proseforge-provider-mock-1 Waiting 
+ Container proseforge-web-1 Waiting 
+ Container proseforge-provider-mock-1 Healthy 
+ Container proseforge-worker-1 Healthy 
+ Container proseforge-api-1 Healthy 
+ Container proseforge-web-1 Healthy 
+ Container proseforge-e2e-run-cfdec5f56e0d Creating 
+ Container proseforge-e2e-run-cfdec5f56e0d Created 
+! Corepack is about to download https://registry.npmmirror.com/pnpm/-/pnpm-11.13.0.tgz
+? Verifying lockfile against supply-chain policies (342 entries)...
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +291
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 291, reused 289, downloaded 0, added 81
+
+   ╭───────────────────────────────────────────────╮
+   │                                               │
+   │     Update available! 11.13.0 → 11.15.1.      │
+   │     Changelog: https://pnpm.io/v/11.15.1      │
+   │   To update, run: corepack use pnpm@11.15.1   │
+   │                                               │
+   ╰───────────────────────────────────────────────╯
+
+Progress: resolved 291, reused 289, downloaded 0, added 247
+Progress: resolved 291, reused 289, downloaded 0, added 289
+Progress: resolved 291, reused 289, downloaded 1, added 290
+✓ Lockfile passes supply-chain policies (342 entries in 9.2s)
+Progress: resolved 291, reused 289, downloaded 2, added 290
+Progress: resolved 291, reused 289, downloaded 2, added 291, done
+
+dependencies:
++ @tanstack/react-query 5.101.2
++ @tanstack/react-router 1.170.18
++ @tiptap/core 3.28.0
++ @tiptap/react 3.28.0
++ @tiptap/starter-kit 3.28.0
++ @vitejs/plugin-react 6.0.3
++ @xyflow/react 12.11.2
++ dompurify 3.4.12
++ i18next 25.10.10
++ react 19.2.7
++ react-dom 19.2.7
++ react-i18next 16.6.6
++ react-markdown 10.1.0
++ typescript 7.0.2
++ vite 8.1.4
++ zustand 5.0.14
+
+devDependencies:
++ @axe-core/playwright 4.12.1
++ @playwright/test 1.61.1
++ @testing-library/jest-dom 6.9.1
++ @testing-library/react 16.3.2
++ @types/dompurify 3.2.0
++ @types/node 26.1.1
++ @types/react 19.2.17
++ @types/react-dom 19.2.3
++ jsdom 29.1.1
++ vitest 4.1.10
+
+Done in 10.9s using pnpm v11.13.0
+$ playwright test
+
+Running 14 tests using 2 workers
+
+[1/14] [chromium] › e2e/localization.spec.ts:3:1 › localization shell is served
+[2/14] [chromium] › e2e/editor-draft-and-export.spec.ts:3:1 › export endpoint is protected until a session is established
+[3/14] [chromium] › e2e/ordinary-user-smoke.spec.ts:3:1 › ordinary user can use the Docker-backed writing workspace
+[4/14] [chromium] › e2e/responsive-assistant.spec.ts:3:1 › responsive app shell serves a healthy page
+[5/14] [chromium] › e2e/token-usage.spec.ts:3:1 › token usage API is protected until a session is established
+[6/14] [chromium] › e2e/v3-agent-swarm.spec.ts:3:1 › v3 agent swarm is idempotent, replayable, reviewable, and visible in the workspace
+[7/14] [chromium] › e2e/v3-concurrency-fault.spec.ts:3:1 › v3 concurrent controls retain a unique audit cursor
+[8/14] [chromium] › e2e/v3-execution-proposal.spec.ts:3:1 › v3 execution resumes from pause and produces only a V2 proposal
+[9/14] [chromium] › e2e/v3-fault-injection.spec.ts:3:1 › v3 deterministic fault modes terminate durably and redact no raw prompt
+[10/14] [chromium] › e2e/v3-fault-injection.spec.ts:24:1 › v3 worker crash after artifact commit is replay-safe
+[11/14] [chromium] › e2e/visual-a11y.spec.ts:10:1 › ink workspace pages have no critical or serious axe violations
+[12/14] [chromium] › e2e/visual-a11y.spec.ts:39:1 › rubbing theme persists and applies its token set
+[13/14] [chromium] › e2e/workflow-control.spec.ts:3:1 › workflow controls are protected until a session is established
+[14/14] [chromium] › e2e/v2-professional-flow.spec.ts:80:1 › v2 professional flow completes the real ten-step workspace journey
+  2 skipped
+  12 passed (21.9s)
+EXIT(e2e (final pass))=0
+end: 2026-07-20T15:06:38+08:00
+
+### STEP ruff (final): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml run --rm api-test ruff check proseforge tests
+start: 2026-07-20T15:06:38+08:00
+ Container proseforge-postgres-1 Running 
+ Container proseforge-redis-1 Running 
+ Container proseforge-redis-1 Waiting 
+ Container proseforge-postgres-1 Waiting 
+ Container proseforge-postgres-1 Healthy 
+ Container proseforge-redis-1 Healthy 
+ Container proseforge-api-test-run-7413dca0e1eb Creating 
+ Container proseforge-api-test-run-7413dca0e1eb Created 
+All checks passed!
+EXIT(ruff (final))=0
+end: 2026-07-20T15:06:42+08:00
+
+### STEP dump_openapi (final): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml run --rm api-test python scripts/dump_openapi.py --output /app/artifacts/v2-openapi.json
+start: 2026-07-20T15:06:42+08:00
+ Container proseforge-postgres-1 Running 
+ Container proseforge-redis-1 Running 
+ Container proseforge-postgres-1 Waiting 
+ Container proseforge-redis-1 Waiting 
+ Container proseforge-redis-1 Healthy 
+ Container proseforge-postgres-1 Healthy 
+ Container proseforge-api-test-run-8fb42fbed65f Creating 
+ Container proseforge-api-test-run-8fb42fbed65f Created 
+wrote /app/artifacts/v2-openapi.json (111 paths)
+EXIT(dump_openapi (final))=0
+end: 2026-07-20T15:06:47+08:00
+
+### STEP down -v (final, evidence teardown): docker compose -f compose.yaml -f compose.test.yaml -f tmp-remote/compose.ecs.yaml down -v
+start: 2026-07-20T15:06:47+08:00
+ Container proseforge-web-1 Stopping 
+ Container proseforge-provider-mock-1 Stopping 
+ Container proseforge-worker-1 Stopping 
+ Container proseforge-web-1 Stopped 
+ Container proseforge-web-1 Removing 
+ Container proseforge-web-1 Removed 
+ Container proseforge-api-1 Stopping 
+ Container proseforge-api-1 Stopped 
+ Container proseforge-api-1 Removing 
+ Container proseforge-api-1 Removed 
+ Container proseforge-worker-1 Stopped 
+ Container proseforge-worker-1 Removing 
+ Container proseforge-worker-1 Removed 
+ Container proseforge-redis-1 Stopping 
+ Container proseforge-postgres-1 Stopping 
+ Container proseforge-redis-1 Stopped 
+ Container proseforge-redis-1 Removing 
+ Container proseforge-redis-1 Removed 
+ Container proseforge-postgres-1 Stopped 
+ Container proseforge-postgres-1 Removing 
+ Container proseforge-postgres-1 Removed 
+ Container proseforge-provider-mock-1 Stopped 
+ Container proseforge-provider-mock-1 Removing 
+ Container proseforge-provider-mock-1 Removed 
+ Volume proseforge_web-pnpm-store Removing 
+ Volume proseforge_postgres-test-data Removing 
+ Volume proseforge_e2e-node-modules Removing 
+ Volume proseforge_redis-test-data Removing 
+ Volume proseforge_proseforge-backups Removing 
+ Volume proseforge_proseforge-blobs Removing 
+ Volume proseforge_web-node-modules Removing 
+ Network proseforge_default Removing 
+ Network proseforge_default Removed 
+ Volume proseforge_web-pnpm-store Removed 
+ Volume proseforge_proseforge-backups Removed 
+ Volume proseforge_proseforge-blobs Removed 
+ Volume proseforge_web-node-modules Removed 
+ Volume proseforge_postgres-test-data Removed 
+ Volume proseforge_e2e-node-modules Removed 
+ Volume proseforge_redis-test-data Removed 
+EXIT(down -v (final, evidence teardown))=0
+end: 2026-07-20T15:06:58+08:00
