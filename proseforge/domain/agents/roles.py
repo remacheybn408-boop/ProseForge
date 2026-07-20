@@ -25,7 +25,7 @@ class RolePolicy:
     can_activate_facts: bool = False
     can_create_revision: bool = False
     can_create_chapter_version: bool = False
-    policy_version: str = "v1"
+    policy_version: str = "v3-policy-1"
 
 CATALOG = {role: RolePolicy(role, frozenset({"report", "candidate"}), frozenset(), 12000, 4, can_create_revision=role is AgentRole.CHIEF_EDITOR) for role in AgentRole}
 CATALOG[AgentRole.WORLD_BUILDER] = RolePolicy(AgentRole.WORLD_BUILDER, frozenset({"story_fact"}), frozenset(), 8000, 3)
