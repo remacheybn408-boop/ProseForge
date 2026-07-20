@@ -68,8 +68,10 @@ async function waitForWorkflowStatus(request: APIRequestContext, workflowId: str
 async function selectAllManuscript(page: Page): Promise<void> {
   const editor = page.getByTestId("tiptap-manuscript");
   await expect(editor).toBeVisible();
-  await editor.click();
-  await page.keyboard.press("Control+A");
+  // press() focuses the element without a mouse click: clicking first would place
+  // a caret, and the async collapse event can race the select-all and unmount the
+  // toolbar (observed: selection collapses to 0 while the editor stays focused).
+  await editor.press("Control+A");
   await expect(page.getByLabel("Manuscript actions")).toBeVisible();
 }
 
