@@ -18,8 +18,13 @@ export type UsageBucket = { input_tokens: number; output_tokens: number; cached_
 export type UsageSummary = { scope: string; project_id?: string | null; conversation_id?: string | null; workflow_id?: string | null; actual: UsageBucket; estimated: UsageBucket };
 export type ProviderOption = { id: string; status: string };
 export type CatalogModel = { provider: string; model_id: string; display_name: string; capabilities: Record<string, unknown>; context_window?: number | null; max_output_tokens?: number | null };
-export type AgentRun = { id: string; project_id: string; status: string; goal_hash: string; graph_revision: number; checkpoint_id?: string | null; budget_used: number; budget_limit: number; event_cursor: number; policy_version: string; terminal_reason?: string | null };
-export type AgentTask = { id: string; task_key: string; role: string; status: string; attempts: number; depends_on: string[] };
+export type AgentRun = { id: string; project_id: string; status: string; goal_hash: string; graph_revision: number; checkpoint_id?: string | null; budget_used: number; budget_limit: number; event_cursor: number; policy_version: string; terminal_reason?: string | null; chapter_id?: string | null; base_version_id?: string | null; proposal_id?: string | null };
+export type AgentTask = { id: string; task_key: string; role: string; status: string; attempts: number; token_budget?: number; depends_on: string[] };
+export type AgentRunEvent = { id?: string; sequence: number; event: string; data: Record<string, unknown> };
+export type AgentEventsPage = { events: AgentRunEvent[]; next_cursor: number };
+export type AgentArtifact = { id: string; artifact_type: string; sha256: string; preview: string; provenance: Record<string, unknown> };
+export type AgentReview = { id: string; artifact_id: string; reviewer_role: string; status: string; evidence: Record<string, unknown>[]; conflict_group: string | null };
+export type AgentAuditEntry = { sequence: number; event: string; payload: Record<string, unknown> };
 export type ExportFormat = "txt" | "md" | "docx" | "epub";
 export type ExportTemplate = "web-serial" | "submission" | "archive";
 export type ExportRequestPayload = { format: ExportFormat; chapter_range?: [number, number]; version_ids?: string[]; locale?: string; title?: string; author?: string; template?: ExportTemplate };
@@ -111,7 +116,11 @@ export function listUsageRecords(filters: { project_id?: string; conversation_id
 export function createAgentRun(projectId: string, payload: { goal: string; graph_revision?: number; budget_limit?: number }, idempotencyKey?: string) { return request<AgentRun>("/api/v3/projects/" + projectId + "/agent-runs", { method: "POST", headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined, body: JSON.stringify(payload) }); }
 export function getAgentRun(runId: string) { return request<AgentRun>("/api/v3/agent-runs/" + runId); }
 export function listAgentTasks(runId: string) { return request<AgentTask[]>("/api/v3/agent-runs/" + runId + "/tasks"); }
-export function controlAgentRun(runId: string, action: "pause" | "resume" | "cancel" | "retry") { return request<AgentRun>("/api/v3/agent-runs/" + runId + "/" + action, { method: "POST" }); }
+export function listAgentEvents(runId: string, after = 0) { return request<AgentEventsPage>("/api/v3/agent-runs/" + runId + "/events?after=" + Math.max(0, after)); }
+export function listAgentArtifacts(runId: string) { return request<AgentArtifact[]>("/api/v3/agent-runs/" + runId + "/artifacts"); }
+export function listAgentReviews(runId: string) { return request<AgentReview[]>("/api/v3/agent-runs/" + runId + "/reviews"); }
+export function getAgentRunAudit(runId: string) { return request<AgentAuditEntry[]>("/api/v3/agent-runs/" + runId + "/audit"); }
+export function controlAgentRun(runId: string, action: "pause" | "resume" | "cancel" | "retry", options: { taskId?: string } = {}) { const query = action === "retry" && options.taskId ? "?task_id=" + encodeURIComponent(options.taskId) : ""; return request<AgentRun>("/api/v3/agent-runs/" + runId + "/" + action + query, { method: "POST" }); }
 
 export function stopMessage(messageId: string) { return request<{ id: string; status: string }>(`/api/v1/messages/${messageId}/stop`, { method: "POST" }); }
 export function retryMessage(messageId: string, payload: { provider?: string; model?: string; reasoning_level?: string } = {}) { return request<{ id: string; status: string; task_id: string }>(`/api/v1/messages/${messageId}/retry`, { method: "POST", body: JSON.stringify(payload) }); }

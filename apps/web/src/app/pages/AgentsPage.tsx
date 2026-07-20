@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { controlAgentRun, createAgentRun, getAgentRun, listAgentTasks, type AgentRun, type AgentTask } from "../../lib/api/client";
-import { AgentRunPage } from "../../features/agents/AgentRunPage";
+import { AgentRunPage, type AgentRunAction } from "../../features/agents/AgentRunPage";
 import { useProjectsQuery } from "../query";
 
 export function AgentsPage({ projectId }: { projectId: string }) {
@@ -16,12 +16,15 @@ export function AgentsPage({ projectId }: { projectId: string }) {
   };
   const start = async () => {
     try {
-      const next = await createAgentRun(projectId, { goal: "Draft and review the next scene for " + (project?.title ?? "this project") }, "ui-" + projectId);
+      // A fresh idempotency key per click: reusing a fixed key makes the server
+      // replay the first run instead of starting a new one.
+      const idempotencyKey = `ui-${projectId}-${Date.now()}`;
+      const next = await createAgentRun(projectId, { goal: "Draft and review the next scene for " + (project?.title ?? "this project") }, idempotencyKey);
       await refresh(next.id);
       setMessage("Run created; tasks are checkpointed in PostgreSQL.");
     } catch { setMessage("Could not start the agent run."); }
   };
-  const action = async (name: "pause" | "resume" | "cancel" | "retry") => {
+  const action = async (name: AgentRunAction) => {
     if (!run) return;
     try {
       const next = await controlAgentRun(run.id, name);
@@ -29,6 +32,14 @@ export function AgentsPage({ projectId }: { projectId: string }) {
       setMessage("Run " + next.status.toLowerCase() + ".");
     } catch { setMessage("That action is not available in the current state."); }
   };
+  const retryTask = async (taskId: string) => {
+    if (!run) return;
+    try {
+      const next = await controlAgentRun(run.id, "retry", { taskId });
+      await refresh(next.id);
+      setMessage("Task re-queued; run " + next.status.toLowerCase() + ".");
+    } catch { setMessage("That task cannot be retried in the current state."); }
+  };
   useEffect(() => { setRun(null); setTasks([]); }, [projectId]);
-  return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">V3 AGENT SWARM</p><h2>Agent orchestration</h2><p>{message}</p></div>{run ? <AgentRunPage status={run.status} tasks={tasks.map(task => ({ id: task.id, role: task.role, status: task.status, attempts: task.attempts }))} onAction={action} /> : <button className="primary" onClick={start}>Start agent run</button>}</section>;
+  return <section className="detail-view"><div className="detail-heading"><p className="eyebrow">V3 AGENT SWARM</p><h2>Agent orchestration</h2><p>{message}</p></div>{run ? <AgentRunPage run={run} tasks={tasks} onAction={action} onRetryTask={retryTask} onSelectConflict={reviewId => setMessage("Review " + reviewId.slice(0, 8) + " marked for the V2 proposal flow.")} /> : <button className="primary" onClick={start}>Start agent run</button>}</section>;
 }

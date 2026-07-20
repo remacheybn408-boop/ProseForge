@@ -88,3 +88,42 @@
    Two-class selectors beat React Flow's own .react-flow__attribution rules regardless of load order. */
 .react-flow__panel.react-flow__attribution { background: var(--paper); color: var(--ink); }
 .react-flow__panel.react-flow__attribution a { color: var(--ink); }
+
+/* V3-010 agent swarm ledger page (DESIGN_SYSTEM_INK §4.4) */
+.role-seal{display:inline-grid;place-items:center;width:34px;height:34px;background:var(--cinnabar);color:var(--paper);font:18px/1 var(--font-seal);border-radius:1px;flex:none}
+.run-stamp{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border:1px solid var(--ink-light);color:var(--ink-mid);background:var(--paper);font:12px/1 var(--font-seal);border-radius:1px}
+.run-stamp-active{border-radius:50%;min-width:34px;height:34px;color:var(--ink-strong);border-color:var(--ink-mid)}
+.run-stamp-paused{border:3px double var(--ink-mid);color:var(--ink-strong)}
+.run-stamp-done{background:var(--cinnabar);border-color:var(--cinnabar);color:var(--paper)}
+.run-stamp-failed{border-color:var(--cinnabar);color:var(--cinnabar);transform:rotate(-8deg)}
+.agent-event-cursor{padding:3px 8px;border:1px solid var(--ink-faint);background:var(--paper-raised);border-radius:var(--radius-sm)}
+.agent-task-table{display:flex;gap:12px;overflow-x:auto;padding:4px 0}
+.agent-task-leaf{display:flex;gap:10px;align-items:flex-start;min-width:230px;padding:12px;border:1px solid var(--ink-faint);background:var(--paper-raised);border-radius:var(--radius-sm)}
+.agent-task-leaf-body{display:grid;gap:5px;font-size:12px}
+.agent-task-leaf-body strong{font-family:var(--font-seal);font-weight:500;color:var(--ink-strong)}
+.agent-task-leaf button{border:1px solid var(--ink-faint);background:var(--paper);color:var(--ink-mid);border-radius:var(--radius-sm);padding:4px 9px;font-size:11px;cursor:pointer}
+.agent-task-leaf button:hover{background:var(--wash)}
+.agent-task-role{color:var(--ink-mid);font:11px var(--font-mono)}
+.agent-task-leaf small,.review-item small,.artifact-item small{color:var(--ink-light);font-size:11px}
+.agent-graph-view{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.agent-graph-node{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--ink-faint);background:var(--paper-raised);border-radius:var(--radius-sm)}
+.agent-graph-node-body{display:grid;gap:4px;font-size:12px;flex:1}
+.agent-graph-node-body strong{font-family:var(--font-seal);font-weight:500;color:var(--ink-strong)}
+.artifact-item{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--ink-faint)}
+.artifact-item-body{display:grid;gap:4px;font-size:12px;min-width:0}
+.artifact-item-body p{margin:0;color:var(--ink-mid)}
+.artifact-item-body code{font:11px var(--font-mono);color:var(--ink-mid)}
+.artifact-type-seal{display:inline-grid;place-items:center;width:28px;height:28px;border:1.5px solid var(--ink-mid);color:var(--ink-strong);font:15px/1 var(--font-seal);border-radius:1px;flex:none}
+.artifact-schema-error{margin:0;color:var(--cinnabar);border:1px dashed var(--cinnabar);padding:4px 8px;font-size:12px}
+.artifact-error{color:var(--cinnabar);font-size:12px}
+.review-item{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--ink-faint)}
+.review-item-body{display:grid;gap:4px;font-size:12px}
+.review-item-body ul{margin:0;padding-left:16px;color:var(--ink-mid)}
+.review-status-text{color:var(--ink-mid);font:11px var(--font-mono)}
+.review-item-body button{justify-self:start;border:1px solid var(--cinnabar);background:transparent;color:var(--cinnabar);border-radius:1px;padding:5px 10px;font-size:11px;cursor:pointer}
+.review-item-body button:hover{background:var(--wash)}
+.conflict-seal{display:inline-grid;place-items:center;width:30px;height:30px;border:1.5px solid var(--cinnabar);color:var(--cinnabar);background:var(--paper);font:15px/1 var(--font-seal);border-radius:1px;flex:none}
+.agent-audit-table{width:100%;border-collapse:collapse;font-size:12px}
+.agent-audit-table td{padding:6px 8px;border-bottom:1px solid var(--ink-faint);vertical-align:top}
+.agent-audit-table tr.odd{background:var(--wash)}
+.agent-empty{margin:0;color:var(--ink-light);font-size:12px}
