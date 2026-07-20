@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -19,6 +20,10 @@ class Handler(BaseHTTPRequestHandler):
             return
         length = int(self.headers.get("content-length", "0"))
         request = json.loads(self.rfile.read(length) or b"{}")
+        # e2e professional-flow step 9 以 model="mock-slow" 请求拖慢生成：
+        # 章节生成太快会让 pause/resume/retry/cancel 的持久状态迁移错过轮询窗口。
+        if request.get("model") == "mock-slow":
+            time.sleep(2)
         is_review = isinstance(request.get("text"), dict)
         response_text = '{"status":"PASS","summary":"mock review","issues":[],"preserve":[],"rewrite_scope":[]}' if is_review else "Mock provider response"
         events = [

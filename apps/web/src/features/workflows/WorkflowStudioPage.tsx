@@ -11,7 +11,7 @@ export function WorkflowStudioPage({ nodes = [], edges = [], events = [], used =
   // and live run-state updates reach the canvas; only user edits flow back up.
   const updateDefinition = useCallback((nextNodes: CanvasNode[], nextEdges: CanvasEdge[]) => { onChange?.({ nodes: nextNodes, edges: nextEdges }); }, [onChange]);
   return <section className="workflow-studio" style={{ display: "grid", gap: 20, color: "var(--ink)" }}>
-    <header style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 16, borderBottom: "1px solid var(--ink-faint)", paddingBottom: 14 }}><div><p className="eyebrow">WORKFLOW STUDIO</p><h2 style={{ margin: 0, font: "28px var(--font-seal)", color: "var(--ink-strong)" }}>可恢复写作流程</h2></div><span className="status-stamp">{runStatus}</span></header>
+    <header style={{ display: "flex", alignItems: "start", justifyContent: "space-between", gap: 16, borderBottom: "1px solid var(--ink-faint)", paddingBottom: 14 }}><div><h2 style={{ margin: 0, font: "28px var(--font-seal)", color: "var(--ink-strong)" }}>可恢复写作流程</h2></div><span className="status-stamp">{runStatus}</span></header>
     <WorkflowCanvas initialNodes={nodes} initialEdges={edges} focusNodeId={focusNodeId} readOnly={readOnly} onChange={updateDefinition} />
     <WorkflowBudgetPanel used={used} limit={limit} />
     <WorkflowRunTimeline events={events} onFocusNode={setFocusNodeId} />

@@ -313,10 +313,11 @@ test("v2 professional flow completes the real ten-step workspace journey", async
 
   let workflow!: Workflow;
   await test.step("9. Start and control a workflow, then reload from its persisted snapshot", async () => {
-    // A one-chapter run finishes faster than the control round-trips, so seed a
-    // five-chapter run through the API to keep every durable transition
-    // observable; pause/reload/resume/retry/cancel are all driven through the UI.
-    const workflowResponse = await request.post(`/api/v1/projects/${project.id}/workflows/novel`, { data: { chapter_numbers: [1, 2, 3, 4, 5] } });
+    // A real-time-speed chapter run finishes faster than the control round-trips,
+    // so the seed asks the mock provider to slow down (mock-slow ≈2s/call) and
+    // keeps every durable transition observable; pause/reload/resume/retry/cancel
+    // are all driven through the UI.
+    const workflowResponse = await request.post(`/api/v1/projects/${project.id}/workflows/novel`, { data: { chapter_numbers: [1], model: "mock-slow" } });
     rememberRequestId(workflowResponse);
     workflow = await json<Workflow>(workflowResponse, 201);
     await page.goto(`/projects/${project.id}/workflows/${workflow.id}`);
