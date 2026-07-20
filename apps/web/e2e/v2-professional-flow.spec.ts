@@ -255,20 +255,31 @@ test("v2 professional flow completes the real ten-step workspace journey", async
     await expect(page.getByRole("button", { name: /The Map Home/ })).toBeVisible();
     await expect(page.getByTestId("tiptap-manuscript")).toContainText("Mira unfolded the brass map");
 
-    await selectAllManuscript(page);
-    const reviewResponsePromise = page.waitForResponse(response => response.url().endsWith(`/api/v2/chapters/${chapter.id}/selection-actions`) && response.request().method() === "POST");
-    await page.getByLabel("Manuscript actions").getByRole("button", { name: "review" }).click();
-    const reviewResponse = await reviewResponsePromise;
+    // The selection toolbar re-renders with ProseMirror's async selection sync, so a
+    // click can race a toolbar unmount; retry each select+click unit until the
+    // request is actually observed (duplicates are harmless here).
+    let reviewResponse!: Awaited<ReturnType<Page["waitForResponse"]>>;
+    await expect(async () => {
+      await selectAllManuscript(page);
+      const responsePromise = page.waitForResponse(response => response.url().endsWith(`/api/v2/chapters/${chapter.id}/selection-actions`) && response.request().method() === "POST", { timeout: 15_000 });
+      await page.getByLabel("Manuscript actions").getByRole("button", { name: "review" }).click();
+      reviewResponse = await responsePromise;
+      expect(reviewResponse.status()).toBe(201);
+    }).toPass({ timeout: 60_000, intervals: [500, 1_000] });
     rememberRequestId(reviewResponse);
     const review = await json<{ review_id: string }>(reviewResponse, 201);
     expect(review.review_id).toBeTruthy();
     await expect(page.getByText("Review report ready.")).toBeVisible();
     expect(await json<ChapterVersion[]>(await request.get(`/api/v1/chapters/${chapter.id}/versions`))).toEqual(versionsBefore);
 
-    await selectAllManuscript(page);
-    const rewriteResponsePromise = page.waitForResponse(response => response.url().endsWith(`/api/v2/chapters/${chapter.id}/selection-actions`) && response.request().method() === "POST");
-    await page.getByLabel("Manuscript actions").getByRole("button", { name: "rewrite" }).click();
-    const rewriteResponse = await rewriteResponsePromise;
+    let rewriteResponse!: Awaited<ReturnType<Page["waitForResponse"]>>;
+    await expect(async () => {
+      await selectAllManuscript(page);
+      const responsePromise = page.waitForResponse(response => response.url().endsWith(`/api/v2/chapters/${chapter.id}/selection-actions`) && response.request().method() === "POST", { timeout: 15_000 });
+      await page.getByLabel("Manuscript actions").getByRole("button", { name: "rewrite" }).click();
+      rewriteResponse = await responsePromise;
+      expect(rewriteResponse.status()).toBe(201);
+    }).toPass({ timeout: 60_000, intervals: [500, 1_000] });
     rememberRequestId(rewriteResponse);
     const rewrite = await json<{ proposal_id: string }>(rewriteResponse, 201);
     expect(rewrite.proposal_id).toBeTruthy();
