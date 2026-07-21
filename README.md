@@ -1,100 +1,92 @@
-# ProseForge Web v1
+# ProseForge
 
-ProseForge 是一个 Docker-first 的长篇小说写作工作台：项目管理、章节版本、AI 对话、上下文、质量门禁、可恢复工作流和导出都在同一套 Web/API 架构中。
+ProseForge 是一个本地部署的长篇小说 AI 写作工作台。你的文稿、设定和对话都存在自己的机器上，模型走你自己配置的接口(OpenAI 兼容),AI 只做参谋——**所有修改建议都必须经你批准才会写进正文**。
 
-## 运行方式
+## 它能帮你做什么
 
-只需要 Docker Desktop 和 Git。项目测试、构建和运行都通过 Docker 完成，宿主机不需要安装 Python、Node 或 pytest。
+- **写作工作室**:专注的章节编辑器,选中文段即可让 AI 审校或改写;每次采纳生成一个不可变版本,历史永远可回溯、可对比
+- **AI 陪聊(Companion Chat)**:围绕当前作品对话,分支、重生成、候选对比一应俱全;AI 回答会自动带上你的设定上下文
+- **故事圣经(Story Bible)**:结构化的设定库(人物、世界观、时间线),钉选的事实会注入后续每一次生成,防止 AI 写串设定
+- **上下文透视(Context Inspector)**:每次生成前能看到 AI 到底读到了什么、为什么这些条目被选中、花了多少 token
+- **工作流(Workflow)**:把"大纲→草稿→审校"这类多步流程编排在画布上运行,可暂停、恢复、重试、取消,刷新页面不丢状态
+- **Agent 集群(Agent Swarm)**:让多个角色化 Agent(主策划、场景写手、连续性评审)并行干活、交叉评审;有冲突会保留证据交给主编 Agent,主编也只能提交修改提案,最终仍由你拍板
+- **导出**:一键导出 Markdown / DOCX / EPUB,每份文件附带来源版本号和内容哈希,可校验未被篡改
+- **用量统计**:每个项目、每场对话、每次工作流的 token 花费都可查
+
+## 快速开始(Docker)
+
+只需要 Docker Desktop,不需要安装 Python 或 Node。
 
 ```bash
 git clone https://github.com/remacheybn408-boop/ProseForge.git
 cd ProseForge
-copy .env.example .env
-docker compose up -d postgres redis
-docker compose run --rm migration-test alembic upgrade head
-docker compose up --build api worker scheduler web
+copy .env.example .env        # Windows;Linux/macOS 用 cp
 ```
 
-打开 <http://localhost:3000> 使用 Web 界面；API 健康检查：
-
-```text
-GET http://localhost:8000/api/v1/health/live
-GET http://localhost:8000/api/v1/health/ready
-```
-
-首次部署请修改 `.env` 中的 JWT secret、master key 和管理员密码。生产环境会拒绝默认占位值。
-
-## 原生安装（无 Python/Node/Docker 依赖）
-
-V1.5 起提供原生安装包：PyInstaller onedir 捆绑 Python 3.12 运行时、API、前端与迁移，目标机器无需安装任何运行时。
+编辑 `.env`,把两处占位值换成随机长字符串:`PROSEFORGE_MASTER_KEY`(32 字节 base64)和 `PROSEFORGE_JWT_SECRET`。生产环境会拒绝默认占位值。
 
 ```bash
-# Windows（宿主机需要 py -3.12）：产出 artifacts/native/windows/ProseForge-*.zip
-powershell -File scripts/build_native.ps1 -Target windows
-# Linux（通过 Podman 容器构建）：产出 artifacts/native/linux/ProseForge-*.tar.gz
-bash scripts/build_native.sh --target linux --format tar.gz --skip-sign
+docker compose up --build -d --wait
 ```
 
-- 直接运行：解包后执行 `proseforge web`（默认 <http://127.0.0.1:8000>），首跑自动建库、迁移并生成数据目录（Windows `%LOCALAPPDATA%\ProseForge`，Linux `~/.local/share/ProseForge`，macOS `~/Library/Application Support/ProseForge`）。
-- Windows 安装器：`packaging/windows/ProseForge.iss`（Inno Setup 6）安装到 Program Files、可选开机自启（HKCU Run 键）、卸载保留数据、升级自动备份后迁移。
-- Linux：`packaging/linux/build-deb.sh` / `build-rpm.sh`（容器内构建）+ `systemctl --user` 服务；tarball 免 root。
-- macOS：`packaging/macos/build-pkg.sh`（须在 macOS 上执行，签名身份走 CI secrets）+ LaunchAgent。
-- 运维命令：`proseforge doctor`（诊断）、`proseforge backup create|verify|restore`、`proseforge upgrade --check|upgrade`（锁→备份→迁移→健康检查→失败回滚）。
-- Docker 仍作为 server 部署模式保留（PostgreSQL + Redis + Celery）。
+打开 <http://localhost:3000>:
 
-## Docker 测试
+1. **创建账号**——首次打开进入设置页,这个实例只有一个账号(数据全在你本地,账号只防误触)
+2. **配置模型**——进 Settings,添加你的模型凭证:任意 OpenAI 兼容接口(base_url + API key),按项目选择模型
+3. 新建项目,开始写作
 
-运行完整 legacy regression：
+API 健康检查:`GET http://localhost:8000/api/v1/health/live` 与 `/ready`。
+
+## 原生安装包(免 Docker)
+
+V1.5 起提供原生安装包:打包好的运行时,目标机器什么都不用装。解包后运行 `proseforge web` 即可(默认 <http://127.0.0.1:8000>),数据自动放在系统标准目录(Windows `%LOCALAPPDATA%\ProseForge`,Linux `~/.local/share/ProseForge`)。
+
+- **Windows**:Inno Setup 安装器(安装/升级自动备份/卸载保留文稿)
+- **Linux**:deb / rpm 包或免 root tarball,带 `systemctl --user` 服务
+- **macOS**:打包脚本就绪,但需要 macOS 机器执行,当前未提供成品
+
+运维命令:`proseforge doctor`(体检)、`proseforge backup create|verify|restore`(备份/校验/恢复)、`proseforge upgrade`(升级:锁定→备份→迁移→健康检查→失败自动回滚)。
+
+自己构建安装包:
 
 ```bash
-docker compose -f compose.yaml -f compose.test.yaml run --rm legacy-test
+powershell -File scripts/build_native.ps1 -Target windows      # Windows
+bash scripts/build_native.sh --target linux --skip-sign        # Linux(容器内构建)
 ```
 
-运行 API、迁移、恢复和前端测试：
+## 数据与安全
+
+- 文稿存 PostgreSQL(Docker 卷或本机数据目录),附件走内容寻址 BlobStore
+- 模型凭证加密存储,密钥就是 `.env` 里的 `PROSEFORGE_MASTER_KEY`——丢了它凭证无法解密
+- 升级前自动备份;`proseforge backup` 系列命令可随时手动备份并校验
+
+## 开发与测试
+
+全部测试在 Docker 内运行,宿主机零依赖:
 
 ```bash
-docker compose -f compose.yaml -f compose.test.yaml run --rm api-test
-docker compose -f compose.yaml -f compose.test.yaml run --rm migration-test
-docker compose -f compose.yaml -f compose.test.yaml run --rm recovery-test
-docker compose -f compose.yaml -f compose.test.yaml run --rm web-test
+docker compose -f compose.yaml -f compose.test.yaml run --rm legacy-test   # V1.x 回归 408
+docker compose -f compose.yaml -f compose.test.yaml run --rm api-test      # API/Agent 940
+docker compose -f compose.yaml -f compose.test.yaml run --rm web-test      # 前端 110 + 构建
+docker compose -f compose.yaml -f compose.test.yaml run --rm e2e           # 浏览器端到端 14
 ```
 
-当前 Web v1 分支已在 Docker 中通过 legacy 回归 408 个测试、API 522 个测试（另 1 个可选 RAG 测试跳过）、contract 17 个、migration 22 个、recovery 5 个，以及前端 Vitest 3 个、Playwright E2E 1 个和 Vite production build。
-
-## 主要功能
-
-- Projects / Writing Studio / Context / Workflow 工作区
-- JWT 登录与项目 ownership 隔离
-- PostgreSQL + Alembic 持久化，Redis/Celery worker 拓扑
-- 会话分支、消息幂等、流式 chunk、SSE 重连
-- Provider registry、OpenAI Responses 适配器、模型目录和加密凭据
-- 内容寻址 BlobStore、安全上传检查、备份校验和恢复状态
-- 大纲 intake、章节规划、规则质量门禁、rewrite limit 和整书暂停/恢复
-- Legacy SQLite workspace 安全导入
-
-## 兼容旧 CLI
-
-旧 CLI 仅用于迁移期间的兼容操作：
-
-```bash
-docker compose -f compose.yaml -f compose.test.yaml run --rm legacy-test proseforge-legacy doctor
-```
-
-外部 Codex、Hermes、Claude Code plugin surfaces 已移除；Web/API 是主入口。
+完整矩阵另有 contract 43、migration 24、recovery 5、故障注入与安全套件;发布验证台账见 `artifacts/`(V1.5/V2/V3 均已 PASS,macOS 安装器除外)。
 
 ## 目录
 
 ```text
-proseforge/                 Web v1 domain/application/API
-apps/web/                   React + Vite frontend
-docker/                     API、worker、web、test images
-compose.yaml                production-like topology
-compose.test.yaml           Docker-only test services
-docs/plans/                 Codex execution plan
-src/                        legacy compatibility core
+proseforge/    后端(API、领域服务、执行器)
+apps/web/      前端(React)
+docker/        镜像与编排
+database/      表结构与迁移
+docs/          设计文档(架构、行为规格、运维)
+artifacts/     发布验证证据
+src/           V1.x 遗留核心(保持回归)
+packaging/     原生安装包构建
 ```
 
-详细 Docker 说明见 [docs/DOCKER_TESTING.md](docs/DOCKER_TESTING.md)，完整实施计划见 [docs/plans/PROSEFORGE_WEB_V1_CODEX_PLAN.md](docs/plans/PROSEFORGE_WEB_V1_CODEX_PLAN.md)。
+详细说明:[docs/DOCKER_TESTING.md](docs/DOCKER_TESTING.md)、[docs/architecture.md](docs/architecture.md)、[docs/USER_GUIDE_CN.md](docs/USER_GUIDE_CN.md)。
 
 ## License
 
