@@ -27,7 +27,7 @@
     "react-i18next": "^16.5.4",
     "react-markdown": "^10.1.0",
     "typescript": "7.0.2",
-    "vite": "8.1.4",
+    "vite": "8.1.5",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
