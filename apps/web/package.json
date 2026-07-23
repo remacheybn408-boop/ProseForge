@@ -19,7 +19,7 @@
     "@tiptap/react": "^3.28.0",
     "@tiptap/starter-kit": "^3.28.0",
     "@xyflow/react": "^12.10.0",
-    "@vitejs/plugin-react": "6.0.3",
+    "@vitejs/plugin-react": "6.0.4",
     "dompurify": "^3.2.4",
     "i18next": "^25.7.4",
     "react": "19.2.7",
